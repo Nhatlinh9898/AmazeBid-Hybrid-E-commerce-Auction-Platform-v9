@@ -1,0 +1,494 @@
+{
+  "products": [
+    {
+      "id": "prod_1773017662794",
+      "title": "Son YSL Rouge Pur Couture",
+      "description": "Màu đỏ thuần quyến rũ, chất son mịn mượt, lâu trôi.",
+      "price": 38,
+      "category": "Beauty",
+      "type": "FIXED_PRICE",
+      "image": "https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&q=80&w=400",
+      "rating": 5,
+      "reviewCount": 0,
+      "status": "AVAILABLE",
+      "sellerId": "admin_1",
+      "isAffiliate": true,
+      "platformName": "Lazada",
+      "commissionRate": 10,
+      "affiliateLink": "https://lazada.vn/ysl-lipstick?ref_id=user_123"
+    },
+    {
+      "id": "0",
+      "title": "My Custom Keyboard Kit (Full Aluminum)",
+      "description": "Bàn phím cơ Custom nhôm nguyên khối, mạch xuôi, 3 modes kết nối. Hàng sưu tầm của tôi.",
+      "price": 120,
+      "originalPrice": 180,
+      "image": "https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&q=80&w=400",
+      "category": "Electronics",
+      "type": "FIXED_PRICE",
+      "rating": 5,
+      "reviewCount": 0,
+      "status": "AVAILABLE",
+      "sellerId": "currentUser"
+    },
+    {
+      "id": "aff_1",
+      "title": "Sách E-Reader Kindle Paperwhite",
+      "description": "Phiên bản mới nhất từ Amazon. Hàng chính hãng.",
+      "price": 139.99,
+      "originalPrice": 159.99,
+      "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=400",
+      "category": "Electronics",
+      "type": "FIXED_PRICE",
+      "rating": 4.8,
+      "reviewCount": 200,
+      "status": "AVAILABLE",
+      "sellerId": "currentUser",
+      "isAffiliate": true,
+      "platformName": "Amazon",
+      "commissionRate": 8,
+      "affiliateLink": "https://amazon.com"
+    },
+    {
+      "id": "1",
+      "title": "Sony WH-1000XM5 Noise Canceling Headphones",
+      "description": "Industry leading noise cancellation with two processors and 8 microphones.",
+      "price": 349.99,
+      "originalPrice": 420,
+      "image": "https://picsum.photos/seed/sony/400/400",
+      "videoUrl": "https://assets.mixkit.co/videos/preview/mixkit-headphones-on-a-table-42686-large.mp4",
+      "category": "Electronics",
+      "type": "FIXED_PRICE",
+      "rating": 4.8,
+      "reviewCount": 1250,
+      "status": "AVAILABLE",
+      "sellerId": "system_store"
+    },
+    {
+      "id": "2",
+      "title": "Vintage 1970s Leica M3 Camera",
+      "description": "Extremely rare collectible camera in pristine condition. A true masterpiece for collectors.",
+      "price": 1500,
+      "currentBid": 1850,
+      "bidCount": 4,
+      "stepPrice": 50,
+      "bidHistory": [
+        {
+          "id": "b1",
+          "userId": "u1",
+          "userName": "CameraLover",
+          "amount": 1600,
+          "timestamp": "2023-10-25T10:00:00Z"
+        },
+        {
+          "id": "b2",
+          "userId": "u2",
+          "userName": "LeicaFan",
+          "amount": 1650,
+          "timestamp": "2023-10-25T10:30:00Z"
+        },
+        {
+          "id": "b3",
+          "userId": "u1",
+          "userName": "CameraLover",
+          "amount": 1750,
+          "timestamp": "2023-10-25T11:15:00Z"
+        },
+        {
+          "id": "b4",
+          "userId": "u3",
+          "userName": "RichCollector",
+          "amount": 1850,
+          "timestamp": "2023-10-25T12:00:00Z"
+        }
+      ],
+      "image": "https://picsum.photos/seed/leica/400/400",
+      "videoUrl": "https://assets.mixkit.co/videos/preview/mixkit-photographer-taking-photos-with-an-old-camera-42687-large.mp4",
+      "category": "Collectibles",
+      "type": "AUCTION",
+      "endTime": "2026-03-09T05:02:51.661Z",
+      "rating": 5,
+      "reviewCount": 3,
+      "status": "AVAILABLE",
+      "sellerId": "user_collector_99"
+    },
+    {
+      "id": "3",
+      "title": "MacBook Pro 14-inch (M3 Max)",
+      "description": "The most advanced chips ever built for a personal computer.",
+      "price": 2499,
+      "originalPrice": 2799,
+      "image": "https://picsum.photos/seed/macbook/400/400",
+      "category": "Electronics",
+      "type": "FIXED_PRICE",
+      "rating": 4.9,
+      "reviewCount": 840,
+      "status": "AVAILABLE",
+      "sellerId": "apple_reseller"
+    },
+    {
+      "id": "4",
+      "title": "Limited Edition Charizard Card (Holographic)",
+      "description": "Shadowless 1st Edition PSA 10. The holy grail of Pokémon cards.",
+      "price": 5000,
+      "currentBid": 12400,
+      "bidCount": 12,
+      "stepPrice": 100,
+      "bidHistory": [
+        {
+          "id": "b1",
+          "userId": "poke1",
+          "userName": "AshKetchum",
+          "amount": 6000,
+          "timestamp": "2023-10-24T09:00:00Z"
+        },
+        {
+          "id": "b2",
+          "userId": "poke2",
+          "userName": "TeamRocket",
+          "amount": 12400,
+          "timestamp": "2023-10-25T12:00:00Z"
+        }
+      ],
+      "image": "https://picsum.photos/seed/pokemon/400/400",
+      "category": "Collectibles",
+      "type": "AUCTION",
+      "endTime": "2026-03-09T00:32:51.661Z",
+      "rating": 5,
+      "reviewCount": 12,
+      "status": "AVAILABLE",
+      "sellerId": "card_king"
+    },
+    {
+      "id": "5",
+      "title": "Ergonomic Mesh Office Chair",
+      "description": "High back adjustable task chair with lumber support.",
+      "price": 189.99,
+      "originalPrice": 250,
+      "image": "https://picsum.photos/seed/chair/400/400",
+      "category": "Home & Office",
+      "type": "FIXED_PRICE",
+      "rating": 4.3,
+      "reviewCount": 3200,
+      "status": "AVAILABLE",
+      "sellerId": "furniture_outlet",
+      "isFlashSale": true,
+      "flashSalePrice": 129.99,
+      "flashSaleEndTime": "2026-03-09T05:02:51.661Z",
+      "stock": 50,
+      "sold": 35
+    },
+    {
+      "id": "6",
+      "title": "Rare Vinyl: The Beatles - Abbey Road",
+      "description": "Original 1969 UK Pressing. Sleeve in Excellent condition.",
+      "price": 200,
+      "currentBid": 455,
+      "bidCount": 5,
+      "stepPrice": 10,
+      "bidHistory": [
+        {
+          "id": "b1",
+          "userId": "beatle1",
+          "userName": "JohnFan",
+          "amount": 300,
+          "timestamp": "2023-10-24T10:00:00Z"
+        },
+        {
+          "id": "b2",
+          "userId": "beatle2",
+          "userName": "PaulFan",
+          "amount": 455,
+          "timestamp": "2023-10-25T08:00:00Z"
+        }
+      ],
+      "image": "https://picsum.photos/seed/beatles/400/400",
+      "category": "Music",
+      "type": "AUCTION",
+      "endTime": "2026-03-10T00:02:51.661Z",
+      "rating": 4.7,
+      "reviewCount": 45,
+      "status": "AVAILABLE",
+      "sellerId": "music_lover"
+    }
+  ],
+  "streams": [
+    {
+      "id": "stream_1",
+      "title": "Săn Deal Đồng Hồ Hiệu Giá Sốc! ⌚️",
+      "viewerCount": 1420,
+      "hostName": "WatchMaster",
+      "hostAvatar": "https://i.pravatar.cc/150?u=watch",
+      "thumbnail": "https://images.unsplash.com/photo-1587925358603-c2eea5305bbc?auto=format&fit=crop&q=80&w=800",
+      "featuredProductIds": [
+        "2",
+        "6"
+      ],
+      "isLive": true
+    },
+    {
+      "id": "stream_2",
+      "title": "Xả kho Đồ Công Nghệ - Giá hủy diệt 💻",
+      "viewerCount": 856,
+      "hostName": "TechReviewerVN",
+      "hostAvatar": "https://i.pravatar.cc/150?u=tech",
+      "thumbnail": "https://images.unsplash.com/photo-1531297461136-82lw9f5b2413?auto=format&fit=crop&q=80&w=800",
+      "featuredProductIds": [
+        "1",
+        "3"
+      ],
+      "isLive": true
+    },
+    {
+      "id": "stream_3",
+      "title": "Đấu giá Thẻ Pokemon Hiếm 🔥",
+      "viewerCount": 3200,
+      "hostName": "CardCollectorKing",
+      "hostAvatar": "https://i.pravatar.cc/150?u=card",
+      "thumbnail": "https://images.unsplash.com/photo-1613771404721-c5b27c154375?auto=format&fit=crop&q=80&w=800",
+      "featuredProductIds": [
+        "4"
+      ],
+      "isLive": true
+    }
+  ],
+  "users": [
+    {
+      "points": 0,
+      "badges": [],
+      "reputation": 50,
+      "tokenVersion": 0,
+      "twoFactorEnabled": false,
+      "twoFactorSecret": "",
+      "id": "u1",
+      "fullName": "Nguyễn Văn A",
+      "email": "vana@example.com",
+      "avatar": "https://ui-avatars.com/api/?name=Van+A&background=random",
+      "joinDate": "2023-01-15T10:00:00Z",
+      "balance": 150,
+      "paymentMethods": [],
+      "role": "USER",
+      "wallet": {
+        "balance": 150,
+        "pendingBalance": 0,
+        "kycStatus": "unverified",
+        "transactions": [],
+        "escrowItems": []
+      }
+    },
+    {
+      "points": 0,
+      "badges": [],
+      "reputation": 50,
+      "tokenVersion": 0,
+      "twoFactorEnabled": false,
+      "twoFactorSecret": "",
+      "id": "u2",
+      "fullName": "Trần Thị B",
+      "email": "thib@example.com",
+      "avatar": "https://ui-avatars.com/api/?name=Thi+B&background=random",
+      "joinDate": "2023-03-20T09:30:00Z",
+      "balance": 50,
+      "paymentMethods": [],
+      "role": "USER",
+      "wallet": {
+        "balance": 50,
+        "pendingBalance": 0,
+        "kycStatus": "unverified",
+        "transactions": [],
+        "escrowItems": []
+      }
+    },
+    {
+      "points": 0,
+      "badges": [],
+      "reputation": 50,
+      "tokenVersion": 0,
+      "twoFactorEnabled": false,
+      "twoFactorSecret": "",
+      "id": "u3",
+      "fullName": "Lê Hoàng C",
+      "email": "hoangc@example.com",
+      "avatar": "https://ui-avatars.com/api/?name=Hoang+C&background=random",
+      "joinDate": "2023-06-10T14:00:00Z",
+      "balance": 1200,
+      "paymentMethods": [],
+      "role": "USER",
+      "wallet": {
+        "balance": 1200,
+        "pendingBalance": 0,
+        "kycStatus": "unverified",
+        "transactions": [],
+        "escrowItems": []
+      }
+    },
+    {
+      "points": 0,
+      "badges": [],
+      "reputation": 50,
+      "tokenVersion": 0,
+      "twoFactorEnabled": false,
+      "twoFactorSecret": "",
+      "id": "u4",
+      "fullName": "Phạm Minh D",
+      "email": "minhd@example.com",
+      "avatar": "https://ui-avatars.com/api/?name=Minh+D&background=random",
+      "joinDate": "2023-11-05T08:15:00Z",
+      "balance": 0,
+      "paymentMethods": [],
+      "role": "USER",
+      "wallet": {
+        "balance": 0,
+        "pendingBalance": 0,
+        "kycStatus": "unverified",
+        "transactions": [],
+        "escrowItems": []
+      }
+    },
+    {
+      "points": 0,
+      "badges": [],
+      "reputation": 50,
+      "tokenVersion": 0,
+      "twoFactorEnabled": false,
+      "twoFactorSecret": "",
+      "id": "admin_1",
+      "fullName": "Administrator",
+      "email": "admin@amazebid.com",
+      "avatar": "https://ui-avatars.com/api/?name=Admin&background=000&color=fff",
+      "joinDate": "2022-12-01T00:00:00Z",
+      "balance": 99999,
+      "paymentMethods": [],
+      "role": "ADMIN",
+      "wallet": {
+        "balance": 99999,
+        "pendingBalance": 0,
+        "kycStatus": "unverified",
+        "transactions": [],
+        "escrowItems": []
+      }
+    }
+  ],
+  "feedPosts": [
+    {
+      "id": "post1",
+      "userId": "user2",
+      "userName": "Trần Thị B",
+      "userAvatar": "https://i.pravatar.cc/150?img=5",
+      "content": "Vừa chốt được chiếc đồng hồ cơ cổ siêu xịn trên AmazeBid! Cảm ơn shop @VintageWatch đã tư vấn nhiệt tình. Hàng chuẩn auth, giá lại quá hời so với thị trường. Mọi người ai mê đồ cổ thì tham khảo shop này nhé! 😍🕰️",
+      "images": [
+        "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&q=80"
+      ],
+      "relatedProductId": "1",
+      "likes": 124,
+      "comments": 15,
+      "createdAt": "2026-03-07T00:02:51.660Z"
+    },
+    {
+      "id": "post2",
+      "userId": "user3",
+      "userName": "Lê Văn C",
+      "userAvatar": "https://i.pravatar.cc/150?img=12",
+      "content": "Góc pass đồ: Mình mới mua tai nghe Sony WH-1000XM5 nhưng được tặng thêm 1 cái y hệt nên muốn pass lại giá siêu mềm cho anh em. Hàng nguyên seal, chưa bóc hộp. Ai quan tâm inbox hoặc vào phiên đấu giá tối nay của mình nhé! 🎧🔥",
+      "relatedProductId": "2",
+      "likes": 89,
+      "comments": 32,
+      "createdAt": "2026-03-04T00:02:51.661Z"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rev1",
+      "productId": "1",
+      "userId": "user4",
+      "userName": "Phạm Thị D",
+      "userAvatar": "https://i.pravatar.cc/150?img=9",
+      "rating": 5,
+      "comment": "Đồng hồ đẹp xuất sắc, chạy rất êm. Đóng gói cẩn thận, giao hàng nhanh. Sẽ ủng hộ shop dài dài!",
+      "images": [
+        "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=400&q=80"
+      ],
+      "likes": 12,
+      "createdAt": "2026-02-27T00:02:51.661Z"
+    },
+    {
+      "id": "rev2",
+      "productId": "2",
+      "userId": "user5",
+      "userName": "Hoàng Văn E",
+      "userAvatar": "https://i.pravatar.cc/150?img=15",
+      "rating": 4,
+      "comment": "Chất âm chống ồn đỉnh cao, bass đập chắc. Tuy nhiên hộp hơi móp một chút do vận chuyển. Nhìn chung vẫn rất đáng tiền.",
+      "likes": 5,
+      "createdAt": "2026-02-22T00:02:51.661Z"
+    }
+  ],
+  "discountCodes": [
+    {
+      "id": "dc1",
+      "code": "WELCOME10",
+      "type": "PERCENTAGE",
+      "value": 10,
+      "expiryDate": "2026-04-08T00:02:51.661Z",
+      "isActive": true
+    },
+    {
+      "id": "dc2",
+      "code": "MINUS50",
+      "type": "FIXED_AMOUNT",
+      "value": 50,
+      "minPurchase": 200,
+      "expiryDate": "2026-03-24T00:02:51.661Z",
+      "isActive": true
+    },
+    {
+      "id": "dc3",
+      "code": "FREESHIP",
+      "type": "FREE_SHIPPING",
+      "value": 0,
+      "expiryDate": "2026-03-14T00:02:51.661Z",
+      "isActive": true
+    },
+    {
+      "id": "dc4",
+      "code": "EXPIRED20",
+      "type": "PERCENTAGE",
+      "value": 20,
+      "expiryDate": "2026-03-04T00:02:51.661Z",
+      "isActive": false
+    }
+  ],
+  "shippingOptions": [
+    {
+      "id": "so1",
+      "name": "Giao hàng Tiêu chuẩn",
+      "provider": "Amaze Express",
+      "estimatedDays": "3-5 ngày",
+      "price": 5
+    },
+    {
+      "id": "so2",
+      "name": "Giao hàng Nhanh",
+      "provider": "Amaze Fast",
+      "estimatedDays": "1-2 ngày",
+      "price": 15
+    },
+    {
+      "id": "so3",
+      "name": "Giao hàng Hỏa tốc",
+      "provider": "Amaze Now",
+      "estimatedDays": "Trong ngày",
+      "price": 25
+    }
+  ],
+  "systemWallet": {
+    "balance": 1000,
+    "totalRevenue": 0,
+    "totalFeesCollected": 0,
+    "withdrawalLimitRate": 0.25,
+    "transactions": []
+  },
+  "orders": [],
+  "security_logs": [],
+  "blocked_ips": []
+}

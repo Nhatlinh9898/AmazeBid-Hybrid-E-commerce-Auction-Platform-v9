@@ -1,0 +1,26 @@
+{
+  "entities": {
+    "KnowledgeItem": {
+      "title": "KnowledgeItem",
+      "description": "A resource in the AI Knowledge Base",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["TEXT", "IMAGE", "VIDEO", "SPEC", "INSTRUCTION"] },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["id", "type", "title", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/knowledge_base/{itemId}": {
+      "schema": "KnowledgeItem",
+      "description": "Global knowledge base for AI resources"
+    }
+  }
+}

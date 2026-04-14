@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: knowledge_base
+    // Document ID: itemId
+    // Fields:
+    //   - id: string (required)
+    //   - type: string (required, enum: TEXT, IMAGE, VIDEO, SPEC, INSTRUCTION)
+    //   - title: string (required, size < 200)
+    //   - content: string (required, size < 100000)
+    //   - tags: list (optional, size < 20)
+    //   - createdAt: string (required, ISO 8601)
+    //   - createdBy: string (optional, UID)
+    //   - isPublic: bool (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN' || 
+         request.auth.token.email == "Nhatlinhckm2016@gmail.com");
+    }
+
+    function isOwner(data) {
+      return isAuthenticated() && data.createdBy == request.auth.uid;
+    }
+
+    function isValidKnowledgeItem(data) {
+      return data.keys().hasAll(['id', 'type', 'title', 'content', 'createdAt']) &&
+             data.type in ['TEXT', 'IMAGE', 'VIDEO', 'SPEC', 'INSTRUCTION'] &&
+             data.title is string && data.title.size() < 200 &&
+             data.content is string && data.content.size() < 100000 &&
+             (data.tags == null || (data.tags is list && data.tags.size() < 20));
+    }
+
+    match /knowledge_base/{itemId} {
+      // Everyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Users can create their own items
+      allow create: if isAuthenticated() && 
+                      isValidKnowledgeItem(request.resource.data) &&
+                      (request.resource.data.createdBy == request.auth.uid || isAdmin());
+      
+      // Owners and Admins can update/delete
+      allow update: if isAuthenticated() && 
+                      isValidKnowledgeItem(request.resource.data) &&
+                      (isOwner(resource.data) || isAdmin());
+                      
+      allow delete: if isAuthenticated() && (isOwner(resource.data) || isAdmin());
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if request.auth.uid == userId || isAdmin();
+    }
+  }
+}

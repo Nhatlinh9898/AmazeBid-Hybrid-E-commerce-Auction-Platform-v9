@@ -1,0 +1,14 @@
+{
+  "$id": "pricing.schema.json",
+  "type": "object",
+  "required": ["price", "strategy", "explanation"],
+  "properties": {
+    "price": { "type": "number", "minimum": 0 },
+    "strategy": {
+      "type": "string",
+      "enum": ["AGGRESSIVE", "BALANCED", "CONSERVATIVE"]
+    },
+    "explanation": { "type": "string" },
+    "canonical_version": { "type": "string" }
+  }
+}

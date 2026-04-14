@@ -1,0 +1,455 @@
+// ---------- GENERATOR & DATASOURCE ----------
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pg_trgm]
+}
+
+// ---------- ENUMS ----------
+
+enum OrderStatus {
+  AVAILABLE
+  PENDING_SHIPMENT
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  RETURNED
+  CANCELLED
+  FAILED_PAYMENT
+  REFUND_PENDING
+  REFUND_COMPLETED
+}
+
+enum ItemType {
+  FIXED_PRICE
+  AUCTION
+}
+
+enum CurrencyCode {
+  VND
+  USD
+  JPY
+}
+
+enum AITaskType {
+  PRODUCT_ANALYSIS
+  PRICING_SUGGESTION
+  MARKETING_CONTENT
+  CONTENT_CANONICALIZATION
+  IMAGE_GENERATION
+  VIDEO_GENERATION
+  SEO_KEYWORD_EXTRACTION
+  PRODUCT_TITLE_REWRITE
+  PRODUCT_DESCRIPTION_REWRITE
+}
+
+enum AITaskStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum LogLevel {
+  INFO
+  WARNING
+  ERROR
+}
+
+// ---------- USER & PAYMENT & SOCIAL ----------
+
+model User {
+  id           String       @id
+  fullName     String
+  email        String       @unique
+  phone        String?
+  avatar       String?
+  address      String?
+  joinDate     DateTime
+  balance      Decimal      @default(0)
+  currency     CurrencyCode @default(VND)
+  referralCode String?
+  referredBy   String?
+  role         String       @default("USER")
+
+  paymentMethods PaymentMethod[]
+  follows        FollowRelation[] @relation("UserFollows")
+  followedBy     FollowRelation[] @relation("UserFollowedBy")
+  reviews        Review[]
+  feedPosts      FeedPost[]
+  transactions   Transaction[]
+  orders         Order[]
+  cartItems      CartItem[]
+  livestreams    LiveStream[]
+  productBases   ProductBase[]
+  bids           Bid[]
+  aiTasks        AITask[]
+
+  @@index([fullName])
+  @@index([phone])
+  @@index([role])
+}
+
+model PaymentMethod {
+  id            String   @id
+  user          User?    @relation(fields: [userId], references: [id])
+  userId        String?
+  type          String
+  providerName  String
+  accountNumber String
+  holderName    String
+  isDefault     Boolean  @default(false)
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  orders Order[]
+}
+
+model FollowRelation {
+  follower    User     @relation("UserFollows", fields: [followerId], references: [id])
+  followerId  String
+  following   User     @relation("UserFollowedBy", fields: [followingId], references: [id])
+  followingId String
+  createdAt   DateTime @default(now())
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+  @@index([createdAt])
+}
+
+// ---------- PRODUCT BASE / FIXED / AUCTION ----------
+
+model ProductBase {
+  id          String      @id
+  title       String
+  description String
+  image       String
+  category    String
+  rating      Decimal     @default(0)
+  reviewCount Int         @default(0)
+  seller      User?       @relation(fields: [sellerId], references: [id])
+  sellerId    String?
+  status      OrderStatus
+  stock       Int?
+  sold        Int?
+  videoUrl    String?
+
+  // Affiliate
+  isAffiliate    Boolean  @default(false)
+  affiliateLink  String?
+  platformName   String?
+  commissionRate Decimal?
+
+  // Pricing engine
+  costPrice         Decimal?
+  totalStock        Int?
+  breakEvenQuantity Int?
+  pricingStrategy   String?
+  isRecoveryPhase   Boolean?
+  systemFeeRate     Decimal? @default(0.05)
+
+  // Flash sale
+  isFlashSale      Boolean   @default(false)
+  flashSalePrice   Decimal?
+  flashSaleEndTime DateTime?
+
+  fixedProduct   ProductFixed?
+  auctionProduct ProductAuction?
+  reviews        Review[]
+  feedPosts      FeedPost[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  transactions   Transaction[]
+
+  @@index([category])
+  @@index([sellerId])
+  @@index([status])
+  @@index([rating])
+  @@index([isFlashSale])
+  @@index([flashSaleEndTime])
+  @@index([title(ops: raw("gin_trgm_ops"))], map: "idx_product_title_trgm", type: Gin)
+}
+
+model ProductFixed {
+  product       ProductBase @relation(fields: [productId], references: [id])
+  productId     String      @id
+  price         Decimal
+  originalPrice Decimal?
+
+  @@index([price])
+}
+
+model ProductAuction {
+  product       ProductBase @relation(fields: [productId], references: [id])
+  productId     String      @id
+  startingPrice Decimal
+  currentBid    Decimal?
+  bidCount      Int?
+  stepPrice     Decimal?
+  endTime       DateTime
+
+  bids Bid[]
+
+  @@index([endTime])
+  @@index([currentBid])
+  @@index([bidCount])
+}
+
+model Bid {
+  id        String         @id
+  product   ProductAuction @relation(fields: [productId], references: [productId])
+  productId String
+  user      User?          @relation(fields: [userId], references: [id])
+  userId    String?
+  userName  String
+  amount    Decimal
+  timestamp DateTime
+  autoBid   Boolean        @default(false)
+
+  @@index([productId])
+  @@index([timestamp])
+  @@index([amount])
+}
+
+// ---------- REVIEW / FEED / CART / ORDER / TRANSACTION ----------
+
+model Review {
+  id           String      @id
+  product      ProductBase @relation(fields: [productId], references: [id])
+  productId    String
+  user         User?       @relation(fields: [userId], references: [id])
+  userId       String?
+  userName     String
+  userAvatar   String
+  rating       Int
+  comment      String
+  images       String[]
+  likes        Int         @default(0)
+  helpfulVotes Int         @default(0)
+  createdAt    DateTime    @default(now())
+
+  @@index([productId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model FeedPost {
+  id               String       @id
+  user             User?        @relation(fields: [userId], references: [id])
+  userId           String?
+  content          String
+  images           String[]
+  relatedProduct   ProductBase? @relation(fields: [relatedProductId], references: [id])
+  relatedProductId String?
+  likes            Int          @default(0)
+  comments         Int          @default(0)
+  createdAt        DateTime     @default(now())
+
+  @@index([userId])
+  @@index([relatedProductId])
+  @@index([createdAt])
+}
+
+model CartItem {
+  id         String      @id
+  user       User?       @relation(fields: [userId], references: [id])
+  userId     String?
+  product    ProductBase @relation(fields: [productId], references: [id])
+  productId  String
+  title      String
+  image      String
+  type       ItemType
+  quantity   Int
+  priceAtAdd Decimal
+  variant    String?
+
+  @@index([userId])
+  @@index([productId])
+}
+
+model Order {
+  id              String         @id
+  user            User?          @relation(fields: [userId], references: [id])
+  userId          String?
+  totalAmount     Decimal
+  currency        CurrencyCode
+  status          OrderStatus
+  createdAt       DateTime
+  shippingAddress String?
+  shippingFee     Decimal?
+  discountCode    String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  paymentMethodId String?
+
+  items OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        String      @id
+  order     Order       @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   ProductBase @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+  price     Decimal
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Transaction {
+  id        String       @id
+  user      User?        @relation(fields: [userId], references: [id])
+  userId    String?
+  product   ProductBase? @relation(fields: [productId], references: [id])
+  productId String?
+  amount    Decimal
+  currency  CurrencyCode
+  type      String
+  feeAmount Decimal?
+  timestamp DateTime
+  status    String
+
+  @@index([userId])
+  @@index([productId])
+  @@index([type])
+  @@index([status])
+  @@index([timestamp])
+}
+
+// ---------- AVATAR & ENVIRONMENT ----------
+
+model AvatarConfig {
+  id           String  @id
+  name         String
+  role         String
+  gender       String
+  voiceTone    String
+  image        String
+  idleVideo    String
+  talkingVideo String
+  singingVideo String?
+
+  livestreams LiveStream[]
+}
+
+model AvatarOutfit {
+  id    String @id
+  name  String
+  image String
+  style String
+}
+
+model AvatarEnvironment {
+  id             String  @id
+  name           String
+  image          String
+  type           String
+  lightingColor  String
+  cameraPosition Float[]
+  modelPosition  Float[]
+  modelScale     Float?
+}
+
+// ---------- LIVESTREAM ----------
+
+model LiveStream {
+  id                 String        @id
+  title              String
+  viewerCount        Int
+  hostName           String
+  hostAvatar         String
+  thumbnail          String
+  featuredProductIds String[]
+  isLive             Boolean
+  avatar             AvatarConfig? @relation(fields: [avatarId], references: [id])
+  avatarId           String?
+  scriptAI           String?
+
+  host      User?    @relation(fields: [hostId], references: [id])
+  hostId    String?
+  createdAt DateTime @default(now())
+
+  @@index([hostId])
+  @@index([avatarId])
+  @@index([isLive])
+  @@index([createdAt])
+}
+
+// ---------- AI CONTENT ----------
+
+model ContentPost {
+  id              String   @id
+  title           String
+  content         String
+  keywords        String[]
+  generatedImages String[]
+  generatedVideo  String?
+  status          String
+  platform        String
+  createdAt       DateTime
+  aiModelUsed     String?
+
+  @@index([platform])
+  @@index([status])
+  @@index([createdAt])
+  @@index([aiModelUsed])
+}
+
+// ---------- AI TASK SYSTEM ----------
+
+model AITask {
+  id        String       @id
+  type      AITaskType
+  status    AITaskStatus @default(PENDING)
+  priority  Int          @default(5)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // JSON fields
+  input        Json
+  outputRaw    Json?
+  outputFinal  Json?
+  errorMessage String?
+
+  // Relations
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  logs   AITaskLog[]
+  usages AIModelUsage[]
+}
+
+model AITaskLog {
+  id        String   @id
+  task      AITask   @relation(fields: [taskId], references: [id])
+  taskId    String
+  timestamp DateTime @default(now())
+  message   String
+  level     LogLevel @default(INFO)
+}
+
+model AIModelUsage {
+  id           String   @id
+  task         AITask   @relation(fields: [taskId], references: [id])
+  taskId       String
+  modelName    String
+  tokensInput  Int
+  tokensOutput Int
+  cost         Decimal
+  timestamp    DateTime @default(now())
+
+  @@index([modelName])
+  @@index([timestamp])
+}

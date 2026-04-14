@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "productId": { "type": "string" },
+    "basePrice": { "type": "number" },
+    "currency": { "type": "string" }
+  },
+  "required": ["productId", "basePrice"]
+}

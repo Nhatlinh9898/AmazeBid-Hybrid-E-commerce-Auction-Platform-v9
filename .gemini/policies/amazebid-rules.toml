@@ -1,0 +1,31 @@
+# .gemini/policies/amazebid-rules.toml
+# Chính sách thực thi công cụ cho dự án AmazeBid
+
+# 1. Tự động cho phép các lệnh kiểm tra mã nguồn và build
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["npm run lint", "npm run build", "tsc"]
+decision = "allow"
+priority = 100
+
+# 2. Tự động cho phép các lệnh Git an toàn (chỉ đọc)
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["git status", "git diff", "git log", "git branch"]
+decision = "allow"
+priority = 100
+
+# 3. NGĂN CHẶN các lệnh xóa nguy hiểm
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["rm -rf", "rm -r"]
+decision = "deny"
+priority = 200
+deny_message = "Lệnh xóa hàng loạt (rm -rf) bị chặn trong dự án này để đảm bảo an toàn mã nguồn."
+
+# 4. Yêu cầu xác nhận khi cài đặt package mới
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["npm install", "npm i ", "yarn add"]
+decision = "ask_user"
+priority = 150

@@ -1,0 +1,9 @@
+{
+  "name": "AmazeBid | Hybrid E-commerce & Auction Platform",
+  "description": "A high-performance e-commerce platform featuring real-time auctions, P2P compute sharing, and AI-driven recommendations.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

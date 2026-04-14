@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "properties": {
+    "productId": { "type": "string" },
+    "analysisType": { "type": "string", "enum": ["sentiment", "competitor", "feature"] }
+  },
+  "required": ["productId", "analysisType"]
+}

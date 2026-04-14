@@ -1,0 +1,10 @@
+{
+  "$id": "content.schema.json",
+  "type": "object",
+  "required": ["clean_content", "style"],
+  "properties": {
+    "clean_content": { "type": "string" },
+    "style": { "type": "string", "enum": ["AmazeBid"] },
+    "canonical_version": { "type": "string" }
+  }
+}

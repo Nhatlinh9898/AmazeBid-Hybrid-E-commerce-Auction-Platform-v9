@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "properties": {
+    "campaignId": { "type": "string" },
+    "targetAudience": { "type": "string" }
+  },
+  "required": ["campaignId", "targetAudience"]
+}
