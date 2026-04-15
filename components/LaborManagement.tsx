@@ -2,16 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, UserPlus, DollarSign, Briefcase, 
-  Trash2, Plus, Phone, Mail, TrendingDown
+  Trash2, Plus, Phone, Mail, TrendingDown, PieChart as PieChartIcon
 } from 'lucide-react';
 import { Employee, LaborCost } from '../types';
 import { equityService } from '../src/services/EquityService';
 
 interface LaborManagementProps {
   ownerId: string;
+  onTabChange?: (tab: any) => void;
 }
 
-export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId }) => {
+export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTabChange }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [laborCosts, setLaborCosts] = useState<LaborCost[]>([]);
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
@@ -77,12 +78,18 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId }) => 
           </div>
           <h4 className="text-2xl font-black text-red-600">{totalLaborCost.toLocaleString()} đ</h4>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center">
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-2">
           <button 
             onClick={() => setIsAddingEmployee(true)}
-            className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
+            className="w-full bg-blue-600 text-white py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all text-sm"
           >
-            <UserPlus size={18}/> Thêm nhân sự mới
+            <UserPlus size={16}/> Thêm nhân sự mới
+          </button>
+          <button 
+            onClick={() => onTabChange?.('equity')}
+            className="w-full bg-purple-50 text-purple-700 py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-100 transition-all text-sm"
+          >
+            <PieChartIcon size={16}/> Chốt lương & Chia cổ phần
           </button>
         </div>
       </div>

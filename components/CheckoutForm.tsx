@@ -12,7 +12,7 @@ interface CheckoutFormProps {
   amount: number;
 }
 
-export default function CheckoutForm({ onSuccess, onCancel, amount }: CheckoutFormProps) {
+export default function CheckoutForm({ onSuccess = () => {}, onCancel, amount }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
 

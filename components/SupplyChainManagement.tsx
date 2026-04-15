@@ -2,16 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Truck, Package, Plus, Trash2, Phone, User, 
-  MapPin, FileText, Star 
+  MapPin, FileText, Star, PieChart as PieChartIcon
 } from 'lucide-react';
 import { Supplier, RawMaterial, PurchaseInvoice } from '../types';
 import { supplyChainService } from '../src/services/SupplyChainService';
 
 interface SupplyChainManagementProps {
   ownerId: string;
+  onTabChange?: (tab: any) => void;
 }
 
-export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ownerId }) => {
+export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ownerId, onTabChange }) => {
   const [activeSubTab, setActiveSubTab] = useState<'materials' | 'suppliers' | 'invoices'>('materials');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
@@ -41,8 +42,10 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
 
   const [materialForm, setMaterialForm] = useState<Omit<RawMaterial, 'id' | 'ownerId'>>({
     name: '',
+    category: 'Nguyên liệu chính',
     unit: 'kg',
     costPrice: 0,
+    currency: 'VND',
     supplierId: '',
     stock: 0,
     minStockAlert: 5
@@ -52,8 +55,14 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
     supplierId: '',
     items: [],
     totalAmount: 0,
+    currency: 'VND',
     invoiceDate: new Date().toISOString().split('T')[0],
-    status: 'PAID'
+    status: 'PAID',
+    invoiceType: 'Hóa đơn VAT',
+    purpose: 'Nhập hàng tồn kho',
+    requesterName: '',
+    description: '',
+    imageUrl: ''
   });
 
   const handleAddSupplier = () => {
@@ -65,36 +74,65 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
   const handleAddMaterial = () => {
     supplyChainService.addMaterial({ ...materialForm, ownerId });
     setIsAdding(false);
-    setMaterialForm({ name: '', unit: 'kg', costPrice: 0, supplierId: '', stock: 0, minStockAlert: 5 });
+    setMaterialForm({ 
+      name: '', 
+      category: 'Nguyên liệu chính', 
+      unit: 'kg', 
+      costPrice: 0, 
+      currency: 'VND', 
+      supplierId: '', 
+      stock: 0, 
+      minStockAlert: 5 
+    });
   };
 
   const handleAddInvoice = () => {
     supplyChainService.addInvoice({ ...invoiceForm, ownerId });
     setIsAdding(false);
-    setInvoiceForm({ supplierId: '', items: [], totalAmount: 0, invoiceDate: new Date().toISOString().split('T')[0], status: 'PAID' });
+    setInvoiceForm({ 
+      supplierId: '', 
+      items: [], 
+      totalAmount: 0, 
+      currency: 'VND',
+      invoiceDate: new Date().toISOString().split('T')[0], 
+      status: 'PAID',
+      invoiceType: 'Hóa đơn VAT',
+      purpose: 'Nhập hàng tồn kho',
+      requesterName: '',
+      description: '',
+      imageUrl: ''
+    });
   };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
       {/* Sub-tabs */}
-      <div className="flex gap-4 border-b border-gray-200">
+      <div className="flex justify-between items-center border-b border-gray-200">
+        <div className="flex gap-4">
+          <button 
+            onClick={() => setActiveSubTab('materials')}
+            className={`pb-2 px-4 font-bold text-sm transition-all ${activeSubTab === 'materials' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <div className="flex items-center gap-2"><Package size={16}/> Nguyên vật liệu</div>
+          </button>
+          <button 
+            onClick={() => setActiveSubTab('suppliers')}
+            className={`pb-2 px-4 font-bold text-sm transition-all ${activeSubTab === 'suppliers' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <div className="flex items-center gap-2"><Truck size={16}/> Nhà cung cấp</div>
+          </button>
+          <button 
+            onClick={() => setActiveSubTab('invoices')}
+            className={`pb-2 px-4 font-bold text-sm transition-all ${activeSubTab === 'invoices' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <div className="flex items-center gap-2"><FileText size={16}/> Hóa đơn nhập hàng</div>
+          </button>
+        </div>
         <button 
-          onClick={() => setActiveSubTab('materials')}
-          className={`pb-2 px-4 font-bold text-sm transition-all ${activeSubTab === 'materials' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          onClick={() => onTabChange?.('equity')}
+          className="pb-2 px-4 text-xs font-bold text-purple-600 hover:text-purple-800 flex items-center gap-1 transition-colors"
         >
-          <div className="flex items-center gap-2"><Package size={16}/> Nguyên vật liệu</div>
-        </button>
-        <button 
-          onClick={() => setActiveSubTab('suppliers')}
-          className={`pb-2 px-4 font-bold text-sm transition-all ${activeSubTab === 'suppliers' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          <div className="flex items-center gap-2"><Truck size={16}/> Nhà cung cấp</div>
-        </button>
-        <button 
-          onClick={() => setActiveSubTab('invoices')}
-          className={`pb-2 px-4 font-bold text-sm transition-all ${activeSubTab === 'invoices' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          <div className="flex items-center gap-2"><FileText size={16}/> Hóa đơn nhập hàng</div>
+          <PieChartIcon size={14}/> Xem Phân bổ Lợi nhuận & Cổ phần
         </button>
       </div>
 
@@ -123,6 +161,11 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                   </div>
                 </div>
                 <h4 className="font-bold text-gray-900 text-lg mb-1">{mat.name}</h4>
+                <div className="mb-3">
+                  <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold">
+                    {mat.category}
+                  </span>
+                </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Tồn kho:</span>
@@ -130,7 +173,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Giá thành:</span>
-                    <span className="font-bold text-blue-600">{mat.costPrice.toLocaleString()} đ</span>
+                    <span className="font-bold text-blue-600">{mat.costPrice.toLocaleString()} {mat.currency || 'VND'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Nhà cung cấp:</span>
@@ -182,32 +225,67 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
 
         {activeSubTab === 'invoices' && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-                  <th className="p-4 font-bold">Mã HĐ</th>
-                  <th className="p-4 font-bold">Ngày nhập</th>
-                  <th className="p-4 font-bold">Nhà cung cấp</th>
-                  <th className="p-4 font-bold">Tổng tiền</th>
-                  <th className="p-4 font-bold text-right">Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {invoices.map(inv => (
-                  <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4 font-mono text-xs text-blue-600">{inv.id}</td>
-                    <td className="p-4 text-sm text-gray-700">{inv.invoiceDate}</td>
-                    <td className="p-4 text-sm font-bold text-gray-900">{suppliers.find(s => s.id === inv.supplierId)?.name || 'N/A'}</td>
-                    <td className="p-4 text-sm font-black text-gray-900">{inv.totalAmount.toLocaleString()} đ</td>
-                    <td className="p-4 text-right">
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${inv.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                        {inv.status}
-                      </span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[1000px]">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-[10px] uppercase tracking-wider">
+                    <th className="p-4 font-bold">Mã HĐ & Loại</th>
+                    <th className="p-4 font-bold">Ngày & Người dùng</th>
+                    <th className="p-4 font-bold">Nhà cung cấp & Mục đích</th>
+                    <th className="p-4 font-bold">Chi tiết & Chứng từ</th>
+                    <th className="p-4 font-bold">Tổng tiền</th>
+                    <th className="p-4 font-bold text-right">Trạng thái</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {invoices.map(inv => (
+                    <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4">
+                        <div className="font-mono text-[10px] text-blue-600 mb-1">{inv.id}</div>
+                        <div className="text-xs font-bold text-gray-900">{inv.invoiceType}</div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-xs text-gray-700 mb-1">{inv.invoiceDate}</div>
+                        <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                          <User size={10}/> {inv.requesterName || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-xs font-bold text-gray-900 mb-1">
+                          {suppliers.find(s => s.id === inv.supplierId)?.name || 'N/A'}
+                        </div>
+                        <div className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded inline-block">
+                          {inv.purpose}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <p className="text-[10px] text-gray-500 line-clamp-1 mb-1">{inv.description || 'Không có mô tả'}</p>
+                        {inv.imageUrl ? (
+                          <a href={inv.imageUrl} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 hover:underline flex items-center gap-1">
+                            <FileText size={10}/> Xem bản scan
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-gray-400 italic">Chưa có ảnh</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-sm font-black text-gray-900">{inv.totalAmount.toLocaleString()} {inv.currency || 'VND'}</td>
+                      <td className="p-4 text-right">
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${inv.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {inv.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {invoices.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-12 text-center text-gray-400 italic">
+                        Chưa có hóa đơn nhập hàng nào.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -221,16 +299,72 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
             
             {activeSubTab === 'materials' && (
               <div className="space-y-4">
-                <input type="text" placeholder="Tên vật tư" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={materialForm.name} onChange={e => setMaterialForm({...materialForm, name: e.target.value})} />
+                <input 
+                  type="text" 
+                  placeholder="Tên vật tư" 
+                  className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                  value={materialForm.name} 
+                  onChange={e => setMaterialForm({...materialForm, name: e.target.value})} 
+                />
+                
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="number" placeholder="Giá thành" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={materialForm.costPrice} onChange={e => setMaterialForm({...materialForm, costPrice: Number(e.target.value)})} />
-                  <input type="text" placeholder="Đơn vị (kg, m...)" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={materialForm.unit} onChange={e => setMaterialForm({...materialForm, unit: e.target.value})} />
+                  <select 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={materialForm.category} 
+                    onChange={e => setMaterialForm({...materialForm, category: e.target.value})}
+                  >
+                    <option value="Nguyên liệu chính">Nguyên liệu chính</option>
+                    <option value="Linh kiện">Linh kiện</option>
+                    <option value="Bao bì">Bao bì</option>
+                    <option value="Văn phòng phẩm">Văn phòng phẩm</option>
+                    <option value="Dịch vụ">Dịch vụ</option>
+                    <option value="Khác">Khác</option>
+                  </select>
+                  <select 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={materialForm.unit} 
+                    onChange={e => setMaterialForm({...materialForm, unit: e.target.value})}
+                  >
+                    <option value="kg">kg (Kilogram)</option>
+                    <option value="g">g (Gram)</option>
+                    <option value="m">m (Mét)</option>
+                    <option value="cái">cái (Piece)</option>
+                    <option value="bộ">bộ (Set)</option>
+                    <option value="thùng">thùng (Box)</option>
+                    <option value="lít">lít (Liter)</option>
+                    <option value="giờ">giờ (Hour)</option>
+                  </select>
                 </div>
-                <select className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={materialForm.supplierId} onChange={e => setMaterialForm({...materialForm, supplierId: e.target.value})}>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="number" 
+                    placeholder="Giá thành" 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={materialForm.costPrice || ''} 
+                    onChange={e => setMaterialForm({...materialForm, costPrice: Number(e.target.value)})} 
+                  />
+                  <select 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={materialForm.currency} 
+                    onChange={e => setMaterialForm({...materialForm, currency: e.target.value})}
+                  >
+                    <option value="VND">VND (₫)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="JPY">JPY (¥)</option>
+                  </select>
+                </div>
+
+                <select 
+                  className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                  value={materialForm.supplierId} 
+                  onChange={e => setMaterialForm({...materialForm, supplierId: e.target.value})}
+                >
                   <option value="">Chọn nhà cung cấp</option>
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-                <button onClick={handleAddMaterial} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Lưu vật tư</button>
+                <button onClick={handleAddMaterial} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all">Lưu vật tư</button>
               </div>
             )}
 
@@ -246,13 +380,88 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
 
             {activeSubTab === 'invoices' && (
               <div className="space-y-4">
-                <select className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={invoiceForm.supplierId} onChange={e => setInvoiceForm({...invoiceForm, supplierId: e.target.value})}>
-                  <option value="">Chọn nhà cung cấp</option>
-                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <input type="date" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={invoiceForm.invoiceDate} onChange={e => setInvoiceForm({...invoiceForm, invoiceDate: e.target.value})} />
-                <input type="number" placeholder="Tổng tiền" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={invoiceForm.totalAmount} onChange={e => setInvoiceForm({...invoiceForm, totalAmount: Number(e.target.value)})} />
-                <button onClick={handleAddInvoice} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Lưu hóa đơn</button>
+                <div className="grid grid-cols-2 gap-4">
+                  <select 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={invoiceForm.supplierId} 
+                    onChange={e => setInvoiceForm({...invoiceForm, supplierId: e.target.value})}
+                  >
+                    <option value="">Chọn nhà cung cấp</option>
+                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <input 
+                    type="date" 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={invoiceForm.invoiceDate} 
+                    onChange={e => setInvoiceForm({...invoiceForm, invoiceDate: e.target.value})} 
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <select 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={invoiceForm.invoiceType} 
+                    onChange={e => setInvoiceForm({...invoiceForm, invoiceType: e.target.value})}
+                  >
+                    <option value="Hóa đơn VAT">Hóa đơn VAT</option>
+                    <option value="Hóa đơn bán lẻ">Hóa đơn bán lẻ</option>
+                    <option value="Phiếu thu">Phiếu thu</option>
+                    <option value="Khác">Khác</option>
+                  </select>
+                  <input 
+                    type="text" 
+                    placeholder="Người thực hiện / Người dùng" 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={invoiceForm.requesterName} 
+                    onChange={e => setInvoiceForm({...invoiceForm, requesterName: e.target.value})} 
+                  />
+                </div>
+
+                <input 
+                  type="text" 
+                  placeholder="Mục đích chi tiêu (VD: Nhập hàng tồn kho...)" 
+                  className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                  value={invoiceForm.purpose} 
+                  onChange={e => setInvoiceForm({...invoiceForm, purpose: e.target.value})} 
+                />
+
+                <textarea 
+                  placeholder="Mô tả chi tiết hóa đơn (Các mặt hàng chi trả...)" 
+                  className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm min-h-[80px]" 
+                  value={invoiceForm.description} 
+                  onChange={e => setInvoiceForm({...invoiceForm, description: e.target.value})} 
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="number" 
+                    placeholder="Tổng tiền" 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm font-bold" 
+                    value={invoiceForm.totalAmount || ''} 
+                    onChange={e => setInvoiceForm({...invoiceForm, totalAmount: Number(e.target.value)})} 
+                  />
+                  <select 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                    value={invoiceForm.currency} 
+                    onChange={e => setInvoiceForm({...invoiceForm, currency: e.target.value})}
+                  >
+                    <option value="VND">VND (₫)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="JPY">JPY (¥)</option>
+                  </select>
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Link ảnh scan/chụp hóa đơn" 
+                  className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
+                  value={invoiceForm.imageUrl} 
+                  onChange={e => setInvoiceForm({...invoiceForm, imageUrl: e.target.value})} 
+                />
+
+                <button onClick={handleAddInvoice} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all">
+                  Lưu hóa đơn & Minh bạch chi tiêu
+                </button>
               </div>
             )}
           </div>

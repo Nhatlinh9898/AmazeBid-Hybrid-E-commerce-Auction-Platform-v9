@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Utensils, ShoppingBag, ChevronRight, Loader2, Coffee, Smartphone, Sparkles, BookOpen, Briefcase, LayoutGrid } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, Utensils, ShoppingBag, ChevronRight, ChevronLeft, ChevronDown, Loader2, Coffee, Smartphone, Sparkles, BookOpen, Briefcase, LayoutGrid, Filter } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { storeService } from '../services/StoreService';
 import { PhysicalStore, StoreMenuItem } from '../types';
 
@@ -36,14 +37,10 @@ export const MenuDiscovery: React.FC<MenuDiscoveryProps> = ({ onSelectStore }) =
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
-
-  useEffect(() => {
-    const unsubscribe = storeService.subscribe((data) => {
-      setStores(data);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const allMenuItems = useMemo(() => {
     const items: (StoreMenuItem & { storeName: string, storeId: string, storeCategory: string })[] = [];
@@ -65,6 +62,39 @@ export const MenuDiscovery: React.FC<MenuDiscoveryProps> = ({ onSelectStore }) =
     allMenuItems.forEach(item => cats.add(item.category));
     return ['All', ...Array.from(cats)];
   }, [allMenuItems]);
+
+  const checkScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [categories]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 200;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+      setTimeout(checkScroll, 300);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = storeService.subscribe((data) => {
+      setStores(data);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const filteredItems = useMemo(() => {
     return allMenuItems.filter(item => {
@@ -122,21 +152,105 @@ export const MenuDiscovery: React.FC<MenuDiscoveryProps> = ({ onSelectStore }) =
             </div>
           </div>
 
-          {/* Categories */}
-          <div className="flex gap-3 overflow-x-auto mt-6 no-scrollbar pb-2">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-6 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
-                  activeCategory === cat 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          {/* Categories with Navigation Arrows and Dropdown */}
+          <div className="relative mt-6 flex items-center gap-2">
+            {/* Left Arrow */}
+            {canScrollLeft && (
+              <button 
+                onClick={() => scroll('left')}
+                className="absolute left-0 z-10 p-2 bg-white/80 backdrop-blur-md border border-gray-100 rounded-full shadow-sm text-gray-600 hover:text-blue-600 transition-all -ml-4"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            )}
+
+            {/* Scrollable Tabs */}
+            <div 
+              ref={scrollContainerRef}
+              onScroll={checkScroll}
+              className="flex-1 flex gap-3 overflow-x-auto no-scrollbar pb-2 scroll-smooth"
+            >
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-6 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
+                    activeCategory === cat 
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {cat === 'All' ? 'Tất cả món' : cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Right Arrow */}
+            {canScrollRight && (
+              <button 
+                onClick={() => scroll('right')}
+                className="absolute right-12 z-10 p-2 bg-white/80 backdrop-blur-md border border-gray-100 rounded-full shadow-sm text-gray-600 hover:text-blue-600 transition-all"
+              >
+                <ChevronRight size={16} />
+              </button>
+            )}
+
+            {/* Dropdown Selector */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowDropdown(!showDropdown)}
+                className={`p-2 rounded-xl border transition-all flex items-center gap-2 ${
+                  showDropdown ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                {cat === 'All' ? 'Tất cả món' : cat}
+                <Filter size={18} />
+                <ChevronDown size={14} className={`transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`} />
               </button>
-            ))}
+
+              <AnimatePresence>
+                {showDropdown && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-30" 
+                      onClick={() => setShowDropdown(false)} 
+                    />
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 z-40 max-h-[300px] overflow-y-auto no-scrollbar"
+                    >
+                      <div className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 mb-1">
+                        Chọn danh mục
+                      </div>
+                      {categories.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setActiveCategory(cat);
+                            setShowDropdown(false);
+                            // Scroll to the selected tab
+                            const index = categories.indexOf(cat);
+                            if (scrollContainerRef.current) {
+                              const buttons = scrollContainerRef.current.querySelectorAll('button');
+                              buttons[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                            }
+                          }}
+                          className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-between ${
+                            activeCategory === cat 
+                              ? 'bg-blue-50 text-blue-600' 
+                              : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {cat === 'All' ? 'Tất cả món' : cat}
+                          {activeCategory === cat && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>

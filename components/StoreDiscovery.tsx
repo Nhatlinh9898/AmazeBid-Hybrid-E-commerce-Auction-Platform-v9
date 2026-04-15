@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Search, Star, Clock, ChevronRight, Store as LucideStore, Utensils, Coffee, ShoppingBag, Laptop, Sparkles, BookOpen, Wrench } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, Search, Star, Clock, ChevronRight, ChevronLeft, ChevronDown, Store as LucideStore, Utensils, Coffee, ShoppingBag, Laptop, Sparkles, BookOpen, Wrench, Filter } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { storeService } from '../services/StoreService';
 import { PhysicalStore } from '../types';
 
@@ -12,6 +13,37 @@ export const StoreDiscovery: React.FC<StoreDiscoveryProps> = ({ onSelectStore, o
   const [stores, setStores] = useState<PhysicalStore[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const categories = ['ALL', 'FOOD', 'DRINK', 'FASHION', 'ELECTRONICS', 'BEAUTY', 'BOOKS', 'SERVICES', 'OTHER'];
+
+  const checkScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, []);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 200;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+      setTimeout(checkScroll, 300);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = storeService.subscribe(setStores);
@@ -73,20 +105,104 @@ export const StoreDiscovery: React.FC<StoreDiscoveryProps> = ({ onSelectStore, o
             />
           </div>
           
-          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-            {['ALL', 'FOOD', 'DRINK', 'FASHION', 'ELECTRONICS', 'BEAUTY', 'BOOKS', 'SERVICES', 'OTHER'].map(cat => (
-              <button
-                key={cat}
-                onClick={() => setCategoryFilter(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                  categoryFilter === cat 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
-                    : 'bg-white text-gray-600 border border-gray-100 hover:border-blue-200'
+          <div className="relative flex items-center gap-2 w-full md:w-auto">
+            {/* Left Arrow */}
+            {canScrollLeft && (
+              <button 
+                onClick={() => scroll('left')}
+                className="absolute left-0 z-10 p-1.5 bg-white/80 backdrop-blur-md border border-gray-100 rounded-full shadow-sm text-gray-600 hover:text-blue-600 transition-all -ml-3"
+              >
+                <ChevronLeft size={14} />
+              </button>
+            )}
+
+            {/* Scrollable Tabs */}
+            <div 
+              ref={scrollContainerRef}
+              onScroll={checkScroll}
+              className="flex-1 flex gap-2 overflow-x-auto no-scrollbar pb-1 scroll-smooth"
+            >
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    categoryFilter === cat 
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
+                      : 'bg-white text-gray-600 border border-gray-100 hover:border-blue-200'
+                  }`}
+                >
+                  {getCategoryLabel(cat)}
+                </button>
+              ))}
+            </div>
+
+            {/* Right Arrow */}
+            {canScrollRight && (
+              <button 
+                onClick={() => scroll('right')}
+                className="absolute right-10 z-10 p-1.5 bg-white/80 backdrop-blur-md border border-gray-100 rounded-full shadow-sm text-gray-600 hover:text-blue-600 transition-all"
+              >
+                <ChevronRight size={14} />
+              </button>
+            )}
+
+            {/* Dropdown Selector */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowDropdown(!showDropdown)}
+                className={`p-2 rounded-xl border transition-all flex items-center gap-1 ${
+                  showDropdown ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                {getCategoryLabel(cat)}
+                <Filter size={16} />
+                <ChevronDown size={12} className={`transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`} />
               </button>
-            ))}
+
+              <AnimatePresence>
+                {showDropdown && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-30" 
+                      onClick={() => setShowDropdown(false)} 
+                    />
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 z-40 max-h-[300px] overflow-y-auto no-scrollbar"
+                    >
+                      <div className="px-3 py-2 text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 mb-1">
+                        Danh mục
+                      </div>
+                      {categories.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setCategoryFilter(cat);
+                            setShowDropdown(false);
+                            // Scroll to the selected tab
+                            const index = categories.indexOf(cat);
+                            if (scrollContainerRef.current) {
+                              const buttons = scrollContainerRef.current.querySelectorAll('button');
+                              buttons[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                            }
+                          }}
+                          className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+                            categoryFilter === cat 
+                              ? 'bg-blue-50 text-blue-600' 
+                              : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {getCategoryLabel(cat)}
+                          {categoryFilter === cat && <div className="w-1 h-1 rounded-full bg-blue-600" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>

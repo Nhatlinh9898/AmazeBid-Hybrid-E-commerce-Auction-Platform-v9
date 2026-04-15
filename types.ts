@@ -183,10 +183,12 @@ export interface AvatarCustomization {
   heightScale: number; // 0.9 to 1.1
   skinToneHash: string; // Hex color for overlay tint
   hairStyle: 'LONG' | 'SHORT' | 'BOB' | 'PONYTAIL';
-  language: 'vi-VN' | 'en-US' | 'ja-JP';
+  language: 'vi-VN' | 'en-US' | 'ja-JP' | 'ko-KR' | 'zh-CN';
   voiceSpeed: number; // 0.5 to 2
   voicePitch: number; // 0.5 to 2
   outfitColor?: string; // New: Hex color for outfit tint
+  eyeColor?: string; // New: Hex color for eyes
+  bodyType?: 'SLIM' | 'ATHLETIC' | 'CURVY'; // New: Body type
 }
 
 export interface AvatarConfig {
@@ -366,6 +368,26 @@ export interface Message {
   text: string;
 }
 
+export interface ProductIngredient {
+  materialId: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  costPerUnit: number;
+  wastagePercentage: number; // % hao hụt
+}
+
+export interface ProductRecipe {
+  ingredients: ProductIngredient[];
+  laborCostEstimate: number;
+  packagingCost: number; // Chi phí bao bì
+  overheadCost: number; // Chi phí vận hành (điện, nước, mặt bằng)
+  otherExpenses: number;
+  yieldPortions: number; // Định lượng ra bao nhiêu suất
+  totalCost: number;
+  costPerPortion: number; // Giá vốn trên mỗi suất
+}
+
 export interface StoreMenuItem {
   id: string;
   name: string;
@@ -374,6 +396,7 @@ export interface StoreMenuItem {
   image: string;
   category: string;
   isAvailable: boolean;
+  recipe?: ProductRecipe; // New: Recipe for cost calculation
 }
 
 export interface PhysicalStore {
@@ -433,8 +456,10 @@ export interface RawMaterial {
   id: string;
   ownerId: string;
   name: string;
-  unit: string; // e.g., kg, meter, piece
+  category: string; // Phân loại (VD: Thực phẩm, Linh kiện, Bao bì...)
+  unit: string; // Đơn vị tính (kg, m, cái, bộ, thùng...)
   costPrice: number;
+  currency: string; // Loại tiền tệ (VND, USD, EUR...)
   supplierId: string;
   stock: number;
   minStockAlert: number;
@@ -450,11 +475,17 @@ export interface PurchaseInvoice {
     materialName: string;
     quantity: number;
     unitPrice: number;
+    currency: string;
   }[];
   totalAmount: number;
+  currency: string;
   invoiceDate: string;
   status: 'PENDING' | 'PAID' | 'CANCELLED';
   imageUrl?: string;
+  invoiceType: string; // Loại hóa đơn (VD: VAT, Hóa đơn bán lẻ...)
+  purpose: string; // Mục đích chi tiêu
+  requesterName: string; // Người thực hiện/Người dùng hóa đơn
+  description?: string; // Mô tả chi tiết hóa đơn
 }
 
 // --- Labor & HR Management ---

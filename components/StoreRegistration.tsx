@@ -10,7 +10,7 @@ interface StoreRegistrationProps {
   onSuccess: () => void;
 }
 
-export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, onSuccess }) => {
+export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, onSuccess = () => {} }) => {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);

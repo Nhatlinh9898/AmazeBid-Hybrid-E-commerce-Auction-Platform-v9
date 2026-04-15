@@ -130,6 +130,10 @@ const Avatar3DModel: React.FC<Avatar3DModelProps> = ({ url, customization, isTal
                     if (customization.skinToneHash !== '#ffffff') {
                         child.material.color.set(customization.skinToneHash);
                     }
+                } else if (name.includes('eye') && !name.includes('brow') && !name.includes('lash')) {
+                    if (customization.eyeColor !== '#ffffff') {
+                        child.material.color.set(customization.eyeColor);
+                    }
                 } else if (customization.outfitColor && customization.outfitColor !== '#ffffff') {
                     child.material.color.set(customization.outfitColor);
                 }
@@ -138,7 +142,7 @@ const Avatar3DModel: React.FC<Avatar3DModelProps> = ({ url, customization, isTal
             child.receiveShadow = true;
         }
     });
-  }, [clone, customization.skinToneHash, customization.outfitColor]);
+  }, [clone, customization.skinToneHash, customization.eyeColor, customization.outfitColor]);
 
   return (
       <group 

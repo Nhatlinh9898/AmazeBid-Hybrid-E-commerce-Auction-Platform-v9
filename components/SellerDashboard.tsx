@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart } from 'lucide-react';
+import React, { useMemo, useState, useRef } from 'react';
+import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SmartComboGenerator } from './SmartComboGenerator';
 import { StoreManagement } from './StoreManagement';
 import { SupplyChainManagement } from './SupplyChainManagement';
@@ -25,6 +25,17 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [selectedProductForCombo, setSelectedProductForCombo] = useState<Product | null>(null);
   const [now] = useState(() => Date.now());
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabsRef.current) {
+      const scrollAmount = 200;
+      tabsRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Logic tính toán thống kê
   const stats = useMemo(() => {
@@ -166,7 +177,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
   return (
     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
-      <div className="relative bg-[#f3f4f6] w-full max-w-[99vw] lg:max-w-[1800px] h-[98vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95">
+      <div className="relative bg-[#f3f4f6] w-full max-w-[99vw] lg:max-w-[2200px] h-[98vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95">
         
         {/* Header */}
         <div className="bg-[#131921] p-5 text-white flex justify-between items-center shrink-0">
@@ -183,78 +194,99 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         </div>
 
         {/* Tabs Navigation */}
-        <div className="bg-white border-b border-gray-200 px-6 flex gap-6 shrink-0 overflow-x-auto no-scrollbar">
+        <div className="bg-white border-b border-gray-200 px-2 flex items-center relative shrink-0">
             <button 
-                onClick={() => setActiveTab('overview')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'overview' ? 'border-[#febd69] text-[#131921]' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                onClick={() => scrollTabs('left')}
+                className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-900 transition-colors z-10 bg-white/80 backdrop-blur-sm shadow-sm"
+                title="Cuộn trái"
             >
-                <BarChart3 size={16} /> Tổng quan
+                <ChevronLeft size={20} />
             </button>
-            <button 
-                onClick={() => setActiveTab('analytics')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'analytics' ? 'border-orange-500 text-orange-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+
+            <div 
+                ref={tabsRef}
+                className="flex-1 flex gap-6 px-4 overflow-x-auto no-scrollbar scroll-smooth"
             >
-                <TrendingUp size={16} /> Phân tích chuyên sâu
-            </button>
+                <button 
+                    onClick={() => setActiveTab('overview')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'overview' ? 'border-[#febd69] text-[#131921]' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <BarChart3 size={16} /> Tổng quan
+                </button>
+                <button 
+                    onClick={() => setActiveTab('analytics')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'analytics' ? 'border-orange-500 text-orange-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <TrendingUp size={16} /> Phân tích chuyên sâu
+                </button>
+                <button 
+                    onClick={() => setActiveTab('network')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'network' ? 'border-purple-500 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <Network size={16} /> Mạng lưới Affiliate
+                </button>
+                <button 
+                    onClick={() => setActiveTab('tax')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'tax' ? 'border-blue-500 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <Calculator size={16} /> Báo cáo Thuế
+                </button>
+                <button 
+                    onClick={() => setActiveTab('products')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'products' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <Package size={16} /> Sản phẩm & Lợi nhuận
+                </button>
+                <button 
+                    onClick={() => setActiveTab('alerts')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'alerts' ? 'border-red-500 text-red-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <AlertTriangle size={16} /> Cảnh báo kho
+                </button>
+                <button 
+                    onClick={() => setActiveTab('supply-chain')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'supply-chain' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <Truck size={16} /> Quản lý Vật tư & NCC
+                </button>
+                <button 
+                    onClick={() => setActiveTab('labor')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'labor' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <Briefcase size={16} /> Nhân sự & Chi phí
+                </button>
+                <button 
+                    onClick={() => setActiveTab('equity')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'equity' ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <PieChart size={16} /> Cổ phần & Lợi nhuận
+                </button>
+                <button 
+                    onClick={() => setActiveTab('inventory')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'inventory' ? 'border-indigo-500 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <Package size={16} /> Dự báo & Kho
+                </button>
+                <button 
+                    onClick={() => setActiveTab('product-mgmt')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'product-mgmt' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <Package size={16} /> Quản lý sản phẩm
+                </button>
+                <button 
+                    onClick={() => setActiveTab('store')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'store' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <LucideStore size={16} /> Quản lý Cửa hàng
+                </button>
+            </div>
+
             <button 
-                onClick={() => setActiveTab('network')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'network' ? 'border-purple-500 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                onClick={() => scrollTabs('right')}
+                className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-900 transition-colors z-10 bg-white/80 backdrop-blur-sm shadow-sm"
+                title="Cuộn phải"
             >
-                <Network size={16} /> Mạng lưới Affiliate
-            </button>
-            <button 
-                onClick={() => setActiveTab('tax')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'tax' ? 'border-blue-500 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <Calculator size={16} /> Báo cáo Thuế
-            </button>
-            <button 
-                onClick={() => setActiveTab('products')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'products' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <Package size={16} /> Sản phẩm & Lợi nhuận
-            </button>
-            <button 
-                onClick={() => setActiveTab('alerts')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'alerts' ? 'border-red-500 text-red-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <AlertTriangle size={16} /> Cảnh báo kho
-            </button>
-            <button 
-                onClick={() => setActiveTab('supply-chain')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'supply-chain' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <Truck size={16} /> Quản lý Vật tư & NCC
-            </button>
-            <button 
-                onClick={() => setActiveTab('labor')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'labor' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <Briefcase size={16} /> Nhân sự & Chi phí
-            </button>
-            <button 
-                onClick={() => setActiveTab('equity')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'equity' ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <PieChart size={16} /> Cổ phần & Lợi nhuận
-            </button>
-            <button 
-                onClick={() => setActiveTab('inventory')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'inventory' ? 'border-indigo-500 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <Package size={16} /> Dự báo & Kho
-            </button>
-            <button 
-                onClick={() => setActiveTab('product-mgmt')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'product-mgmt' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <Package size={16} /> Quản lý sản phẩm
-            </button>
-            <button 
-                onClick={() => setActiveTab('store')}
-                className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'store' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-            >
-                <LucideStore size={16} /> Quản lý Cửa hàng
+                <ChevronRight size={20} />
             </button>
         </div>
 
@@ -263,9 +295,17 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
             {activeTab === 'inventory' && <InventoryDashboard products={products} />}
             {activeTab === 'product-mgmt' && <ProductManagement />}
             {activeTab === 'store' && <StoreManagement ownerId={currentUserId} />}
-            {activeTab === 'supply-chain' && <SupplyChainManagement ownerId={currentUserId} />}
-            {activeTab === 'labor' && <LaborManagement ownerId={currentUserId} />}
-            {activeTab === 'equity' && <EquityManagement ownerId={currentUserId} currentProfit={stats.tax.netIncome} />}
+            {activeTab === 'supply-chain' && <SupplyChainManagement ownerId={currentUserId} onTabChange={setActiveTab} />}
+            {activeTab === 'labor' && <LaborManagement ownerId={currentUserId} onTabChange={setActiveTab} />}
+            {activeTab === 'equity' && (
+              <EquityManagement 
+                ownerId={currentUserId} 
+                onTabChange={setActiveTab}
+                initialRevenue={stats.totalRevenue}
+                initialLaborCost={stats.totalLaborCost}
+                initialSupplyCost={stats.myInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0)}
+              />
+            )}
             
             {/* TAB: OVERVIEW */}
             {activeTab === 'overview' && (

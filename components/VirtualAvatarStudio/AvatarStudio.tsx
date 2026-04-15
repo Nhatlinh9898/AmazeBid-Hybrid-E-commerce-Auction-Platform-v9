@@ -301,7 +301,7 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
   );
 };
 
-  const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClose, products }) => {
+const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClose, products }) => {
   const [activeTab, setActiveTab] = useState<'SETUP' | 'CUSTOMIZE' | 'STUDIO' | 'LIVE' | 'AI_CREATIVE'>('SETUP');
   
   const [selectedAvatar, setSelectedAvatar] = useState(MOCK_AVATARS[0]);
@@ -314,17 +314,24 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
   const [customVrmOutfitUrl, setCustomVrmOutfitUrl] = useState<string | null>(null);
   const [isMotionCapture, setIsMotionCapture] = useState(false);
   const [motionCaptureError, setMotionCaptureError] = useState(false);
+  
   const webcamRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const autoRoutineRef = useRef(false);
+  const aiRoutineRef = useRef(false);
 
-  const [customization, setCustomization] = useState<AvatarCustomization & { voiceName: string, outfitColor: string }>({
+  const [customization, setCustomization] = useState<AvatarCustomization & { voiceName: string, outfitColor: string, eyeColor: string, bodyType: 'SLIM' | 'ATHLETIC' | 'CURVY' }>({
       heightScale: 1.0,
-      skinToneHash: '#ffffff', // Default neutral
+      skinToneHash: '#ffffff',
       hairStyle: 'LONG',
       language: 'vi-VN',
       voiceSpeed: 1.1,
       voicePitch: 1.0,
       voiceName: 'Kore',
-      outfitColor: '#ffffff'
+      outfitColor: '#ffffff',
+      eyeColor: '#3b82f6',
+      bodyType: 'ATHLETIC'
   });
 
   const [outfitCategory, setOutfitCategory] = useState<string>('ALL');
@@ -336,10 +343,255 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
   const [moveCommand, setMoveCommand] = useState<{dir: string, ts: number}>({dir: 'NONE', ts: 0});
   const [resetPosTrigger, setResetPosTrigger] = useState(0);
   const [isAutoRoutine, setIsAutoRoutine] = useState(false);
-  const autoRoutineRef = useRef(false);
-  const aiRoutineRef = useRef(false);
   const [isAIChoreographing, setIsAIChoreographing] = useState(false);
   const [isAIRoutineRunning, setIsAIRoutineRunning] = useState(false);
+  const [avatarState, setAvatarState] = useState<AvatarState>('IDLE');
+  const [chatHistory, setChatHistory] = useState<{user: string, text: string}[]>([]);
+  const [lyrics, setLyrics] = useState<string[]>([]);
+  const [hostInput, setHostInput] = useState('');
+  
+  const [restreamTikTok, setRestreamTikTok] = useState(false);
+  const [restreamFacebook, setRestreamFacebook] = useState(false);
+  const [activeVoucher, setActiveVoucher] = useState<string | null>(null);
+  const [pinnedProduct, setPinnedProduct] = useState<Product | null>(null);
+  const [showVideoOverlay, setShowVideoOverlay] = useState<string | null>(null);
+  const [cameraView, setCameraView] = useState<CameraView>('WIDE');
+  const [showBridgeGuide, setShowBridgeGuide] = useState(false);
+  
+  const [kolAssets, setKolAssets] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('kol_assets');
+      const parsed = saved ? JSON.parse(saved) : [];
+      // Filter out blob URLs from previous sessions as they are no longer valid
+      return parsed.filter((asset: any) => !asset.url.startsWith('blob:'));
+    } catch {
+      return [];
+    }
+  });
+
+  const [savedStyles, setSavedStyles] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('avatar_saved_styles');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  
+  const [audioLevel, setAudioLevel] = useState<number[]>(new Array(10).fill(10));
+  const [aiCreativePrompt, setAiCreativePrompt] = useState('');
+  const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
+  const [creativeStory, setCreativeStory] = useState<string | null>(null);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let interval: NodeJS.Timeout;
+
+    if (isMotionCapture) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(s => {
+          stream = s;
+          if (webcamRef.current) {
+            webcamRef.current.srcObject = stream;
+          }
+          setMotionCaptureError(false);
+        })
+        .catch(err => {
+          console.error("Webcam error:", err);
+          setMotionCaptureError(true);
+          setIsMotionCapture(false);
+        });
+        
+      interval = setInterval(() => {
+        if (!isLive) {
+            setAvatarState(Math.random() > 0.5 ? 'TALKING' : 'IDLE');
+        }
+      }, 2000);
+    } else {
+      if (webcamRef.current && webcamRef.current.srcObject) {
+        const s = webcamRef.current.srcObject as MediaStream;
+        s.getTracks().forEach(track => track.stop());
+      }
+      setTimeout(() => {
+        if (!isLive) setAvatarState('IDLE');
+      }, 0);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isMotionCapture, isLive]);
+
+  useEffect(() => {
+      autoRoutineRef.current = isAutoRoutine;
+      if (isAutoRoutine) {
+          runAutoRoutine();
+      }
+  }, [isAutoRoutine]);
+
+  useEffect(() => {
+    if (videoRef.current && !use3DMode) {
+      let nextSrc = selectedAvatar.idleVideo;
+      if (avatarState === 'TALKING') nextSrc = selectedAvatar.talkingVideo;
+      if (avatarState === 'SINGING') nextSrc = selectedAvatar.singingVideo || selectedAvatar.talkingVideo;
+      
+      if (!videoRef.current.src.includes(nextSrc)) {
+          videoRef.current.src = nextSrc;
+          videoRef.current.play().catch(e => console.log("Auto-play prevented", e));
+      }
+    }
+  }, [avatarState, selectedAvatar, use3DMode]);
+
+  useEffect(() => {
+      if (avatarState !== 'IDLE') {
+          const interval = setInterval(() => {
+              setAudioLevel(prev => prev.map(() => Math.random() * 100));
+          }, 100);
+          return () => clearInterval(interval);
+      } else {
+          const timeout = setTimeout(() => {
+              setAudioLevel(new Array(10).fill(5));
+          }, 0);
+          return () => clearTimeout(timeout);
+      }
+  }, [avatarState]);
+
+  useEffect(() => {
+      const timeout = setTimeout(() => {
+          setCustomization(prev => ({
+              ...prev,
+              voicePitch: selectedAvatar.gender === 'FEMALE' ? 1.2 : 0.9,
+              voiceName: selectedAvatar.gender === 'FEMALE' ? 'Kore' : 'Zephyr'
+          }));
+      }, 0);
+      return () => clearTimeout(timeout);
+  }, [selectedAvatar]);
+
+  const generateResponse = useCallback(async (userMessage: string) => {
+    setAvatarState('TALKING');
+    
+    try {
+        const hasVideo = !!selectedProduct?.videoUrl || kolAssets.some(a => a.type === 'VIDEO');
+        
+        const { replyText, action } = await processAvatarInteraction(userMessage, {
+            avatarName: selectedAvatar.name,
+            product: selectedProduct,
+            hasVideoAvailable: hasVideo
+        });
+
+        let finalReply = replyText;
+
+        // Handle Actions
+        if (action.type === 'VOUCHER') {
+            setActiveVoucher(`${action.payload.code} - Giảm ${action.payload.discount}`);
+            setTimeout(() => setActiveVoucher(null), 10000);
+        } else if (action.type === 'PIN') {
+            setPinnedProduct(action.payload.product);
+            setTimeout(() => setPinnedProduct(null), 15000);
+        } else if (action.type === 'VIDEO') {
+            if (selectedProduct) {
+                let videoToPlay = selectedProduct.videoUrl;
+                if (!videoToPlay) {
+                    const matchingKolVideo = kolAssets.find(asset => 
+                        asset.type === 'VIDEO' && asset.name.toLowerCase().includes(selectedProduct.title.toLowerCase())
+                    );
+                    if (matchingKolVideo) videoToPlay = matchingKolVideo.url;
+                }
+                if (!videoToPlay) {
+                    const anyKolVideo = kolAssets.find(asset => asset.type === 'VIDEO');
+                    if (anyKolVideo) videoToPlay = anyKolVideo.url;
+                }
+
+                if (videoToPlay) {
+                    setShowVideoOverlay(videoToPlay);
+                    // Automatically move avatar to the side when video plays
+                    setCurrentAnimation('Walking');
+                    // Simulate moving to the side
+                    setTimeout(() => {
+                        setCurrentAnimation('Idle');
+                    }, 2000);
+                    
+                    setTimeout(() => {
+                        setShowVideoOverlay(null);
+                        // Move back
+                        setCurrentAnimation('Walking');
+                        setTimeout(() => {
+                            setCurrentAnimation('Idle');
+                        }, 2000);
+                    }, 15000);
+                } else {
+                    finalReply = `Dạ hiện tại sản phẩm này chưa có video chi tiết, bạn xem tạm hình ảnh giúp mình nhé!`;
+                }
+            }
+        } else if (action.type === 'SING') {
+            setAvatarState('SINGING');
+            setCurrentAnimation('Dance');
+            setLyrics([`🎵 Một bài hát về ${action.payload.topic || 'sản phẩm'}...`, "La la la..."]);
+            setTimeout(() => {
+                setAvatarState('IDLE');
+                setCurrentAnimation('Idle');
+                setLyrics([]);
+            }, 8000);
+        } else if (action.type === 'JOKE') {
+            setCurrentAnimation('Wave');
+            setTimeout(() => setCurrentAnimation('Idle'), 3000);
+        } else if (action.type === 'CHANGE_OUTFIT') {
+            const style = action.payload.style;
+            const newOutfit = MOCK_OUTFITS.find(o => o.style === style) || MOCK_OUTFITS[0];
+            setSelectedOutfit(newOutfit);
+        } else if (action.type === 'CHANGE_ENV') {
+            const envType = action.payload.envType;
+            const newEnv = MOCK_ENVIRONMENTS.find(e => e.type === envType) || MOCK_ENVIRONMENTS[0];
+            setSelectedEnv(newEnv);
+        } else if (action.type === 'REFINE_MODEL') {
+            const prompt = action.payload.prompt;
+            refineAvatarRealism(prompt, customization).then(result => {
+                if (result.customization) {
+                    setCustomization(prev => ({ ...prev, ...result.customization }));
+                }
+                if (result.creativeStory) {
+                    setCreativeStory(result.creativeStory);
+                }
+            });
+        }
+
+        setChatHistory(prev => [...prev, { user: selectedAvatar.name, text: finalReply }]);
+        
+        // Use Gemini TTS
+        const audioData = await generateSpeech(finalReply, customization.voiceName);
+        if (audioData) {
+            playAudio(audioData);
+        } else {
+            // Fallback
+            const utterance = new SpeechSynthesisUtterance(finalReply);
+            utterance.lang = customization.language;
+            window.speechSynthesis.speak(utterance);
+            utterance.onend = () => setAvatarState('IDLE');
+        }
+
+    } catch (e) {
+        console.error(e);
+        setAvatarState('IDLE');
+    }
+  }, [selectedAvatar.name, customization, selectedProduct, kolAssets]);
+
+  useEffect(() => {
+      if (isLive) {
+          const interval = setInterval(() => {
+              const msgs = ['Sản phẩm đẹp quá!', 'Review chi tiết đi ạ', 'Có size M không?', 'Hát bài gì đi idol ơi'];
+              const m = msgs[Math.floor(Math.random() * msgs.length)];
+              setChatHistory(prev => [...prev.slice(-5), { user: 'KhachHang', text: m }]);
+              
+              if (Math.random() > 0.7 && avatarState === 'IDLE') {
+                  generateResponse(m);
+              }
+          }, 4000);
+          return () => clearInterval(interval);
+      }
+  }, [isLive, avatarState, generateResponse]);
 
   const generateAIChoreography = async () => {
       if (isAIRoutineRunning) {
@@ -410,13 +662,15 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
       aiRoutineRef.current = false;
   };
 
-  useEffect(() => {
-      autoRoutineRef.current = isAutoRoutine;
-      if (isAutoRoutine) {
-          runAutoRoutine();
-      }
-  }, [isAutoRoutine]);
-
+  const animations = [
+      { id: 'Idle', name: 'Nghỉ', icon: <User size={14} /> },
+      { id: 'Dance', name: 'Nhảy', icon: <Music size={14} /> },
+      { id: 'Wave', name: 'Vẫy tay', icon: <Send size={14} /> },
+      { id: 'Death', name: 'Ngất', icon: <Zap size={14} /> },
+      { id: 'Sitting', name: 'Ngồi', icon: <Box size={14} /> },
+      { id: 'Walking', name: 'Đi bộ', icon: <Move3d size={14} /> },
+      { id: 'Running', name: 'Chạy', icon: <Zap size={14} /> },
+  ];
   const runAutoRoutine = async () => {
       const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
       
@@ -540,55 +794,6 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
       }
   };
 
-  const animations = [
-      { id: 'Idle', name: 'Nghỉ', icon: <User size={14} /> },
-      { id: 'Dance', name: 'Nhảy', icon: <Music size={14} /> },
-      { id: 'Wave', name: 'Vẫy tay', icon: <Send size={14} /> },
-      { id: 'Death', name: 'Ngất', icon: <Zap size={14} /> },
-      { id: 'Sitting', name: 'Ngồi', icon: <Box size={14} /> },
-      { id: 'Walking', name: 'Đi bộ', icon: <Move3d size={14} /> },
-      { id: 'Running', name: 'Chạy', icon: <Zap size={14} /> },
-  ];
-  const [avatarState, setAvatarState] = useState<AvatarState>('IDLE');
-  const [chatHistory, setChatHistory] = useState<{user: string, text: string}[]>([]);
-  const [lyrics, setLyrics] = useState<string[]>([]);
-  const [hostInput, setHostInput] = useState('');
-  
-  // New states for Restreaming & Vouchers
-  const [restreamTikTok, setRestreamTikTok] = useState(false);
-  const [restreamFacebook, setRestreamFacebook] = useState(false);
-  const [activeVoucher, setActiveVoucher] = useState<string | null>(null);
-  const [pinnedProduct, setPinnedProduct] = useState<Product | null>(null);
-  const [showVideoOverlay, setShowVideoOverlay] = useState<string | null>(null);
-  const [cameraView, setCameraView] = useState<CameraView>('WIDE');
-  const [showBridgeGuide, setShowBridgeGuide] = useState(false);
-  
-  // Load KOL Assets
-  const [kolAssets, setKolAssets] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('kol_assets');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Load Saved Styles (AI Creative results)
-  const [savedStyles, setSavedStyles] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('avatar_saved_styles');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  
-  const [audioLevel, setAudioLevel] = useState<number[]>(new Array(10).fill(10));
-
-  const [aiCreativePrompt, setAiCreativePrompt] = useState('');
-  const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
-  const [creativeStory, setCreativeStory] = useState<string | null>(null);
-
   const saveCurrentStyle = (name: string) => {
     const newStyle = {
       id: Date.now().toString(),
@@ -630,90 +835,6 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
     }
   };
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-    let interval: NodeJS.Timeout;
-
-    if (isMotionCapture) {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(s => {
-          stream = s;
-          if (webcamRef.current) {
-            webcamRef.current.srcObject = stream;
-          }
-          setMotionCaptureError(false);
-        })
-        .catch(err => {
-          console.error("Webcam error:", err);
-          setMotionCaptureError(true);
-          setIsMotionCapture(false);
-        });
-        
-      // Simulate random talking/idle state based on "motion capture"
-      interval = setInterval(() => {
-        if (!isLive) {
-            setAvatarState(Math.random() > 0.5 ? 'TALKING' : 'IDLE');
-        }
-      }, 2000);
-    } else {
-      if (webcamRef.current && webcamRef.current.srcObject) {
-        const s = webcamRef.current.srcObject as MediaStream;
-        s.getTracks().forEach(track => track.stop());
-      }
-      setTimeout(() => {
-        if (!isLive) setAvatarState('IDLE');
-      }, 0);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [isMotionCapture, isLive]);
-
-  useEffect(() => {
-    if (videoRef.current && !use3DMode) {
-      let nextSrc = selectedAvatar.idleVideo;
-      if (avatarState === 'TALKING') nextSrc = selectedAvatar.talkingVideo;
-      if (avatarState === 'SINGING') nextSrc = selectedAvatar.singingVideo || selectedAvatar.talkingVideo;
-      
-      if (!videoRef.current.src.includes(nextSrc)) {
-          videoRef.current.src = nextSrc;
-          videoRef.current.play().catch(e => console.log("Auto-play prevented", e));
-      }
-    }
-  }, [avatarState, selectedAvatar, use3DMode]);
-
-  useEffect(() => {
-      if (avatarState !== 'IDLE') {
-          const interval = setInterval(() => {
-              setAudioLevel(prev => prev.map(() => Math.random() * 100));
-          }, 100);
-          return () => clearInterval(interval);
-      } else {
-          const timeout = setTimeout(() => {
-              setAudioLevel(new Array(10).fill(5));
-          }, 0);
-          return () => clearTimeout(timeout);
-      }
-  }, [avatarState]);
-
-  useEffect(() => {
-      const timeout = setTimeout(() => {
-          setCustomization(prev => ({
-              ...prev,
-              voicePitch: selectedAvatar.gender === 'FEMALE' ? 1.2 : 0.9,
-              voiceName: selectedAvatar.gender === 'FEMALE' ? 'Kore' : 'Zephyr'
-          }));
-      }, 0);
-      return () => clearTimeout(timeout);
-  }, [selectedAvatar]);
-
   const playAudio = (base64Audio: string) => {
       if (audioRef.current) {
           audioRef.current.src = base64Audio;
@@ -723,114 +844,6 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
           };
       }
   };
-
-  const generateResponse = useCallback(async (userMessage: string) => {
-    setAvatarState('TALKING');
-    
-    try {
-        const hasVideo = !!selectedProduct?.videoUrl || kolAssets.some(a => a.type === 'VIDEO');
-        
-        const { replyText, action } = await processAvatarInteraction(userMessage, {
-            avatarName: selectedAvatar.name,
-            product: selectedProduct,
-            hasVideoAvailable: hasVideo
-        });
-
-        let finalReply = replyText;
-
-        // Handle Actions
-        if (action.type === 'VOUCHER') {
-            setActiveVoucher(`${action.payload.code} - Giảm ${action.payload.discount}`);
-            setTimeout(() => setActiveVoucher(null), 10000);
-        } else if (action.type === 'PIN') {
-            setPinnedProduct(action.payload.product);
-            setTimeout(() => setPinnedProduct(null), 15000);
-        } else if (action.type === 'VIDEO') {
-            if (selectedProduct) {
-                let videoToPlay = selectedProduct.videoUrl;
-                if (!videoToPlay) {
-                    const matchingKolVideo = kolAssets.find(asset => 
-                        asset.type === 'VIDEO' && asset.name.toLowerCase().includes(selectedProduct.title.toLowerCase())
-                    );
-                    if (matchingKolVideo) videoToPlay = matchingKolVideo.url;
-                }
-                if (!videoToPlay) {
-                    const anyKolVideo = kolAssets.find(asset => asset.type === 'VIDEO');
-                    if (anyKolVideo) videoToPlay = anyKolVideo.url;
-                }
-
-                if (videoToPlay) {
-                    setShowVideoOverlay(videoToPlay);
-                    // Automatically move avatar to the side when video plays
-                    setCurrentAnimation('Walking');
-                    // Simulate moving to the side
-                    setTimeout(() => {
-                        setCurrentAnimation('Idle');
-                    }, 2000);
-                    
-                    setTimeout(() => {
-                        setShowVideoOverlay(null);
-                        // Move back
-                        setCurrentAnimation('Walking');
-                        setTimeout(() => {
-                            setCurrentAnimation('Idle');
-                        }, 2000);
-                    }, 15000);
-                } else {
-                    finalReply = `Dạ hiện tại sản phẩm này chưa có video chi tiết, bạn xem tạm hình ảnh giúp mình nhé!`;
-                }
-            }
-        } else if (action.type === 'SING') {
-            setAvatarState('SINGING');
-            setCurrentAnimation('Dance');
-            setLyrics([`🎵 Một bài hát về ${action.payload.topic || 'sản phẩm'}...`, "La la la..."]);
-            setTimeout(() => {
-                setAvatarState('IDLE');
-                setCurrentAnimation('Idle');
-                setLyrics([]);
-            }, 8000);
-        } else if (action.type === 'JOKE') {
-            setCurrentAnimation('Wave');
-            setTimeout(() => setCurrentAnimation('Idle'), 3000);
-        } else if (action.type === 'CHANGE_OUTFIT') {
-            const style = action.payload.style;
-            const newOutfit = MOCK_OUTFITS.find(o => o.style === style) || MOCK_OUTFITS[0];
-            setSelectedOutfit(newOutfit);
-        } else if (action.type === 'CHANGE_ENV') {
-            const envType = action.payload.envType;
-            const newEnv = MOCK_ENVIRONMENTS.find(e => e.type === envType) || MOCK_ENVIRONMENTS[0];
-            setSelectedEnv(newEnv);
-        } else if (action.type === 'REFINE_MODEL') {
-            const prompt = action.payload.prompt;
-            refineAvatarRealism(prompt, customization).then(result => {
-                if (result.customization) {
-                    setCustomization(prev => ({ ...prev, ...result.customization }));
-                }
-                if (result.creativeStory) {
-                    setCreativeStory(result.creativeStory);
-                }
-            });
-        }
-
-        setChatHistory(prev => [...prev, { user: selectedAvatar.name, text: finalReply }]);
-        
-        // Use Gemini TTS
-        const audioData = await generateSpeech(finalReply, customization.voiceName);
-        if (audioData) {
-            playAudio(audioData);
-        } else {
-            // Fallback
-            const utterance = new SpeechSynthesisUtterance(finalReply);
-            utterance.lang = customization.language;
-            window.speechSynthesis.speak(utterance);
-            utterance.onend = () => setAvatarState('IDLE');
-        }
-
-    } catch (e) {
-        console.error(e);
-        setAvatarState('IDLE');
-    }
-  }, [selectedAvatar.name, customization, selectedProduct, kolAssets]);
 
   const handleHostSpeak = async () => {
       if (!hostInput.trim()) return;
@@ -870,21 +883,6 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
           setAvatarState('IDLE');
       }
   };
-
-  useEffect(() => {
-      if (isLive) {
-          const interval = setInterval(() => {
-              const msgs = ['Sản phẩm đẹp quá!', 'Review chi tiết đi ạ', 'Có size M không?', 'Hát bài gì đi idol ơi'];
-              const m = msgs[Math.floor(Math.random() * msgs.length)];
-              setChatHistory(prev => [...prev.slice(-5), { user: 'KhachHang', text: m }]);
-              
-              if (Math.random() > 0.7 && avatarState === 'IDLE') {
-                  generateResponse(m);
-              }
-          }, 4000);
-          return () => clearInterval(interval);
-      }
-  }, [isLive, selectedProduct, avatarState, generateResponse]);
 
   if (!isOpen) return null;
 
@@ -953,6 +951,24 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
                           >
                               <div className={`w-4 h-4 rounded-full bg-white transition-all ${isMotionCapture ? 'translate-x-6' : 'translate-x-0'}`}/>
                           </button>
+                      </div>
+
+                      {/* Camera Views - Refinement for 3D Mode */}
+                      <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+                          <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2">
+                              <Camera size={14}/> Góc quay Camera
+                          </h3>
+                          <div className="grid grid-cols-3 gap-2">
+                              {(['WIDE', 'CLOSEUP', 'SIDE'] as CameraView[]).map(view => (
+                                  <button 
+                                    key={view}
+                                    onClick={() => setCameraView(view)}
+                                    className={`py-2 rounded-lg text-[10px] font-bold border transition-all ${cameraView === view ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-700 border-gray-600 text-gray-400 hover:border-gray-500'}`}
+                                  >
+                                      {view === 'WIDE' ? 'Toàn cảnh' : view === 'CLOSEUP' ? 'Cận cảnh' : 'Góc nghiêng'}
+                                  </button>
+                              ))}
+                          </div>
                       </div>
 
                       <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">

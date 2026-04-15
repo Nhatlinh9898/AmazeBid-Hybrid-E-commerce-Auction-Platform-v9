@@ -47,20 +47,48 @@ const VRMAvatarModel: React.FC<VRMAvatarModelProps> = ({ url, customization, isT
   }, [vrm, animation]);
 
   useEffect(() => {
-    const loader = new GLTFLoader();
-    loader.register((parser) => new VRMLoaderPlugin(parser));
+    if (!url) return;
 
-    loader.load(url, (gltf) => {
-      const vrmInstance = gltf.userData.vrm;
+    const validateAndLoad = async () => {
+      try {
+        // Pre-fetch a small chunk to check magic numbers
+        const response = await fetch(url, { headers: { 'Range': 'bytes=0-10' } });
+        
+        // If Range request fails or is not supported, we'll just try to load normally but with better error handling
+        if (response.ok || response.status === 206) {
+          const buffer = await response.arrayBuffer();
+          const header = new Uint8Array(buffer);
+          
+          // Check for JPEG (FF D8 FF)
+          if (header[0] === 0xFF && header[1] === 0xD8 && header[2] === 0xFF) {
+            throw new Error("Selected file is a JPEG image, not a VRM model.");
+          }
+          // Check for PNG (89 50 4E 47)
+          if (header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4E && header[3] === 0x47) {
+            throw new Error("Selected file is a PNG image, not a VRM model.");
+          }
+        }
 
-      if (vrmInstance) {
-        // Rotate model to face camera (VRM models usually face backwards in Three.js)
-        vrmInstance.scene.rotation.y = Math.PI;
-        setVrm(vrmInstance);
+        const loader = new GLTFLoader();
+        loader.register((parser) => new VRMLoaderPlugin(parser));
+
+        loader.load(url, (gltf) => {
+          const vrmInstance = gltf.userData.vrm;
+
+          if (vrmInstance) {
+            // Rotate model to face camera (VRM models usually face backwards in Three.js)
+            vrmInstance.scene.rotation.y = Math.PI;
+            setVrm(vrmInstance);
+          }
+        }, undefined, (error) => {
+          console.error("Error parsing VRM (likely invalid format):", error);
+        });
+      } catch (err) {
+        console.error("VRM Validation/Loading failed:", err);
       }
-    }, undefined, (error) => {
-      console.error("Error loading VRM:", error);
-    });
+    };
+
+    validateAndLoad();
 
     // Mouse move handler for character-only rotation
     const handleMouseMove = (e: MouseEvent) => {
@@ -73,6 +101,33 @@ const VRMAvatarModel: React.FC<VRMAvatarModelProps> = ({ url, customization, isT
       window.removeEventListener('mousemove', handleMouseMove);
     };
   }, [url]);
+
+  useEffect(() => {
+    if (vrm) {
+      vrm.scene.traverse((child: any) => {
+        if (child.isMesh) {
+          if (child.material) {
+            child.material = child.material.clone();
+            const name = child.name.toLowerCase();
+            // Apply skin tone
+            if (name.includes('skin') || name.includes('body') || name.includes('head') || name.includes('face')) {
+              if (customization.skinToneHash !== '#ffffff') {
+                child.material.color.set(customization.skinToneHash);
+              }
+            }
+            // Apply eye color
+            if (name.includes('eye') && !name.includes('brow') && !name.includes('lash')) {
+              if (customization.eyeColor !== '#ffffff') {
+                child.material.color.set(customization.eyeColor);
+              }
+            }
+          }
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+    }
+  }, [vrm, customization.skinToneHash, customization.eyeColor]);
 
   useFrame((state, delta) => {
     if (vrm) {

@@ -1009,6 +1009,10 @@ const InnerApp: React.FC = () => {
       {isStoreRegistrationOpen && (
         <StoreRegistration 
           onClose={() => setIsStoreRegistrationOpen(false)} 
+          onSuccess={() => {
+            showNotification("Đăng ký cửa hàng thành công!");
+            setIsStoreRegistrationOpen(false);
+          }}
         />
       )}
 
