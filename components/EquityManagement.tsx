@@ -236,6 +236,19 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
           </h3>
           <p className="text-gray-500 text-xs font-medium">Tổng lợi nhuận đã phân phối</p>
         </div>
+
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-6 text-white shadow-xl shadow-emerald-100">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-white/10 rounded-2xl">
+              <Calculator size={24} />
+            </div>
+            <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase tracking-widest">Có thể chia dự kiến</span>
+          </div>
+          <h3 className="text-3xl font-black mb-1">
+            {(calculatedProfit.netProfitAfterTax * 0.25).toLocaleString()} đ
+          </h3>
+          <p className="text-emerald-100 text-xs font-medium">Dựa trên hiệu suất kinh doanh hiện tại (Div = P * 25%)</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -504,6 +517,57 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                       <p className="font-black text-purple-600">Định giá: 200.000.000 đ</p>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Projected Distributable Profit Section */}
+            <div className="mt-8 p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-sm font-black text-emerald-900 flex items-center gap-2">
+                  <Calculator size={18} /> Mô phỏng Lợi nhuận có thể chia (Distributable Simulation)
+                </h4>
+                <div className="px-3 py-1 bg-emerald-100 rounded-full text-[10px] font-black text-emerald-700 uppercase">
+                  Hiệu suất hiện tại
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">1. Lợi nhuận sau thuế (P)</p>
+                  <div className="bg-white p-4 rounded-2xl border border-emerald-100">
+                    <p className="text-2xl font-black text-gray-900">{calculatedProfit.netProfitAfterTax.toLocaleString()} đ</p>
+                    <p className="text-[9px] text-gray-500 mt-1 italic">Lợi nhuận thực tế sau khi trừ mọi chi phí & thuế.</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">2. Lợi nhuận Ròng (P_net)</p>
+                  <div className="bg-white p-4 rounded-2xl border border-emerald-100">
+                    <p className="text-2xl font-black text-blue-600">{(calculatedProfit.netProfitAfterTax * 0.5).toLocaleString()} đ</p>
+                    <p className="text-[9px] text-gray-500 mt-1 italic">Phần còn lại sau khi trích lập 50% vào các quỹ (R, S, B, D).</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">3. Cổ tức có thể chia (Div)</p>
+                  <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg shadow-emerald-100">
+                    <p className="text-2xl font-black text-white">{(calculatedProfit.netProfitAfterTax * 0.25).toLocaleString()} đ</p>
+                    <p className="text-[9px] text-emerald-100 mt-1 italic">Số tiền mặt tối đa có thể chi trả cho cổ đông (50% của P_net).</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-white/50 rounded-2xl border border-emerald-100">
+                <p className="text-[10px] font-black text-emerald-800 mb-3 uppercase tracking-widest">Dự kiến nhận theo tỷ lệ sở hữu:</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {shareholders.map(sh => (
+                    <div key={sh.id} className="p-3 bg-white rounded-xl border border-emerald-50">
+                      <p className="text-[9px] font-bold text-gray-500 truncate">{sh.name}</p>
+                      <p className="text-xs font-black text-emerald-600">
+                        {(calculatedProfit.netProfitAfterTax * 0.25 * (sh.sharePercentage / 100)).toLocaleString()} đ
+                      </p>
+                      <p className="text-[8px] text-gray-400">{sh.sharePercentage.toFixed(1)}% cổ phần</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
