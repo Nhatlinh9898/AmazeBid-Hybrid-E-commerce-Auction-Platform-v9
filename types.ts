@@ -528,10 +528,16 @@ export interface Shareholder {
   // Sweat equity (Công sức)
   laborContributionValue: number; 
   laborDetails?: string; // Mô tả công sức (Quản lý, kỹ thuật...)
+  laborMarketSalary?: number; // Lương thị trường tương đương
+  laborMonths?: number; // Số tháng cam kết
+  laborMultiplier?: number; // Hệ số kinh nghiệm/đóng góp (1.0 - 3.0)
   
   // Intangible assets (Giá trị cốt lõi)
   coreValueContributionValue: number; 
   coreValueDetails?: string; // Mô tả giá trị cốt lõi (Thương hiệu, bí quyết...)
+  coreValueBrand?: number; // Định giá thương hiệu
+  coreValueIP?: number; // Định giá sở hữu trí tuệ/bí quyết
+  coreValueNetwork?: number; // Định giá mạng lưới quan hệ/khách hàng
   
   sharePercentage: number; // Calculated
   joinDate: string;

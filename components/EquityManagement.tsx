@@ -37,8 +37,14 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
     assetUsefulLife: 5,
     laborContributionValue: 0,
     laborDetails: '',
+    laborMarketSalary: 0,
+    laborMonths: 0,
+    laborMultiplier: 1,
     coreValueContributionValue: 0,
     coreValueDetails: '',
+    coreValueBrand: 0,
+    coreValueIP: 0,
+    coreValueNetwork: 0,
     role: 'INVESTOR' as Shareholder['role'],
     group: 'INVESTOR' as Shareholder['group'],
     status: 'ACTIVE' as Shareholder['status'],
@@ -147,8 +153,14 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
       assetUsefulLife: sh.assetUsefulLife || 5,
       laborContributionValue: sh.laborContributionValue,
       laborDetails: sh.laborDetails || '',
+      laborMarketSalary: sh.laborMarketSalary || 0,
+      laborMonths: sh.laborMonths || 0,
+      laborMultiplier: sh.laborMultiplier || 1,
       coreValueContributionValue: sh.coreValueContributionValue,
       coreValueDetails: sh.coreValueDetails || '',
+      coreValueBrand: sh.coreValueBrand || 0,
+      coreValueIP: sh.coreValueIP || 0,
+      coreValueNetwork: sh.coreValueNetwork || 0,
       role: sh.role,
       group: sh.group,
       status: sh.status,
@@ -455,6 +467,43 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                   <p className="text-[9px] text-purple-800 leading-relaxed">
                     Định giá dựa trên giá trị thương hiệu, sở hữu trí tuệ, bí quyết kinh doanh và mạng lưới quan hệ sẵn có.
                   </p>
+                </div>
+              </div>
+
+              {/* Concrete Contribution Examples */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white/50 p-4 rounded-2xl border border-blue-100">
+                  <p className="text-[9px] font-black text-blue-500 uppercase mb-2">Ví dụ Vật chất</p>
+                  <div className="space-y-1 text-[10px]">
+                    <p className="text-gray-600 italic">"Góp 1 Máy pha cà phê mới"</p>
+                    <p className="font-bold text-gray-900">• V_init: 100.000.000 đ</p>
+                    <p className="font-bold text-gray-900">• Life: 5 năm (Mới 100%)</p>
+                    <div className="pt-1 border-t border-blue-100 mt-1">
+                      <p className="font-black text-blue-600">Định giá: 100.000.000 đ</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/50 p-4 rounded-2xl border border-orange-100">
+                  <p className="text-[9px] font-black text-orange-500 uppercase mb-2">Ví dụ Công sức</p>
+                  <div className="space-y-1 text-[10px]">
+                    <p className="text-gray-600 italic">"Quản lý vận hành 12 tháng"</p>
+                    <p className="font-bold text-gray-900">• Lương TT: 20.000.000 đ/tháng</p>
+                    <p className="font-bold text-gray-900">• Hệ số (Exp): 1.5x</p>
+                    <div className="pt-1 border-t border-orange-100 mt-1">
+                      <p className="font-black text-orange-600">Định giá: 360.000.000 đ</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/50 p-4 rounded-2xl border border-purple-100">
+                  <p className="text-[9px] font-black text-purple-500 uppercase mb-2">Ví dụ Cốt lõi</p>
+                  <div className="space-y-1 text-[10px]">
+                    <p className="text-gray-600 italic">"Bí quyết & Mạng lưới khách hàng"</p>
+                    <p className="font-bold text-gray-900">• Thương hiệu/IP: 150.000.000 đ</p>
+                    <p className="font-bold text-gray-900">• Network: 50.000.000 đ</p>
+                    <div className="pt-1 border-t border-purple-100 mt-1">
+                      <p className="font-black text-purple-600">Định giá: 200.000.000 đ</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -830,11 +879,62 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     </div>
                     
                     {form.laborContributionValue > 0 && (
-                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-orange-50 rounded-2xl border border-orange-100 space-y-2">
-                        <p className="text-[9px] font-black text-orange-400 uppercase tracking-widest">Mô tả Công sức</p>
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-orange-50 rounded-2xl border border-orange-100 space-y-3">
+                        <p className="text-[9px] font-black text-orange-400 uppercase tracking-widest">Máy tính Giá trị Công sức</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[8px] text-orange-400 mb-1">Lương thị trường/tháng</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100"
+                              value={form.laborMarketSalary || ''}
+                              onChange={e => {
+                                const val = Number(e.target.value);
+                                setForm(prev => ({ 
+                                  ...prev, 
+                                  laborMarketSalary: val,
+                                  laborContributionValue: val * prev.laborMonths * prev.laborMultiplier
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[8px] text-orange-400 mb-1">Số tháng cam kết</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100"
+                              value={form.laborMonths || ''}
+                              onChange={e => {
+                                const val = Number(e.target.value);
+                                setForm(prev => ({ 
+                                  ...prev, 
+                                  laborMonths: val,
+                                  laborContributionValue: prev.laborMarketSalary * val * prev.laborMultiplier
+                                }));
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[8px] text-orange-400 mb-1">Hệ số kinh nghiệm (1.0 - 3.0)</label>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100"
+                            value={form.laborMultiplier || ''}
+                            onChange={e => {
+                              const val = Number(e.target.value);
+                              setForm(prev => ({ 
+                                ...prev, 
+                                laborMultiplier: val,
+                                laborContributionValue: prev.laborMarketSalary * prev.laborMonths * val
+                              }));
+                            }}
+                          />
+                        </div>
                         <textarea 
-                          placeholder="VD: Quản lý vận hành 12 tháng, Thiết kế hệ thống..."
-                          className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100 h-16"
+                          placeholder="Mô tả công việc cụ thể..."
+                          className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100 h-12"
                           value={form.laborDetails}
                           onChange={e => setForm({ ...form, laborDetails: e.target.value })}
                         />
@@ -855,11 +955,61 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     </div>
 
                     {form.coreValueContributionValue > 0 && (
-                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-purple-50 rounded-2xl border border-purple-100 space-y-2">
-                        <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Mô tả Giá trị Cốt lõi</p>
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-purple-50 rounded-2xl border border-purple-100 space-y-3">
+                        <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Máy tính Giá trị Cốt lõi</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[8px] text-purple-400 mb-1">Thương hiệu</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-2 py-1.5 bg-white rounded-lg text-[10px] outline-none border border-purple-100"
+                              value={form.coreValueBrand || ''}
+                              onChange={e => {
+                                const val = Number(e.target.value);
+                                setForm(prev => ({ 
+                                  ...prev, 
+                                  coreValueBrand: val,
+                                  coreValueContributionValue: val + prev.coreValueIP + prev.coreValueNetwork
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[8px] text-purple-400 mb-1">IP/Bí quyết</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-2 py-1.5 bg-white rounded-lg text-[10px] outline-none border border-purple-100"
+                              value={form.coreValueIP || ''}
+                              onChange={e => {
+                                const val = Number(e.target.value);
+                                setForm(prev => ({ 
+                                  ...prev, 
+                                  coreValueIP: val,
+                                  coreValueContributionValue: prev.coreValueBrand + val + prev.coreValueNetwork
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[8px] text-purple-400 mb-1">Mạng lưới</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-2 py-1.5 bg-white rounded-lg text-[10px] outline-none border border-purple-100"
+                              value={form.coreValueNetwork || ''}
+                              onChange={e => {
+                                const val = Number(e.target.value);
+                                setForm(prev => ({ 
+                                  ...prev, 
+                                  coreValueNetwork: val,
+                                  coreValueContributionValue: prev.coreValueBrand + prev.coreValueIP + val
+                                }));
+                              }}
+                            />
+                          </div>
+                        </div>
                         <textarea 
-                          placeholder="VD: Công thức độc quyền, Thương hiệu cá nhân, Mạng lưới đối tác..."
-                          className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-purple-100 h-16"
+                          placeholder="Chi tiết về giá trị cốt lõi..."
+                          className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-purple-100 h-12"
                           value={form.coreValueDetails}
                           onChange={e => setForm({ ...form, coreValueDetails: e.target.value })}
                         />
