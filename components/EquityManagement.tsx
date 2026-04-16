@@ -40,9 +40,24 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
   });
 
   const [distForm, setDistForm] = useState({
-    totalProfit: Math.max(0, initialRevenue - initialLaborCost - initialSupplyCost),
+    revenue: initialRevenue,
+    supplyCost: initialSupplyCost,
+    laborCost: initialLaborCost,
+    otherExpenses: 0,
+    taxRate: 20, // Default corporate tax in VN is 20%
     period: `${new Date().getMonth() + 1}/${new Date().getFullYear()}`
   });
+
+  const calculatedProfit = useMemo(() => {
+    const ebit = distForm.revenue - distForm.supplyCost - distForm.laborCost - distForm.otherExpenses;
+    const taxAmount = ebit > 0 ? (ebit * distForm.taxRate) / 100 : 0;
+    const netProfitAfterTax = ebit - taxAmount;
+    return {
+      ebit,
+      taxAmount,
+      netProfitAfterTax: Math.max(0, netProfitAfterTax)
+    };
+  }, [distForm.revenue, distForm.supplyCost, distForm.laborCost, distForm.otherExpenses, distForm.taxRate]);
 
   const groupStats = useMemo(() => {
     const stats = {
@@ -92,10 +107,9 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
   };
 
   const handleDistribute = () => {
-    if (distForm.totalProfit <= 0) return;
-    equityService.distributeProfit(ownerId, distForm.totalProfit, distForm.period);
+    if (calculatedProfit.netProfitAfterTax <= 0) return;
+    equityService.distributeProfit(ownerId, calculatedProfit.netProfitAfterTax, distForm.period);
     setIsDistributing(false);
-    setDistForm({ ...distForm, totalProfit: 0 });
   };
 
   const resetForm = () => {
@@ -368,6 +382,55 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                   <p className="text-[10px] text-orange-600 mt-2 italic">
                     * Giúp xây dựng niềm tin tuyệt đối giữa các cộng sự.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Pre-Profit Calculation Guide (Tier 0) */}
+            <div className="mt-8 p-6 bg-gray-50 rounded-3xl border border-gray-200">
+              <h4 className="text-sm font-black text-gray-900 mb-4 flex items-center gap-2">
+                <Calculator size={18} className="text-blue-600" /> Tier 0: Xác định Lợi nhuận Trước thuế (EBIT)
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Tổng Doanh thu (Revenue)</span>
+                    <span className="font-bold text-gray-900">100%</span>
+                  </div>
+                  <div className="pl-4 space-y-2">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400">- Chi phí Nguyên vật liệu (COGS)</span>
+                      <span className="text-red-500 font-medium">Khấu trừ trực tiếp</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400">- Chi phí Nhân sự vận hành (OPEX)</span>
+                      <span className="text-red-500 font-medium">Lương, BHXH, Thưởng</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400">- Chi phí Quản lý & Khác</span>
+                      <span className="text-red-500 font-medium">Mặt bằng, Điện nước...</span>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200 flex justify-between text-xs font-black">
+                    <span>Lợi nhuận Trước thuế (EBIT)</span>
+                    <span className="text-blue-600">Kết quả (A)</span>
+                  </div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 space-y-3">
+                  <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nghĩa vụ Thuế (Tax)</h5>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Thuế TNDN (Mặc định 20%)</span>
+                    <span className="font-bold text-orange-600">A * 20%</span>
+                  </div>
+                  <div className="p-3 bg-orange-50 rounded-xl border border-orange-100">
+                    <p className="text-[10px] text-orange-800 leading-relaxed italic">
+                      "Lợi nhuận dùng để chia cổ phần (P) là lợi nhuận sau khi đã hoàn thành mọi nghĩa vụ thuế với nhà nước."
+                    </p>
+                  </div>
+                  <div className="flex justify-between text-xs font-black pt-2 border-t border-gray-100">
+                    <span>Lợi nhuận Sau thuế (P)</span>
+                    <span className="text-green-600">P = EBIT - Tax</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -743,15 +806,70 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tổng lợi nhuận (VND)</label>
-                    <input 
-                      type="number" 
-                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 font-black text-purple-600"
-                      value={distForm.totalProfit || ''}
-                      onChange={e => setDistForm({ ...distForm, totalProfit: Number(e.target.value) })}
-                      placeholder="Nhập số tiền..."
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Doanh thu (VND)</label>
+                      <input 
+                        type="number" 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        value={distForm.revenue || ''}
+                        onChange={e => setDistForm({ ...distForm, revenue: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Thuế suất (%)</label>
+                      <input 
+                        type="number" 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                        value={distForm.taxRate || ''}
+                        onChange={e => setDistForm({ ...distForm, taxRate: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Vật tư (COGS)</label>
+                      <input 
+                        type="number" 
+                        className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none"
+                        value={distForm.supplyCost || ''}
+                        onChange={e => setDistForm({ ...distForm, supplyCost: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Nhân sự (OPEX)</label>
+                      <input 
+                        type="number" 
+                        className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none"
+                        value={distForm.laborCost || ''}
+                        onChange={e => setDistForm({ ...distForm, laborCost: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Chi phí khác</label>
+                      <input 
+                        type="number" 
+                        className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none"
+                        value={distForm.otherExpenses || ''}
+                        onChange={e => setDistForm({ ...distForm, otherExpenses: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-gray-900 rounded-2xl text-white space-y-2">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400">Lợi nhuận Trước thuế (EBIT)</span>
+                      <span className="font-bold">{calculatedProfit.ebit.toLocaleString()} đ</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400">Thuế TNDN ({distForm.taxRate}%)</span>
+                      <span className="font-bold text-orange-400">-{calculatedProfit.taxAmount.toLocaleString()} đ</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                      <span className="text-xs font-black text-blue-400">LỢI NHUẬN SAU THUẾ (P)</span>
+                      <span className="text-lg font-black text-green-400">{calculatedProfit.netProfitAfterTax.toLocaleString()} đ</span>
+                    </div>
                   </div>
 
                   {/* Multi-tier Allocation Table */}
@@ -761,41 +879,41 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs">
                         <span className="text-gray-500">1. Trích lập các Bộ Quỹ (50%)</span>
-                        <span className="font-black text-red-500">-{ (distForm.totalProfit * 0.5).toLocaleString() } đ</span>
+                        <span className="font-black text-red-500">-{ (calculatedProfit.netProfitAfterTax * 0.5).toLocaleString() } đ</span>
                       </div>
                       <div className="pl-4 space-y-1">
                         <div className="flex justify-between text-[10px]">
                           <span className="text-gray-400">• Dự phòng (R - 10%)</span>
-                          <span className="text-gray-600">{ (distForm.totalProfit * 0.1).toLocaleString() } đ</span>
+                          <span className="text-gray-600">{ (calculatedProfit.netProfitAfterTax * 0.1).toLocaleString() } đ</span>
                         </div>
                         <div className="flex justify-between text-[10px]">
                           <span className="text-gray-400">• Quỹ lương (S - 20%)</span>
-                          <span className="text-gray-600">{ (distForm.totalProfit * 0.2).toLocaleString() } đ</span>
+                          <span className="text-gray-600">{ (calculatedProfit.netProfitAfterTax * 0.2).toLocaleString() } đ</span>
                         </div>
                         <div className="flex justify-between text-[10px]">
                           <span className="text-gray-400">• Khen thưởng (B - 5%)</span>
-                          <span className="text-gray-600">{ (distForm.totalProfit * 0.05).toLocaleString() } đ</span>
+                          <span className="text-gray-600">{ (calculatedProfit.netProfitAfterTax * 0.05).toLocaleString() } đ</span>
                         </div>
                         <div className="flex justify-between text-[10px]">
                           <span className="text-gray-400">• Phát triển (D - 15%)</span>
-                          <span className="text-gray-600">{ (distForm.totalProfit * 0.15).toLocaleString() } đ</span>
+                          <span className="text-gray-600">{ (calculatedProfit.netProfitAfterTax * 0.15).toLocaleString() } đ</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex justify-between text-xs pt-2 border-t border-gray-200">
                       <span className="text-gray-900 font-bold">2. Lợi nhuận Ròng (P_net)</span>
-                      <span className="font-black text-gray-900">{ (distForm.totalProfit * 0.5).toLocaleString() } đ</span>
+                      <span className="font-black text-gray-900">{ (calculatedProfit.netProfitAfterTax * 0.5).toLocaleString() } đ</span>
                     </div>
 
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">3. Chia cổ tức (Div - 25%)</span>
-                      <span className="font-black text-green-600">+{ (distForm.totalProfit * 0.25).toLocaleString() } đ</span>
+                      <span className="font-black text-green-600">+{ (calculatedProfit.netProfitAfterTax * 0.25).toLocaleString() } đ</span>
                     </div>
 
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">4. Tái đầu tư (Re - 25%)</span>
-                      <span className="font-black text-blue-600">+{ (distForm.totalProfit * 0.25).toLocaleString() } đ</span>
+                      <span className="font-black text-blue-600">+{ (calculatedProfit.netProfitAfterTax * 0.25).toLocaleString() } đ</span>
                     </div>
                   </div>
 
@@ -815,7 +933,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                       <div key={sh.id} className="flex justify-between items-center text-[10px] p-2 bg-white rounded-lg border border-gray-100">
                         <span className="font-bold text-gray-600">{sh.name} ({sh.sharePercentage.toFixed(1)}%)</span>
                         <span className="font-black text-green-600">
-                          {(distForm.totalProfit * 0.25 * (sh.sharePercentage/100)).toLocaleString()} đ
+                          {(calculatedProfit.netProfitAfterTax * 0.25 * (sh.sharePercentage/100)).toLocaleString()} đ
                         </span>
                       </div>
                     ))}
