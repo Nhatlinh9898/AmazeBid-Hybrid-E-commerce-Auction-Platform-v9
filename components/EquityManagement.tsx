@@ -27,6 +27,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [isDistributing, setIsDistributing] = useState(false);
   const [exitingShareholder, setExitingShareholder] = useState<Shareholder | null>(null);
+  const [exitPercentage, setExitPercentage] = useState(100);
   const [exitNote, setExitNote] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -110,8 +111,9 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
 
   const fairExitValue = useMemo(() => {
     if (!exitingShareholder) return 0;
-    return (totalValuation * exitingShareholder.sharePercentage) / 100;
-  }, [exitingShareholder, totalValuation]);
+    const fullValue = (totalValuation * exitingShareholder.sharePercentage) / 100;
+    return (fullValue * exitPercentage) / 100;
+  }, [exitingShareholder, totalValuation, exitPercentage]);
 
   const handleAdd = () => {
     if (!form.name) return;
@@ -132,8 +134,9 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
 
   const handleExit = () => {
     if (exitingShareholder) {
-      equityService.exitShareholder(exitingShareholder.id, fairExitValue, exitNote);
+      equityService.exitShareholder(exitingShareholder.id, exitPercentage, fairExitValue, exitNote);
       setExitingShareholder(null);
+      setExitPercentage(100);
       setExitNote('');
     }
   };
@@ -366,17 +369,17 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
           </div>
 
           {/* Exited Shareholders Section */}
-          {shareholders.some(s => s.status === 'EXITED') && (
+          {shareholders.some(s => (s.exitValue || 0) > 0) && (
             <div className="mt-8 bg-gray-50 rounded-3xl p-6 border border-gray-200">
               <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
                 <History size={20} className="text-gray-400" /> Lịch sử Thoái vốn
               </h3>
               <div className="space-y-3">
-                {shareholders.filter(s => s.status === 'EXITED').map(sh => (
+                {shareholders.filter(s => (s.exitValue || 0) > 0).map(sh => (
                   <div key={sh.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center">
                     <div>
-                      <p className="font-bold text-gray-900">{sh.name}</p>
-                      <p className="text-[10px] text-gray-400">Ngày thoái vốn: {sh.exitDate}</p>
+                      <p className="font-bold text-gray-900">{sh.name} {sh.status === 'EXITED' ? '(Đã rời đi)' : '(Thoái một phần)'}</p>
+                      <p className="text-[10px] text-gray-400">Ngày cập nhật: {sh.exitDate}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-black text-orange-600">{sh.exitValue?.toLocaleString()} đ</p>
@@ -938,10 +941,25 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                   </div>
 
                   <div className="p-4 bg-gray-900 rounded-2xl text-white">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Giá trị thoái vốn dự kiến (Fair Value)</p>
-                    <p className="text-2xl font-black text-orange-400">{fairExitValue.toLocaleString()} đ</p>
-                    <p className="text-[9px] text-gray-400 mt-2 italic">
-                      * Tính toán dựa trên: (Giá trị Doanh nghiệp) x (% Sở hữu)
+                    <div className="flex justify-between items-end mb-4">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tỷ lệ thoái vốn (%)</p>
+                        <input 
+                          type="number" 
+                          min="1" 
+                          max="100"
+                          className="w-20 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-lg font-black outline-none focus:border-orange-400"
+                          value={exitPercentage}
+                          onChange={e => setExitPercentage(Math.min(100, Math.max(1, Number(e.target.value))))}
+                        />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Giá trị nhận về (Fair Value)</p>
+                        <p className="text-2xl font-black text-orange-400">{fairExitValue.toLocaleString()} đ</p>
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-gray-400 italic">
+                      * Tính toán: (Giá trị Doanh nghiệp) x (% Sở hữu) x (% Thoái vốn)
                     </p>
                   </div>
 
@@ -957,7 +975,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
 
                   <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
                     <p className="text-[9px] text-blue-800 leading-relaxed">
-                      <strong>Lưu ý:</strong> Sau khi xác nhận, cổ phần của {exitingShareholder.name} sẽ được thu hồi và phân bổ lại cho các cổ đông còn lại theo tỷ lệ tương ứng.
+                      <strong>Lưu ý:</strong> Sau khi xác nhận, phần cổ phần thoái vốn của {exitingShareholder.name} sẽ được thu hồi. Tỷ lệ sở hữu của các cổ đông còn lại sẽ tăng lên tương ứng.
                     </p>
                   </div>
 
