@@ -95,11 +95,16 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
     return () => unsubscribe();
   }, [ownerId]);
 
+  const totalReinvested = useMemo(() => {
+    return distributions.reduce((sum, d) => sum + (d.retainedAmount || 0), 0);
+  }, [distributions]);
+
   const totalValuation = useMemo(() => {
-    return shareholders.reduce((sum, sh) => 
+    const initialContributions = shareholders.reduce((sum, sh) => 
       sum + sh.capitalContribution + sh.assetContributionValue + sh.laborContributionValue + sh.coreValueContributionValue, 0
     );
-  }, [shareholders]);
+    return initialContributions + totalReinvested;
+  }, [shareholders, totalReinvested]);
 
   const handleAdd = () => {
     if (!form.name) return;
@@ -207,10 +212,13 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
             <div className="p-3 bg-white/10 rounded-2xl">
               <TrendingUp size={24} />
             </div>
-            <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase tracking-widest">Định giá tổng</span>
+            <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase tracking-widest">Giá trị Doanh nghiệp</span>
           </div>
           <h3 className="text-3xl font-black mb-1">{totalValuation.toLocaleString()} đ</h3>
-          <p className="text-blue-100 text-xs font-medium">Tổng vốn góp (Tiền mặt + Công sức + TS khác)</p>
+          <div className="flex flex-col gap-1">
+            <p className="text-blue-100 text-[10px] font-medium">Vốn góp: {(totalValuation - totalReinvested).toLocaleString()} đ</p>
+            <p className="text-green-300 text-[10px] font-bold">Tích lũy tái đầu tư: +{totalReinvested.toLocaleString()} đ</p>
+          </div>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
@@ -517,6 +525,27 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                       <p className="font-black text-purple-600">Định giá: 200.000.000 đ</p>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Reinvestment Impact Explanation */}
+            <div className="mt-4 p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+              <h5 className="text-[10px] font-black text-indigo-900 uppercase mb-2 flex items-center gap-2">
+                <TrendingUp size={14} /> Tác động của Lợi nhuận đến Định giá & Tỷ lệ sở hữu
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[10px] leading-relaxed">
+                <div className="space-y-2">
+                  <p className="font-bold text-indigo-700">1. Định giá tổng (Total Valuation):</p>
+                  <p className="text-gray-600">
+                    Khi có lãi, 25% lợi nhuận (Phần Tái đầu tư - Re) được cộng trực tiếp vào vốn chủ sở hữu. Điều này làm **tăng giá trị thực tế** của doanh nghiệp mà không cần gọi thêm vốn ngoài.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-bold text-indigo-700">2. Tỷ lệ sở hữu (Share %):</p>
+                  <p className="text-gray-600">
+                    Vì lợi nhuận được tích lũy **tỷ lệ thuận** với cổ phần hiện tại, nên **tỷ lệ % sở hữu của các cổ đông không thay đổi**. Tuy nhiên, giá trị bằng tiền của số cổ phần đó sẽ tăng lên tương ứng với phần vốn tích lũy mới.
+                  </p>
                 </div>
               </div>
             </div>
