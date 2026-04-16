@@ -529,6 +529,7 @@ export interface Shareholder {
   laborContributionValue: number; 
   laborDetails?: string; // Mô tả công sức (Quản lý, kỹ thuật...)
   laborMarketSalary?: number; // Lương thị trường tương đương
+  laborActualSalary?: number; // Lương thực nhận (nếu có)
   laborMonths?: number; // Số tháng cam kết
   laborMultiplier?: number; // Hệ số kinh nghiệm/đóng góp (1.0 - 3.0)
   

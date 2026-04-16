@@ -200,7 +200,15 @@ router.get('/auth/me', (req, res) => {
     }
   }
 
-  if (!user || (user.tokenVersion || 0) !== (decoded.tokenVersion || 0)) {
+  if (!user) {
+    return sendError(res, 'Người dùng không tồn tại', 'auth_me');
+  }
+
+  // Ensure both are compared as numbers or defaults to 0
+  const userVersion = Number(user.tokenVersion || 0);
+  const tokenVersion = Number(decoded.tokenVersion || 0);
+
+  if (userVersion !== tokenVersion) {
     return sendError(res, 'Phiên đăng nhập đã bị vô hiệu hóa', 'auth_me');
   }
 
@@ -250,7 +258,7 @@ router.post('/auth/login', async (req, res) => {
 
   // Tạo Token
   const token = SecurityService.generateToken(
-    { id: user.id, email: user.email, tokenVersion: user.tokenVersion || 0 },
+    { id: user.id, email: user.email, tokenVersion: Number(user.tokenVersion || 0) },
     expiresIn
   );
 
@@ -302,7 +310,7 @@ router.post('/auth/register', async (req, res) => {
 
     // Tạo Token mặc định 24h
     const token = SecurityService.generateToken(
-      { id: user.id, email: user.email, tokenVersion: user.tokenVersion },
+      { id: user.id, email: user.email, tokenVersion: Number(user.tokenVersion || 0) },
       '24h'
     );
 
@@ -403,7 +411,7 @@ router.post('/auth/2fa/login', async (req, res) => {
 
   if (verified) {
     const token = SecurityService.generateToken(
-      { id: user.id, email: user.email, tokenVersion: user.tokenVersion || 0 },
+      { id: user.id, email: user.email, tokenVersion: Number(user.tokenVersion || 0) },
       '24h'
     );
     const userWithoutPassword = { ...user as any };

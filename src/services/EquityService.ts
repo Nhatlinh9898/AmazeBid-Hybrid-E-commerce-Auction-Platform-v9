@@ -129,13 +129,28 @@ class EquityService {
 
   private recalculateShares(ownerId: string) {
     const myShareholders = this.shareholders.filter(s => s.ownerId === ownerId);
-    const totalValue = myShareholders.reduce((sum, s) => 
-      sum + s.capitalContribution + s.assetContributionValue + s.laborContributionValue + s.coreValueContributionValue, 0);
+    const now = new Date();
+
+    const calculateVestedLabor = (sh: Shareholder) => {
+      if (!sh.laborMonths || sh.laborMonths <= 0) return sh.laborContributionValue;
+      
+      const joinDate = new Date(sh.joinDate);
+      const monthsPassed = (now.getFullYear() - joinDate.getFullYear()) * 12 + (now.getMonth() - joinDate.getMonth());
+      const vestingFactor = Math.min(1, Math.max(0, monthsPassed / sh.laborMonths));
+      
+      return sh.laborContributionValue * vestingFactor;
+    };
+
+    const totalValue = myShareholders.reduce((sum, s) => {
+      const vestedLabor = calculateVestedLabor(s);
+      return sum + s.capitalContribution + s.assetContributionValue + vestedLabor + s.coreValueContributionValue;
+    }, 0);
 
     if (totalValue > 0) {
       this.shareholders = this.shareholders.map(s => {
         if (s.ownerId === ownerId) {
-          const myValue = s.capitalContribution + s.assetContributionValue + s.laborContributionValue + s.coreValueContributionValue;
+          const vestedLabor = calculateVestedLabor(s);
+          const myValue = s.capitalContribution + s.assetContributionValue + vestedLabor + s.coreValueContributionValue;
           return { ...s, sharePercentage: (myValue / totalValue) * 100 };
         }
         return s;

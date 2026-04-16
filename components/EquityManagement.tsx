@@ -41,6 +41,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
     laborContributionValue: 0,
     laborDetails: '',
     laborMarketSalary: 0,
+    laborActualSalary: 0,
     laborMonths: 0,
     laborMultiplier: 1,
     coreValueContributionValue: 0,
@@ -103,9 +104,17 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
   }, [distributions]);
 
   const totalValuation = useMemo(() => {
-    const initialContributions = shareholders.reduce((sum, sh) => 
-      sum + sh.capitalContribution + sh.assetContributionValue + sh.laborContributionValue + sh.coreValueContributionValue, 0
-    );
+    const now = new Date();
+    const initialContributions = shareholders.reduce((sum, sh) => {
+      let vestedLabor = sh.laborContributionValue;
+      if (sh.laborMonths && sh.laborMonths > 0) {
+        const joinDate = new Date(sh.joinDate);
+        const monthsPassed = (now.getFullYear() - joinDate.getFullYear()) * 12 + (now.getMonth() - joinDate.getMonth());
+        const vestingFactor = Math.min(1, Math.max(0, monthsPassed / sh.laborMonths));
+        vestedLabor = sh.laborContributionValue * vestingFactor;
+      }
+      return sum + sh.capitalContribution + sh.assetContributionValue + vestedLabor + sh.coreValueContributionValue;
+    }, 0);
     return initialContributions + totalReinvested;
   }, [shareholders, totalReinvested]);
 
@@ -157,6 +166,10 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
       assetUsefulLife: 5,
       laborContributionValue: 0,
       laborDetails: '',
+      laborMarketSalary: 0,
+      laborActualSalary: 0,
+      laborMonths: 0,
+      laborMultiplier: 1,
       coreValueContributionValue: 0,
       coreValueDetails: '',
       role: 'INVESTOR',
@@ -177,6 +190,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
       laborContributionValue: sh.laborContributionValue,
       laborDetails: sh.laborDetails || '',
       laborMarketSalary: sh.laborMarketSalary || 0,
+      laborActualSalary: sh.laborActualSalary || 0,
       laborMonths: sh.laborMonths || 0,
       laborMultiplier: sh.laborMultiplier || 1,
       coreValueContributionValue: sh.coreValueContributionValue,
@@ -449,8 +463,15 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     * Giúp minh bạch hóa các đóng góp không bằng tiền nhưng có giá trị sống còn.
                   </p>
                 </div>
+                <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                  <h4 className="text-sm font-black text-orange-900 mb-2">2. Cơ chế Khấu trừ & Vesting (Công sức)</h4>
+                  <p className="text-xs text-orange-800 leading-relaxed">
+                    • <span className="font-bold">Khấu trừ:</span> Chỉ phần chênh lệch (Lương thị trường - Lương thực nhận) mới được tính vào vốn góp.<br/>
+                    • <span className="font-bold">Vesting:</span> Cổ phần từ công sức được "earned" dần theo thời gian cam kết. Nếu rời đi sớm, phần chưa làm đủ sẽ bị thu hồi.
+                  </p>
+                </div>
                 <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
-                  <h4 className="text-sm font-black text-green-900 mb-2">2. Tỷ lệ sở hữu (%)</h4>
+                  <h4 className="text-sm font-black text-green-900 mb-2">3. Tỷ lệ sở hữu (%)</h4>
                   <p className="text-xs text-green-800 leading-relaxed">
                     % Sở hữu = (Tổng đóng góp cá nhân / Tổng định giá doanh nghiệp) x 100.
                   </p>
@@ -461,7 +482,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
               </div>
               <div className="space-y-4">
                 <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
-                  <h4 className="text-sm font-black text-purple-900 mb-2">3. Phân bổ Lợi nhuận</h4>
+                  <h4 className="text-sm font-black text-purple-900 mb-2">4. Phân bổ Lợi nhuận</h4>
                   <p className="text-xs text-purple-800 leading-relaxed">
                     Lợi nhuận chia = (Tổng lợi nhuận - Quỹ tái đầu tư) x % Sở hữu.
                   </p>
@@ -470,12 +491,21 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                   </p>
                 </div>
                 <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
-                  <h4 className="text-sm font-black text-orange-900 mb-2">4. Minh bạch Dòng tiền</h4>
+                  <h4 className="text-sm font-black text-orange-900 mb-2">5. Minh bạch Dòng tiền</h4>
                   <p className="text-xs text-orange-800 leading-relaxed">
                     Mọi giao dịch chia cổ tức đều được lưu vết lịch sử, không thể sửa đổi sau khi đã xác nhận.
                   </p>
                   <p className="text-[10px] text-orange-600 mt-2 italic">
                     * Giúp xây dựng niềm tin tuyệt đối giữa các cộng sự.
+                  </p>
+                </div>
+                <div className="p-4 bg-gray-900 rounded-2xl border border-gray-800 text-white">
+                  <h4 className="text-sm font-black text-orange-400 mb-2">6. Quy trình Thoái vốn (Exit)</h4>
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    Giá trị thoái vốn = (Tổng định giá hiện tại) x (% Sở hữu) x (% Thoái vốn).
+                  </p>
+                  <p className="text-[10px] text-gray-500 mt-2 italic">
+                    * Đảm bảo cổ đông nhận đủ giá trị thặng dư từ lợi nhuận tái đầu tư tích lũy.
                   </p>
                 </div>
               </div>
@@ -1089,6 +1119,9 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     {form.laborContributionValue > 0 && (
                       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-orange-50 rounded-2xl border border-orange-100 space-y-3">
                         <p className="text-[9px] font-black text-orange-400 uppercase tracking-widest">Máy tính Giá trị Công sức</p>
+                        <p className="text-[8px] text-orange-500 italic mb-2">
+                          * Giá trị góp vốn = (Lương thị trường - Lương thực nhận) x Số tháng x Hệ số.
+                        </p>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="block text-[8px] text-orange-400 mb-1">Lương thị trường/tháng</label>
@@ -1101,11 +1134,29 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                                 setForm(prev => ({ 
                                   ...prev, 
                                   laborMarketSalary: val,
-                                  laborContributionValue: val * prev.laborMonths * prev.laborMultiplier
+                                  laborContributionValue: (val - prev.laborActualSalary) * prev.laborMonths * prev.laborMultiplier
                                 }));
                               }}
                             />
                           </div>
+                          <div>
+                            <label className="block text-[8px] text-orange-400 mb-1">Lương thực nhận/tháng</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100"
+                              value={form.laborActualSalary || ''}
+                              onChange={e => {
+                                const val = Number(e.target.value);
+                                setForm(prev => ({ 
+                                  ...prev, 
+                                  laborActualSalary: val,
+                                  laborContributionValue: (prev.laborMarketSalary - val) * prev.laborMonths * prev.laborMultiplier
+                                }));
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="block text-[8px] text-orange-400 mb-1">Số tháng cam kết</label>
                             <input 
@@ -1117,28 +1168,28 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                                 setForm(prev => ({ 
                                   ...prev, 
                                   laborMonths: val,
-                                  laborContributionValue: prev.laborMarketSalary * val * prev.laborMultiplier
+                                  laborContributionValue: (prev.laborMarketSalary - prev.laborActualSalary) * val * prev.laborMultiplier
                                 }));
                               }}
                             />
                           </div>
-                        </div>
-                        <div>
-                          <label className="block text-[8px] text-orange-400 mb-1">Hệ số kinh nghiệm (1.0 - 3.0)</label>
-                          <input 
-                            type="number" 
-                            step="0.1"
-                            className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100"
-                            value={form.laborMultiplier || ''}
-                            onChange={e => {
-                              const val = Number(e.target.value);
-                              setForm(prev => ({ 
-                                ...prev, 
-                                laborMultiplier: val,
-                                laborContributionValue: prev.laborMarketSalary * prev.laborMonths * val
-                              }));
-                            }}
-                          />
+                          <div>
+                            <label className="block text-[8px] text-orange-400 mb-1">Hệ số kinh nghiệm (1.0 - 3.0)</label>
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100"
+                              value={form.laborMultiplier || ''}
+                              onChange={e => {
+                                const val = Number(e.target.value);
+                                setForm(prev => ({ 
+                                  ...prev, 
+                                  laborMultiplier: val,
+                                  laborContributionValue: (prev.laborMarketSalary - prev.laborActualSalary) * prev.laborMonths * val
+                                }));
+                              }}
+                            />
+                          </div>
                         </div>
                         <textarea 
                           placeholder="Mô tả công việc cụ thể..."
