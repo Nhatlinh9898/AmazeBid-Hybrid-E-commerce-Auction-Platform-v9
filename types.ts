@@ -517,12 +517,14 @@ export interface Shareholder {
   id: string;
   ownerId: string;
   name: string;
-  capitalContribution: number; // Cash/Assets
-  laborContributionValue: number; // Sweat equity value
-  otherContributionValue: number; // IP, network, etc.
+  capitalContribution: number; // Cash (Tiền mặt)
+  assetContributionValue: number; // Material basis (Cơ sở vật chất)
+  laborContributionValue: number; // Sweat equity (Công sức)
+  coreValueContributionValue: number; // Intangible assets (Giá trị cốt lõi)
   sharePercentage: number; // Calculated
   joinDate: string;
   role: 'FOUNDER' | 'INVESTOR' | 'ADVISOR' | 'EMPLOYEE';
+  group: 'FOUNDER' | 'INVESTOR' | 'ESOP'; // New: Grouping for UI and legal
   status: 'ACTIVE' | 'PASSIVE';
 }
 
@@ -530,8 +532,21 @@ export interface ProfitDistribution {
   id: string;
   ownerId: string;
   totalProfit: number;
-  distributedAmount: number;
-  retainedAmount: number;
+  
+  // Tier 1: Funds (50%)
+  reserveFund: number; // 10%
+  salaryFund: number; // 20%
+  bonusFund: number; // 5%
+  devFund: number; // 15%
+  totalFunds: number; // Sum of above
+  
+  // Tier 2: Net Profit
+  netProfit: number; // totalProfit - totalFunds
+  
+  // Tier 3: Distribution
+  distributedAmount: number; // 50% of netProfit
+  retainedAmount: number; // 50% of netProfit (Reinvestment)
+  
   period: string;
   distributions: {
     shareholderId: string;

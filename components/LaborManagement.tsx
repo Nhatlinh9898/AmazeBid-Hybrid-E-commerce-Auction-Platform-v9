@@ -19,12 +19,10 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
   const [isAddingCost, setIsAddingCost] = useState(false);
 
   useEffect(() => {
-    const updateData = () => {
-      setEmployees(equityService.getEmployeesByOwner(ownerId));
-      setLaborCosts(equityService.getLaborCostsByOwner(ownerId));
-    };
-    updateData();
-    const unsubscribe = equityService.subscribe(updateData);
+    const unsubscribe = equityService.subscribe((data) => {
+      setEmployees(data.employees.filter(e => e.ownerId === ownerId));
+      setLaborCosts(data.laborCosts.filter(lc => lc.ownerId === ownerId));
+    });
     return () => unsubscribe();
   }, [ownerId]);
 

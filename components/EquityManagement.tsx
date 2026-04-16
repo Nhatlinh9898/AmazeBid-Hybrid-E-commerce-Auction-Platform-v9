@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Users, TrendingUp, ShieldCheck, Plus, Trash2, 
-  Calculator, Info, Award, PieChart as PieChartIcon, BarChart3, Download, Settings2,
-  Scale, Gavel, Briefcase, Landmark, Coins, ExternalLink, Link2, Truck
+  Users, PieChart, TrendingUp, Plus, Trash2, Edit2, Save, X, 
+  DollarSign, Briefcase, Award, Calculator, History, 
+  Gavel, Scale, Landmark, ShieldCheck, ChevronRight
 } from 'lucide-react';
 import { Shareholder, ProfitDistribution } from '../types';
 import { equityService } from '../src/services/EquityService';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface EquityManagementProps {
   ownerId: string;
@@ -17,467 +16,264 @@ interface EquityManagementProps {
   initialSupplyCost?: number;
 }
 
-const COLORS = ['#4f46e5', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#06b6d4'];
-
 export const EquityManagement: React.FC<EquityManagementProps> = ({ 
   ownerId, 
-  onTabChange,
-  initialRevenue = 1000000000,
-  initialLaborCost = 250000000,
-  initialSupplyCost = 150000000
+  initialRevenue = 0,
+  initialLaborCost = 0,
+  initialSupplyCost = 0
 }) => {
-  const [revenue, setRevenue] = useState(initialRevenue);
-  const [opexItems, setOpexItems] = useState([
-    { id: '1', name: 'Thuế thu nhập doanh nghiệp (Ước tính)', amount: 200000000 },
-    { id: '2', name: 'Lương cứng nhân viên (Từ Nhân sự)', amount: initialLaborCost },
-    { id: '3', name: 'Mặt bằng & Vận hành', amount: 100000000 },
-    { id: '4', name: 'Vật tư & NCC (Từ Chuỗi cung ứng)', amount: initialSupplyCost },
-  ]);
-  const [newOpex, setNewOpex] = useState({ name: '', amount: 0 });
-
-  const totalOpEx = useMemo(() => opexItems.reduce((sum, item) => sum + item.amount, 0), [opexItems]);
-  const calculatedProfit = useMemo(() => revenue - totalOpEx, [revenue, totalOpEx]);
-
   const [shareholders, setShareholders] = useState<Shareholder[]>([]);
   const [distributions, setDistributions] = useState<ProfitDistribution[]>([]);
-  const [isAddingShareholder, setIsAddingShareholder] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [isDistributing, setIsDistributing] = useState(false);
-  const [distributionForm, setDistributionForm] = useState({
-    totalProfit: 0,
-    reserveFund: 20, // %
-    salaryFund: 15,  // %
-    bonusFund: 5,    // %
-    devFund: 10,     // %
-    distributionRate: 50, // % of remaining
-    period: ''
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    name: '',
+    capitalContribution: 0,
+    assetContributionValue: 0,
+    laborContributionValue: 0,
+    coreValueContributionValue: 0,
+    role: 'INVESTOR' as Shareholder['role'],
+    status: 'ACTIVE' as Shareholder['status'],
+    joinDate: new Date().toISOString().split('T')[0]
   });
 
-  const shareholdersByGroup = useMemo(() => {
-    return {
-      founders: shareholders.filter(s => s.role === 'FOUNDER'),
-      investors: shareholders.filter(s => s.role === 'INVESTOR' || s.role === 'ADVISOR'),
-      employees: shareholders.filter(s => s.role === 'EMPLOYEE')
+  const [distForm, setDistForm] = useState({
+    totalProfit: Math.max(0, initialRevenue - initialLaborCost - initialSupplyCost),
+    period: `${new Date().getMonth() + 1}/${new Date().getFullYear()}`
+  });
+
+  const groupStats = useMemo(() => {
+    const stats = {
+      FOUNDER: { count: 0, percentage: 0 },
+      INVESTOR: { count: 0, percentage: 0 },
+      ESOP: { count: 0, percentage: 0 }
     };
+    shareholders.forEach(sh => {
+      if (stats[sh.group]) {
+        stats[sh.group].count++;
+        stats[sh.group].percentage += sh.sharePercentage;
+      }
+    });
+    return stats;
   }, [shareholders]);
 
   useEffect(() => {
-    const updateData = () => {
-      setShareholders(equityService.getShareholdersByOwner(ownerId));
-      setDistributions(equityService.getDistributionsByOwner(ownerId));
-    };
-    updateData();
-    const unsubscribe = equityService.subscribe(updateData);
+    const unsubscribe = equityService.subscribe((data) => {
+      setShareholders(data.shareholders.filter(sh => sh.ownerId === ownerId));
+      setDistributions(data.distributions.filter(d => d.ownerId === ownerId));
+    });
+    
     return () => unsubscribe();
   }, [ownerId]);
 
-  const openDistributionModal = () => {
-    setDistributionForm({
-      totalProfit: calculatedProfit,
-      reserveFund: 20,
-      salaryFund: 15,
-      bonusFund: 5,
-      devFund: 10,
-      distributionRate: 50,
-      period: `Tháng ${new Date().getMonth() + 1}/${new Date().getFullYear()}`
-    });
-    setIsDistributing(true);
+  const totalValuation = useMemo(() => {
+    return shareholders.reduce((sum, sh) => 
+      sum + sh.capitalContribution + sh.assetContributionValue + sh.laborContributionValue + sh.coreValueContributionValue, 0
+    );
+  }, [shareholders]);
+
+  const handleAdd = () => {
+    if (!form.name) return;
+    equityService.addShareholder({ ...form, ownerId });
+    setIsAdding(false);
+    resetForm();
   };
 
-  const [shForm, setShForm] = useState<Omit<Shareholder, 'id' | 'ownerId' | 'sharePercentage'>>({
-    name: '',
-    capitalContribution: 0,
-    laborContributionValue: 0,
-    otherContributionValue: 0,
-    joinDate: new Date().toISOString().split('T')[0],
-    role: 'FOUNDER',
-    status: 'ACTIVE'
-  });
+  const handleUpdate = (id: string) => {
+    equityService.updateShareholder(id, form);
+    setEditingId(null);
+    resetForm();
+  };
 
-  const handleAddShareholder = () => {
-    equityService.addShareholder({ ...shForm, ownerId });
-    setIsAddingShareholder(false);
-    setShForm({ 
-      name: '', 
-      capitalContribution: 0, 
-      laborContributionValue: 0, 
-      otherContributionValue: 0, 
-      joinDate: new Date().toISOString().split('T')[0],
-      role: 'FOUNDER',
-      status: 'ACTIVE'
-    });
+  const handleDelete = (id: string) => {
+    equityService.deleteShareholder(id);
   };
 
   const handleDistribute = () => {
-    const totalFundsPercent = distributionForm.reserveFund + distributionForm.salaryFund + distributionForm.bonusFund + distributionForm.devFund;
-    const fundsAmount = (distributionForm.totalProfit * totalFundsPercent) / 100;
-    const remainingProfit = distributionForm.totalProfit - fundsAmount;
-    
-    const distributedAmount = (remainingProfit * distributionForm.distributionRate) / 100;
-    const retainedAmount = remainingProfit - distributedAmount + fundsAmount; // Retained includes funds for now in this simple model
-    
-    equityService.distributeProfit(ownerId, distributionForm.totalProfit, distributedAmount, retainedAmount, distributionForm.period);
+    if (distForm.totalProfit <= 0) return;
+    equityService.distributeProfit(ownerId, distForm.totalProfit, distForm.period);
     setIsDistributing(false);
+    setDistForm({ ...distForm, totalProfit: 0 });
   };
 
-  const totalCapital = shareholders.reduce((sum, s) => sum + s.capitalContribution, 0);
-  const totalLaborValue = shareholders.reduce((sum, s) => sum + s.laborContributionValue, 0);
-  const totalOtherValue = shareholders.reduce((sum, s) => sum + s.otherContributionValue, 0);
-  const totalEquityValue = totalCapital + totalLaborValue + totalOtherValue;
+  const resetForm = () => {
+    setForm({
+      name: '',
+      capitalContribution: 0,
+      assetContributionValue: 0,
+      laborContributionValue: 0,
+      coreValueContributionValue: 0,
+      role: 'INVESTOR',
+      group: 'INVESTOR',
+      status: 'ACTIVE',
+      joinDate: new Date().toISOString().split('T')[0]
+    });
+  };
 
-  const chartData = shareholders.map(s => ({
-    name: s.name,
-    value: s.sharePercentage
-  }));
-
-  const historyData = distributions.map(d => ({
-    period: d.period,
-    distributed: d.distributedAmount,
-    retained: d.retainedAmount
-  })).reverse().slice(-6); // Last 6 periods
+  const startEdit = (sh: Shareholder) => {
+    setForm({
+      name: sh.name,
+      capitalContribution: sh.capitalContribution,
+      assetContributionValue: sh.assetContributionValue,
+      laborContributionValue: sh.laborContributionValue,
+      coreValueContributionValue: sh.coreValueContributionValue,
+      role: sh.role,
+      group: sh.group,
+      status: sh.status,
+      joinDate: sh.joinDate
+    });
+    setEditingId(sh.id);
+    setIsAdding(true);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-      {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600"><ShieldCheck size={20}/></div>
-            <span className="text-xs font-bold text-gray-500 uppercase">Tổng vốn định giá</span>
+      {/* Group Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl p-5 text-white shadow-lg">
+          <div className="flex justify-between items-center mb-3">
+            <div className="p-2 bg-white/10 rounded-xl"><Landmark size={20}/></div>
+            <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase">Founders</span>
           </div>
-          <h4 className="text-xl font-black">{totalEquityValue.toLocaleString()} đ</h4>
-          <p className="text-[10px] text-gray-400 mt-1">Bao gồm Tiền + Công sức + IP</p>
+          <h4 className="text-2xl font-black">{groupStats.FOUNDER.percentage.toFixed(1)}%</h4>
+          <p className="text-[10px] text-indigo-100 font-bold uppercase tracking-widest mt-1">{groupStats.FOUNDER.count} thành viên sáng lập</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-purple-50 p-2 rounded-lg text-purple-600"><Award size={20}/></div>
-            <span className="text-xs font-bold text-gray-500 uppercase">Giá trị góp sức</span>
+        <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-3xl p-5 text-white shadow-lg">
+          <div className="flex justify-between items-center mb-3">
+            <div className="p-2 bg-white/10 rounded-xl"><Scale size={20}/></div>
+            <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase">Investors</span>
           </div>
-          <h4 className="text-xl font-black">{totalLaborValue.toLocaleString()} đ</h4>
-          <p className="text-[10px] text-gray-400 mt-1">{(totalLaborValue / (totalEquityValue || 1) * 100).toFixed(1)}% tổng giá trị</p>
+          <h4 className="text-2xl font-black">{groupStats.INVESTOR.percentage.toFixed(1)}%</h4>
+          <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-widest mt-1">{groupStats.INVESTOR.count} nhà đầu tư chiến lược</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-green-50 p-2 rounded-lg text-green-600"><TrendingUp size={20}/></div>
-            <span className="text-xs font-bold text-gray-500 uppercase">Lợi nhuận dự kiến</span>
+        <div className="bg-gradient-to-br from-amber-500 to-amber-700 rounded-3xl p-5 text-white shadow-lg">
+          <div className="flex justify-between items-center mb-3">
+            <div className="p-2 bg-white/10 rounded-xl"><Gavel size={20}/></div>
+            <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase">ESOP</span>
           </div>
-          <h4 className="text-xl font-black text-green-600">{calculatedProfit.toLocaleString()} đ</h4>
-          <p className="text-[10px] text-gray-400 mt-1">Dựa trên Doanh thu - OpEx</p>
+          <h4 className="text-2xl font-black">{groupStats.ESOP.percentage.toFixed(1)}%</h4>
+          <p className="text-[10px] text-amber-100 font-bold uppercase tracking-widest mt-1">{groupStats.ESOP.count} nhân sự nòng cốt</p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-2">
-          <button 
-            onClick={() => setIsAddingShareholder(true)}
-            className="w-full bg-indigo-600 text-white py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all text-sm"
-          >
-            <Plus size={16}/> Thêm cổ đông
-          </button>
-          <button 
-            onClick={openDistributionModal}
-            className="w-full bg-green-600 text-white py-2 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-all text-sm"
-          >
-            <Calculator size={16}/> Chia lợi nhuận
-          </button>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-6 text-white shadow-xl shadow-blue-100">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-white/10 rounded-2xl">
+              <TrendingUp size={24} />
+            </div>
+            <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase tracking-widest">Định giá tổng</span>
+          </div>
+          <h3 className="text-3xl font-black mb-1">{totalValuation.toLocaleString()} đ</h3>
+          <p className="text-blue-100 text-xs font-medium">Tổng vốn góp (Tiền mặt + Công sức + TS khác)</p>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-green-50 text-green-600 rounded-2xl">
+              <Users size={24} />
+            </div>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cổ đông</span>
+          </div>
+          <h3 className="text-3xl font-black text-gray-900 mb-1">{shareholders.length}</h3>
+          <p className="text-gray-500 text-xs font-medium">Thành viên tham gia góp vốn</p>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl">
+              <PieChart size={24} />
+            </div>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Lợi nhuận chia</span>
+          </div>
+          <h3 className="text-3xl font-black text-gray-900 mb-1">
+            {distributions.reduce((sum, d) => sum + d.distributedAmount, 0).toLocaleString()} đ
+          </h3>
+          <p className="text-gray-500 text-xs font-medium">Tổng lợi nhuận đã phân phối</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Shareholder List & Chart */}
+        {/* Main List */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Grouped View */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-4 rounded-2xl text-white shadow-lg">
-              <div className="flex justify-between items-start mb-2">
-                <Landmark size={20} className="opacity-80" />
-                <span className="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-full">Nhóm 1</span>
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-black text-gray-900">Danh sách Cổ đông</h3>
+                <p className="text-sm text-gray-500">Quản lý tỷ lệ sở hữu và vốn góp</p>
               </div>
-              <h4 className="font-bold text-sm">Người Sáng Lập</h4>
-              <p className="text-2xl font-black">{shareholdersByGroup.founders.length}</p>
-              <p className="text-[10px] opacity-70">Sở hữu: {shareholdersByGroup.founders.reduce((sum, s) => sum + s.sharePercentage, 0).toFixed(1)}%</p>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 rounded-2xl text-white shadow-lg">
-              <div className="flex justify-between items-start mb-2">
-                <Coins size={20} className="opacity-80" />
-                <span className="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-full">Nhóm 2</span>
-              </div>
-              <h4 className="font-bold text-sm">Cổ Đông / Nhà Đầu Tư</h4>
-              <p className="text-2xl font-black">{shareholdersByGroup.investors.length}</p>
-              <p className="text-[10px] opacity-70">Sở hữu: {shareholdersByGroup.investors.reduce((sum, s) => sum + s.sharePercentage, 0).toFixed(1)}%</p>
-            </div>
-            <div className="bg-gradient-to-br from-amber-500 to-amber-700 p-4 rounded-2xl text-white shadow-lg">
-              <div className="flex justify-between items-start mb-2">
-                <Briefcase size={20} className="opacity-80" />
-                <span className="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-full">Nhóm 3</span>
-              </div>
-              <h4 className="font-bold text-sm">Người Lao Động (ESOP)</h4>
-              <p className="text-2xl font-black">{shareholdersByGroup.employees.length}</p>
-              <p className="text-[10px] opacity-70">Sở hữu: {shareholdersByGroup.employees.reduce((sum, s) => sum + s.sharePercentage, 0).toFixed(1)}%</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <PieChartIcon size={18} className="text-indigo-600"/> Cơ cấu sở hữu
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend verticalAlign="bottom" height={36}/>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <BarChart3 size={18} className="text-green-600"/> Lịch sử lợi nhuận
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={historyData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis dataKey="period" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={10} tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Legend verticalAlign="bottom" height={36}/>
-                    <Bar dataKey="distributed" name="Đã chia" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="retained" name="Tái đầu tư" fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* OpEx Management Section */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <Landmark size={18} className="text-red-600"/> Thiết lập Chi phí vận hành (OpEx)
-              </h3>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 uppercase font-bold">Doanh thu:</span>
-                  <input 
-                    type="number" 
-                    value={revenue} 
-                    onChange={(e) => setRevenue(Number(e.target.value))}
-                    className="bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold w-32 focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                  <button 
-                    onClick={() => onTabChange?.('products')}
-                    className="text-[10px] text-emerald-600 hover:underline font-bold flex items-center gap-1"
-                  >
-                    <ExternalLink size={12}/> Từ Sản phẩm
-                  </button>
-                </div>
-                <button 
-                  onClick={() => onTabChange?.('tax')}
-                  className="text-[10px] text-blue-600 hover:underline font-bold flex items-center gap-1"
-                >
-                  <ExternalLink size={12}/> Xem Báo cáo Thuế
-                </button>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 flex flex-wrap gap-4 items-center justify-between">
-                <p className="text-[11px] text-indigo-700 font-medium flex items-center gap-2">
-                  <Link2 size={14}/> Kết nối dữ liệu hệ thống:
-                </p>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => {
-                      setOpexItems(prev => prev.map(item => 
-                        item.name.includes('Lương') ? { ...item, amount: initialLaborCost } : item
-                      ));
-                    }}
-                    className="text-[10px] bg-white border border-indigo-200 text-indigo-600 px-3 py-1 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1"
-                  >
-                    <Briefcase size={12}/> Cập nhật Lương ({initialLaborCost.toLocaleString()} đ)
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setOpexItems(prev => prev.map(item => 
-                        item.name.includes('Vật tư') ? { ...item, amount: initialSupplyCost } : item
-                      ));
-                    }}
-                    className="text-[10px] bg-white border border-indigo-200 text-indigo-600 px-3 py-1 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-1"
-                  >
-                    <Truck size={12}/> Cập nhật Vật tư ({initialSupplyCost.toLocaleString()} đ)
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Tên chi phí (VD: Thuế, Lương...)" 
-                      value={newOpex.name}
-                      onChange={(e) => setNewOpex({...newOpex, name: e.target.value})}
-                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                    <input 
-                      type="number" 
-                      placeholder="Số tiền" 
-                      value={newOpex.amount || ''}
-                      onChange={(e) => setNewOpex({...newOpex, amount: Number(e.target.value)})}
-                      className="w-32 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                    <button 
-                      onClick={() => {
-                        if (newOpex.name && newOpex.amount > 0) {
-                          setOpexItems([...opexItems, { id: Date.now().toString(), ...newOpex }]);
-                          setNewOpex({ name: '', amount: 0 });
-                        }
-                      }}
-                      className="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-all"
-                    >
-                      <Plus size={16}/>
-                    </button>
-                  </div>
-                  <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
-                    {opexItems.map(item => (
-                      <div key={item.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg group">
-                        <span className="text-xs text-gray-600">{item.name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold text-red-600">-{item.amount.toLocaleString()} đ</span>
-                          <button 
-                            onClick={() => setOpexItems(opexItems.filter(i => i.id !== item.id))}
-                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                          >
-                            <Trash2 size={14}/>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-indigo-50 rounded-2xl p-5 flex flex-col justify-center items-center text-center space-y-2">
-                  <p className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider">Lợi nhuận thực tính (P_total)</p>
-                  <h3 className="text-3xl font-black text-indigo-900">{calculatedProfit.toLocaleString()} đ</h3>
-                  <div className="w-full h-1 bg-indigo-100 rounded-full overflow-hidden mt-2">
-                    <div 
-                      className="h-full bg-indigo-600 transition-all duration-500" 
-                      style={{ width: `${Math.max(0, Math.min(100, (calculatedProfit / revenue) * 100))}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-[10px] text-indigo-600 font-medium">Tỉ suất lợi nhuận: {((calculatedProfit / (revenue || 1)) * 100).toFixed(1)}%</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Rights and Obligations Section */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <Gavel size={18} className="text-indigo-600"/> Quyền lợi & Nghĩa vụ Pháp lý
-              </h3>
-            </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-3">
-                <h4 className="font-bold text-indigo-700 flex items-center gap-2 text-sm">
-                  <Landmark size={14}/> Người Sáng Lập
-                </h4>
-                <ul className="text-xs text-gray-600 space-y-2 list-disc pl-4">
-                  <li><strong>Quyền:</strong> Quyết định chiến lược, phủ quyết các thay đổi cấu trúc cốt lõi, nhận cổ tức ưu đãi.</li>
-                  <li><strong>Nghĩa vụ:</strong> Cam kết đồng hành tối thiểu 3-5 năm (Vesting), bảo mật công nghệ, chịu trách nhiệm pháp lý cao nhất.</li>
-                </ul>
-              </div>
-              <div className="space-y-3">
-                <h4 className="font-bold text-emerald-700 flex items-center gap-2 text-sm">
-                  <Coins size={14}/> Cổ Đông / Nhà Đầu Tư
-                </h4>
-                <ul className="text-xs text-gray-600 space-y-2 list-disc pl-4">
-                  <li><strong>Quyền:</strong> Kiểm tra báo cáo tài chính, tham gia biểu quyết đại hội cổ đông, ưu tiên mua cổ phần phát hành thêm.</li>
-                  <li><strong>Nghĩa vụ:</strong> Góp vốn đúng hạn, không can thiệp trực tiếp vào điều hành hàng ngày trừ khi có thỏa thuận.</li>
-                </ul>
-              </div>
-              <div className="space-y-3">
-                <h4 className="font-bold text-amber-700 flex items-center gap-2 text-sm">
-                  <Briefcase size={14}/> Người Lao Động
-                </h4>
-                <ul className="text-xs text-gray-600 space-y-2 list-disc pl-4">
-                  <li><strong>Quyền:</strong> Nhận lợi nhuận từ quỹ thưởng ESOP, tham gia đóng góp ý kiến cải tiến sản phẩm.</li>
-                  <li><strong>Nghĩa vụ:</strong> Đạt KPI cam kết, tuân thủ văn hóa doanh nghiệp, hoàn trả cổ phần nếu nghỉ việc trước thời hạn (Cliff).</li>
-                </ul>
-              </div>
-            </div>
-            <div className="p-4 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400 italic">
-              * Các điều khoản trên mang tính chất tham khảo và cần được cụ thể hóa bằng Hợp đồng Cổ đông (SHA).
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <Users size={18} className="text-indigo-600"/> Danh sách cổ đông chi tiết
-              </h3>
-              <button className="text-gray-400 hover:text-indigo-600 transition-colors">
-                <Download size={16}/>
+              <button 
+                onClick={() => { resetForm(); setEditingId(null); setIsAdding(true); }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+              >
+                <Plus size={18} /> Thêm cổ đông
               </button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full">
                 <thead>
-                  <tr className="text-gray-400 uppercase text-[10px] tracking-wider border-b border-gray-100">
-                    <th className="p-4">Cổ đông</th>
-                    <th className="p-4">Vai trò</th>
-                    <th className="p-4">Vốn góp (đ)</th>
-                    <th className="p-4">Góp sức (đ)</th>
-                    <th className="p-4">Khác (đ)</th>
-                    <th className="p-4">Tỉ lệ</th>
-                    <th className="p-4 text-right">Thao tác</th>
+                  <tr className="text-left border-b border-gray-50">
+                    <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cổ đông</th>
+                    <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Vốn góp (Tổng)</th>
+                    <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tỷ lệ (%)</th>
+                    <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Vai trò</th>
+                    <th className="pb-4 text-right"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {shareholders.map(sh => (
-                    <tr key={sh.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                    <tr key={sh.id} className="group hover:bg-gray-50/50 transition-all">
+                      <td className="py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-black">
                             {sh.name.charAt(0)}
                           </div>
                           <div>
                             <p className="font-bold text-gray-900">{sh.name}</p>
-                            <p className="text-[10px] text-gray-400">{sh.status === 'ACTIVE' ? 'Đang hoạt động' : 'Cổ đông thụ động'}</p>
+                            <p className="text-[10px] text-gray-400 font-medium">Tham gia: {sh.joinDate}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          sh.role === 'FOUNDER' ? 'bg-indigo-100 text-indigo-700' :
-                          sh.role === 'INVESTOR' ? 'bg-green-100 text-green-700' :
-                          'bg-gray-100 text-gray-700'
+                      <td className="py-4">
+                        <p className="font-black text-gray-900">
+                          {(sh.capitalContribution + sh.assetContributionValue + sh.laborContributionValue + sh.coreValueContributionValue).toLocaleString()} đ
+                        </p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {sh.capitalContribution > 0 && <span className="text-[7px] font-bold bg-green-50 text-green-600 px-1 py-0.5 rounded uppercase">Tiền</span>}
+                          {sh.assetContributionValue > 0 && <span className="text-[7px] font-bold bg-blue-50 text-blue-600 px-1 py-0.5 rounded uppercase">Vật chất</span>}
+                          {sh.laborContributionValue > 0 && <span className="text-[7px] font-bold bg-orange-50 text-orange-600 px-1 py-0.5 rounded uppercase">Công</span>}
+                          {sh.coreValueContributionValue > 0 && <span className="text-[7px] font-bold bg-purple-50 text-purple-600 px-1 py-0.5 rounded uppercase">Cốt lõi</span>}
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden w-20">
+                            <div 
+                              className="h-full bg-blue-600 rounded-full" 
+                              style={{ width: `${sh.sharePercentage}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-black text-blue-600">{sh.sharePercentage.toFixed(1)}%</span>
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${
+                          sh.group === 'FOUNDER' ? 'bg-indigo-50 text-indigo-600' : 
+                          sh.group === 'INVESTOR' ? 'bg-emerald-50 text-emerald-600' : 
+                          'bg-amber-50 text-amber-600'
                         }`}>
-                          {sh.role}
+                          {sh.group}
                         </span>
                       </td>
-                      <td className="p-4 font-medium text-gray-700">{sh.capitalContribution.toLocaleString()}</td>
-                      <td className="p-4 font-medium text-purple-600">{sh.laborContributionValue.toLocaleString()}</td>
-                      <td className="p-4 font-medium text-orange-600">{sh.otherContributionValue.toLocaleString()}</td>
-                      <td className="p-4">
-                        <span className="font-black text-indigo-600">{sh.sharePercentage.toFixed(1)}%</span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <button onClick={() => equityService.deleteShareholder(sh.id, ownerId)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
-                          <Trash2 size={16}/>
-                        </button>
+                      <td className="py-4 text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEdit(sh)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={16}/></button>
+                          <button onClick={() => handleDelete(sh.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16}/></button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -486,361 +282,597 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
             </div>
           </div>
 
-          {/* Profit Distribution History List */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <Calculator size={18} className="text-green-600"/> Lịch sử chi trả chi tiết
-              </h3>
+          {/* Legal Rights & Obligations Section */}
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+            <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
+              <ShieldCheck size={20} className="text-emerald-600" /> Quyền lợi & Nghĩa vụ Pháp lý
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <Landmark size={16} className="text-indigo-600" />
+                  <h4 className="text-xs font-black text-indigo-900 uppercase">Founders</h4>
+                </div>
+                <ul className="text-[10px] text-indigo-800 space-y-2">
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Quyền quyết định chiến lược & nhân sự cấp cao.</li>
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Nghĩa vụ cam kết đồng hành (Vesting 4 năm).</li>
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Bảo vệ giá trị cốt lõi & văn hóa DN.</li>
+                </ul>
+              </div>
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <Scale size={16} className="text-emerald-600" />
+                  <h4 className="text-xs font-black text-emerald-900 uppercase">Investors</h4>
+                </div>
+                <ul className="text-[10px] text-emerald-800 space-y-2">
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Quyền kiểm tra báo cáo tài chính định kỳ.</li>
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Nghĩa vụ góp vốn đúng hạn theo cam kết.</li>
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Hỗ trợ kết nối mạng lưới & nguồn lực.</li>
+                </ul>
+              </div>
+              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <Gavel size={16} className="text-amber-600" />
+                  <h4 className="text-xs font-black text-amber-900 uppercase">ESOP</h4>
+                </div>
+                <ul className="text-[10px] text-amber-800 space-y-2">
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Quyền nhận thưởng cổ tức & thặng dư vốn.</li>
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Nghĩa vụ đạt KPI & hiệu suất nòng cốt.</li>
+                  <li className="flex gap-2"><ChevronRight size={10} className="shrink-0 mt-0.5"/> Tuân thủ bảo mật & chống cạnh tranh.</li>
+                </ul>
+              </div>
             </div>
-            <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-              {distributions.map(dist => (
-                <div key={dist.id} className="p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-center mb-3">
-                    <div>
-                      <p className="font-bold text-gray-900">{dist.period}</p>
-                      <p className="text-[10px] text-gray-400">Ngày chốt: {new Date(dist.createdAt).toLocaleDateString('vi-VN')}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-green-600">Phân phối: {dist.distributedAmount.toLocaleString()} đ</p>
-                      <p className="text-[10px] text-indigo-600 font-bold">Tái đầu tư: {dist.retainedAmount.toLocaleString()} đ</p>
-                    </div>
+          </div>
+
+          {/* Transparency & Calculation Guide */}
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+            <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
+              <Calculator size={20} className="text-blue-600" /> Hướng dẫn Tính toán & Minh bạch
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                  <h4 className="text-sm font-black text-blue-900 mb-2">1. Công thức Định giá (Valuation)</h4>
+                  <p className="text-xs text-blue-800 leading-relaxed">
+                    Tổng giá trị doanh nghiệp = <span className="font-bold">Tiền mặt</span> + <span className="font-bold">Cơ sở vật chất</span> + <span className="font-bold">Công sức</span> + <span className="font-bold">Giá trị cốt lõi</span>.
+                  </p>
+                  <p className="text-[10px] text-blue-600 mt-2 italic">
+                    * Giúp minh bạch hóa các đóng góp không bằng tiền nhưng có giá trị sống còn.
+                  </p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
+                  <h4 className="text-sm font-black text-green-900 mb-2">2. Tỷ lệ sở hữu (%)</h4>
+                  <p className="text-xs text-green-800 leading-relaxed">
+                    % Sở hữu = (Tổng đóng góp cá nhân / Tổng định giá doanh nghiệp) x 100.
+                  </p>
+                  <p className="text-[10px] text-green-600 mt-2 italic">
+                    * Tỷ lệ này tự động cập nhật mỗi khi có thành viên mới hoặc góp vốn thêm.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
+                  <h4 className="text-sm font-black text-purple-900 mb-2">3. Phân bổ Lợi nhuận</h4>
+                  <p className="text-xs text-purple-800 leading-relaxed">
+                    Lợi nhuận chia = (Tổng lợi nhuận - Quỹ tái đầu tư) x % Sở hữu.
+                  </p>
+                  <p className="text-[10px] text-purple-600 mt-2 italic">
+                    * Đảm bảo mọi cổ đông đều nhận được phần thưởng xứng đáng với tỷ lệ rủi ro và đóng góp.
+                  </p>
+                </div>
+                <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                  <h4 className="text-sm font-black text-orange-900 mb-2">4. Minh bạch Dòng tiền</h4>
+                  <p className="text-xs text-orange-800 leading-relaxed">
+                    Mọi giao dịch chia cổ tức đều được lưu vết lịch sử, không thể sửa đổi sau khi đã xác nhận.
+                  </p>
+                  <p className="text-[10px] text-orange-600 mt-2 italic">
+                    * Giúp xây dựng niềm tin tuyệt đối giữa các cộng sự.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Fund Explanation Table */}
+            <div className="mt-8 overflow-hidden rounded-2xl border border-gray-100">
+              <table className="w-full text-left">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="p-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ký hiệu</th>
+                    <th className="p-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tên Quỹ (Tier 1)</th>
+                    <th className="p-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Công thức & Ví dụ</th>
+                    <th className="p-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tỷ lệ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  <tr>
+                    <td className="p-3 font-black text-red-600 text-xs">R</td>
+                    <td className="p-3">
+                      <p className="font-bold text-gray-900 text-xs">Dự phòng (Reserve)</p>
+                      <p className="text-[9px] text-gray-400">Bảo hiểm rủi ro vận hành.</p>
+                    </td>
+                    <td className="p-3">
+                      <code className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-red-600 font-bold">R = P * 10%</code>
+                      <p className="text-[9px] text-gray-400 mt-1">VD: Lợi nhuận 1 tỷ → Trích 100tr</p>
+                    </td>
+                    <td className="p-3 font-black text-gray-900 text-xs">10%</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-black text-blue-600 text-xs">S</td>
+                    <td className="p-3">
+                      <p className="font-bold text-gray-900 text-xs">Quỹ lương (Salary)</p>
+                      <p className="text-[9px] text-gray-400">Dự phòng lương 3-6 tháng.</p>
+                    </td>
+                    <td className="p-3">
+                      <code className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-blue-600 font-bold">S = P * 20%</code>
+                      <p className="text-[9px] text-gray-400 mt-1">VD: Lợi nhuận 1 tỷ → Trích 200tr</p>
+                    </td>
+                    <td className="p-3 font-black text-gray-900 text-xs">20%</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-black text-amber-600 text-xs">B</td>
+                    <td className="p-3">
+                      <p className="font-bold text-gray-900 text-xs">Khen thưởng (Bonus)</p>
+                      <p className="text-[9px] text-gray-400">Thưởng KPI & động lực.</p>
+                    </td>
+                    <td className="p-3">
+                      <code className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-amber-600 font-bold">B = P * 5%</code>
+                      <p className="text-[9px] text-gray-400 mt-1">VD: Lợi nhuận 1 tỷ → Trích 50tr</p>
+                    </td>
+                    <td className="p-3 font-black text-gray-900 text-xs">5%</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-black text-purple-600 text-xs">D</td>
+                    <td className="p-3">
+                      <p className="font-bold text-gray-900 text-xs">Phát triển (Dev)</p>
+                      <p className="text-[9px] text-gray-400">R&D & Mở rộng quy mô.</p>
+                    </td>
+                    <td className="p-3">
+                      <code className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-purple-600 font-bold">D = P * 15%</code>
+                      <p className="text-[9px] text-gray-400 mt-1">VD: Lợi nhuận 1 tỷ → Trích 150tr</p>
+                    </td>
+                    <td className="p-3 font-black text-gray-900 text-xs">15%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Tier 2 & 3 Explanation */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Tier 2: Lợi nhuận Ròng (Net)</h4>
+                <code className="text-xs bg-white px-2 py-1 rounded border border-gray-200 font-bold text-gray-900">P_net = P - (R + S + B + D)</code>
+                <p className="text-[10px] text-gray-500 mt-2">Lợi nhuận thực tế còn lại sau khi đã đảm bảo các quỹ vận hành (thường là 50% P).</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Tier 3: Phân phối & Tái đầu tư</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <code className="text-[10px] bg-white px-2 py-1 rounded border border-gray-200 font-bold text-green-600">Div = P_net * 50%</code>
+                    <span className="text-[9px] text-gray-500">Chia cổ tức trực tiếp</span>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {dist.distributions.map(d => (
-                      <div key={d.shareholderId} className="bg-white p-2 rounded-lg border border-gray-100 text-center">
-                        <p className="text-[10px] text-gray-500 truncate">{shareholders.find(s => s.id === d.shareholderId)?.name}</p>
-                        <p className="text-xs font-bold text-indigo-600">+{d.amount.toLocaleString()} đ</p>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <code className="text-[10px] bg-white px-2 py-1 rounded border border-gray-200 font-bold text-blue-600">Re = P_net * 50%</code>
+                    <span className="text-[9px] text-gray-500">Giữ lại tăng vốn điều lệ</span>
                   </div>
                 </div>
-              ))}
-              {distributions.length === 0 && (
-                <div className="p-12 text-center text-gray-400 italic">Chưa có lịch sử phân chia</div>
+              </div>
+            </div>
+
+            {/* Concrete Example Walkthrough */}
+            <div className="mt-8 p-6 bg-gradient-to-br from-gray-900 to-blue-900 rounded-3xl text-white shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <Landmark size={120} />
+              </div>
+              <h4 className="text-lg font-black mb-6 flex items-center gap-2 relative z-10">
+                <Calculator size={20} className="text-blue-400" /> Ví dụ Minh họa Cụ thể (P = 1.000.000.000 đ)
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center text-[8px]">1</span>
+                    Trích lập Quỹ (Tier 1)
+                  </p>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Dự phòng (R)</span>
+                      <span className="font-bold text-red-400">-100.000.000 đ</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Quỹ lương (S)</span>
+                      <span className="font-bold text-red-400">-200.000.000 đ</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Khen thưởng (B)</span>
+                      <span className="font-bold text-red-400">-50.000.000 đ</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Phát triển (D)</span>
+                      <span className="font-bold text-red-400">-150.000.000 đ</span>
+                    </div>
+                    <div className="pt-2 border-t border-white/10 flex justify-between font-black">
+                      <span>Tổng quỹ (50%)</span>
+                      <span className="text-red-400">-500.000.000 đ</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4 md:border-l md:border-white/10 md:pl-8">
+                  <p className="text-[10px] font-black text-green-300 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-green-500/20 flex items-center justify-center text-[8px]">2</span>
+                    Lợi nhuận Ròng (Tier 2)
+                  </p>
+                  <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <p className="text-3xl font-black text-green-400">500.000.000 đ</p>
+                    <p className="text-[9px] text-gray-400 mt-2 leading-relaxed">
+                      Đây là số tiền (P_net) thực tế dùng để chia cổ tức và tái đầu tư sau khi đã đảm bảo an toàn vận hành.
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4 md:border-l md:border-white/10 md:pl-8">
+                  <p className="text-[10px] font-black text-purple-300 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-purple-500/20 flex items-center justify-center text-[8px]">3</span>
+                    Phân phối (Tier 3)
+                  </p>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-bold text-blue-300">Cổ tức (Div)</span>
+                        <span className="text-sm font-black text-blue-400">250.000.000 đ</span>
+                      </div>
+                      <p className="text-[8px] text-blue-200/60 italic">Chia trực tiếp cho các cổ đông theo tỷ lệ %</p>
+                    </div>
+                    <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-bold text-purple-300">Tái đầu tư (Re)</span>
+                        <span className="text-sm font-black text-purple-400">250.000.000 đ</span>
+                      </div>
+                      <p className="text-[8px] text-purple-200/60 italic">Giữ lại để tăng vốn và định giá DN</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 p-4 bg-red-50 rounded-2xl border border-red-100">
+              <p className="text-[10px] text-red-700 font-bold flex items-center gap-2">
+                <ShieldCheck size={14}/> LƯU Ý: Việc trích lập 50% lợi nhuận vào các quỹ là "điều kiện tiên quyết" để đảm bảo tính bền vững trước khi chia cổ tức.
+              </p>
+            </div>
+          </div>
+
+          {/* Distribution History */}
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                  <History size={20} className="text-purple-600" /> Lịch sử Chia lợi nhuận
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsDistributing(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-purple-700 transition-all shadow-lg shadow-purple-100"
+              >
+                <Calculator size={18} /> Chia lợi nhuận mới
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {distributions.length === 0 ? (
+                <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <p className="text-gray-400 text-sm font-medium">Chưa có đợt chia lợi nhuận nào</p>
+                </div>
+              ) : (
+                distributions.map(dist => (
+                  <div key={dist.id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kỳ: {dist.period}</p>
+                        <h4 className="font-black text-gray-900">Tổng lợi nhuận: {dist.totalProfit.toLocaleString()} đ</h4>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-green-600 uppercase tracking-widest">Đã chia</p>
+                        <p className="font-black text-green-600">{dist.distributedAmount.toLocaleString()} đ</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {dist.distributions.map(d => {
+                        const sh = shareholders.find(s => s.id === d.shareholderId);
+                        return (
+                          <div key={d.shareholderId} className="bg-white px-3 py-1.5 rounded-xl border border-gray-100 flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-600">{sh?.name}:</span>
+                            <span className="text-xs font-black text-blue-600">{d.amount.toLocaleString()} đ</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
         </div>
 
-        {/* Calculation Logic Info */}
+        {/* Sidebar Forms */}
         <div className="space-y-6">
-          <div className="bg-indigo-900 text-white rounded-2xl p-6 shadow-xl shadow-indigo-100">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Scale size={20}/> Công thức Phân bổ Lợi nhuận
-            </h3>
-            <div className="space-y-4 text-xs text-indigo-100">
-              {/* Step 1 */}
-              <div className="bg-indigo-800/50 p-4 rounded-xl border border-indigo-700">
-                <p className="font-bold text-white mb-2 flex items-center gap-2">
-                  <span className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[10px]">1</span>
-                  Trích lập Bộ Quỹ (Σ Funds)
-                </p>
-                <div className="bg-black/20 p-2 rounded font-mono text-[10px] mb-2 text-green-400">
-                  Σ Funds = P_total × (R + S + B + D)%
+          <AnimatePresence mode="wait">
+            {isAdding ? (
+              <motion.div 
+                key="add-form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="bg-white rounded-3xl p-6 border border-blue-100 shadow-xl shadow-blue-50 sticky top-6"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-black text-gray-900 flex items-center gap-2">
+                    {editingId ? <Edit2 size={18} className="text-blue-600"/> : <Plus size={18} className="text-blue-600"/>}
+                    {editingId ? 'Sửa cổ đông' : 'Thêm cổ đông'}
+                  </h3>
+                  <button onClick={() => { setIsAdding(false); setEditingId(null); }} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
                 </div>
-                <ul className="space-y-1 opacity-80">
-                  <li>• <strong>R (Reserve):</strong> Dự phòng (20%)</li>
-                  <li>• <strong>S (Salary):</strong> Quỹ lương (15%)</li>
-                  <li>• <strong>B (Bonus):</strong> Khen thưởng (5%)</li>
-                  <li>• <strong>D (Dev):</strong> Phát triển (10%)</li>
-                </ul>
-              </div>
 
-              {/* Step 2 */}
-              <div className="bg-indigo-800/50 p-4 rounded-xl border border-indigo-700">
-                <p className="font-bold text-white mb-2 flex items-center gap-2">
-                  <span className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[10px]">2</span>
-                  Lợi nhuận ròng (P_net)
-                </p>
-                <div className="bg-black/20 p-2 rounded font-mono text-[10px] text-green-400">
-                  P_net = P_total - Σ Funds
-                </div>
-                <p className="mt-2 opacity-80 italic">Đây là phần lợi nhuận thực tế còn lại sau khi đã đảm bảo các nghĩa vụ vận hành và dự phòng.</p>
-              </div>
-
-              {/* Step 3 */}
-              <div className="bg-indigo-800/50 p-4 rounded-xl border border-indigo-700">
-                <p className="font-bold text-white mb-2 flex items-center gap-2">
-                  <span className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[10px]">3</span>
-                  Phân phối Cổ tức (Dividends)
-                </p>
-                <div className="bg-black/20 p-2 rounded font-mono text-[10px] text-green-400">
-                  Dividends = P_net × 50%
-                </div>
-                <p className="mt-2 font-bold text-white">Chia cho từng cá nhân (i):</p>
-                <div className="bg-black/20 p-2 rounded font-mono text-[10px] mt-1 text-amber-400">
-                  Share_i = Dividends × Ownership_i%
-                </div>
-              </div>
-
-              {/* Step 4 */}
-              <div className="bg-indigo-800/50 p-4 rounded-xl border border-indigo-700">
-                <p className="font-bold text-white mb-2 flex items-center gap-2">
-                  <span className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[10px]">4</span>
-                  Tái đầu tư (Retained)
-                </p>
-                <div className="bg-black/20 p-2 rounded font-mono text-[10px] text-green-400">
-                  Retained = P_net × 50%
-                </div>
-                <p className="mt-2 opacity-80 italic">Dùng để tăng vốn điều lệ, nâng giá trị cổ phần (Valuation) cho tất cả cổ đông.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Info size={18} className="text-blue-600"/> Thuyết minh các Bộ Quỹ
-            </h3>
-            <div className="space-y-4">
-              <div className="overflow-hidden border border-gray-100 rounded-xl">
-                <table className="w-full text-left text-[11px]">
-                  <thead className="bg-gray-50 text-gray-500 uppercase font-bold">
-                    <tr>
-                      <th className="p-3">Tên Quỹ</th>
-                      <th className="p-3">Mục đích sử dụng</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    <tr>
-                      <td className="p-3 font-bold text-indigo-600">Dự phòng (R)</td>
-                      <td className="p-3 text-gray-600">Bảo hiểm rủi ro vận hành, bù đắp thua lỗ bất ngờ hoặc xử lý khủng hoảng thị trường.</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-bold text-emerald-600">Quỹ lương (S)</td>
-                      <td className="p-3 text-gray-600">Đảm bảo quỹ lương dự phòng 3-6 tháng cho nhân sự cốt cán, tránh gián đoạn khi dòng tiền biến động.</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-bold text-amber-600">Khen thưởng (B)</td>
-                      <td className="p-3 text-gray-600">Thưởng hiệu quả công việc (KPI), vinh danh cá nhân xuất sắc và tạo động lực cho đội ngũ.</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-bold text-purple-600">Phát triển (D)</td>
-                      <td className="p-3 text-gray-600">Tái đầu tư công nghệ, nâng cấp hệ thống, nghiên cứu sản phẩm mới (R&D) và mở rộng thị trường.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <p className="text-[10px] text-blue-700 leading-relaxed">
-                  <strong>Lưu ý:</strong> Việc trích lập 50% lợi nhuận vào các quỹ này là điều kiện tiên quyết để đảm bảo tính bền vững của doanh nghiệp trước khi thực hiện nghĩa vụ chi trả cổ tức.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <BarChart3 size={18} className="text-emerald-600"/> Ví dụ Minh họa Dòng tiền (Dựa trên thiết lập)
-            </h3>
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">1. Tổng Doanh thu (Revenue)</span>
-                  <span className="font-bold text-gray-900">{revenue.toLocaleString()} đ</span>
-                </div>
-                <div className="flex justify-between items-center text-sm text-red-600">
-                  <span className="flex items-center gap-1">2. Chi phí vận hành (OpEx) <Info size={12} title="Bao gồm các mục bạn đã thiết lập ở trên"/></span>
-                  <span className="font-bold">-{totalOpEx.toLocaleString()} đ</span>
-                </div>
-                <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-sm">
-                  <span className="font-bold text-indigo-600">3. Lợi nhuận trước trích quỹ (P_total)</span>
-                  <span className="font-bold text-indigo-600">{calculatedProfit.toLocaleString()} đ</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Phân bổ theo cơ chế Đa tầng (từ {calculatedProfit.toLocaleString()}):</p>
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="p-3 bg-red-50 rounded-xl border border-red-100 space-y-1">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-red-700 font-bold">Trích lập các Bộ Quỹ (50% của P_total)</span>
-                      <span className="font-bold text-red-700">-{(calculatedProfit * 0.5).toLocaleString()} đ</span>
-                    </div>
-                    <p className="text-[9px] text-red-600 opacity-80">Đưa vào các quỹ Dự phòng (20%), Lương dự phòng (15%), Thưởng (5%) và Phát triển (10%).</p>
-                  </div>
-                  
-                  <div className="p-3 bg-green-50 rounded-xl border border-green-100 space-y-1">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-green-700 font-bold">Chia cổ tức (25% của P_total)</span>
-                      <span className="font-bold text-green-700">+{(calculatedProfit * 0.25).toLocaleString()} đ</span>
-                    </div>
-                    <p className="text-[9px] text-green-600 opacity-80">Được chia trực tiếp cho các cổ đông theo tỉ lệ sở hữu thực tế.</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tên cổ đông</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      value={form.name}
+                      onChange={e => setForm({ ...form, name: e.target.value })}
+                      placeholder="Nguyễn Văn A"
+                    />
                   </div>
 
-                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 space-y-1">
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-blue-700 font-bold">Tái đầu tư (25% của P_total)</span>
-                      <span className="font-bold text-blue-700">+{(calculatedProfit * 0.25).toLocaleString()} đ</span>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <DollarSign size={10}/> Vốn tiền mặt (VND)
+                      </label>
+                      <input 
+                        type="number" 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={form.capitalContribution || ''}
+                        onChange={e => setForm({ ...form, capitalContribution: Number(e.target.value) })}
+                      />
                     </div>
-                    <p className="text-[9px] text-blue-600 opacity-80">Giữ lại để tăng vốn điều lệ, nâng cao giá trị doanh nghiệp (Valuation).</p>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <Briefcase size={10}/> Cơ sở vật chất (VND)
+                      </label>
+                      <input 
+                        type="number" 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={form.assetContributionValue || ''}
+                        onChange={e => setForm({ ...form, assetContributionValue: Number(e.target.value) })}
+                        placeholder="Máy móc, mặt bằng, trang thiết bị..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <TrendingUp size={10}/> Giá trị công sức (VND)
+                      </label>
+                      <input 
+                        type="number" 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={form.laborContributionValue || ''}
+                        onChange={e => setForm({ ...form, laborContributionValue: Number(e.target.value) })}
+                        placeholder="Kỹ năng, thời gian, quản lý..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <Award size={10}/> Giá trị cốt lõi (VND)
+                      </label>
+                      <input 
+                        type="number" 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={form.coreValueContributionValue || ''}
+                        onChange={e => setForm({ ...form, coreValueContributionValue: Number(e.target.value) })}
+                        placeholder="Thương hiệu, IP, Network, Bí quyết..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Vai trò</label>
+                      <select 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={form.role}
+                        onChange={e => setForm({ ...form, role: e.target.value as any })}
+                      >
+                        <option value="FOUNDER">Sáng lập</option>
+                        <option value="INVESTOR">Nhà đầu tư</option>
+                        <option value="ADVISOR">Cố vấn</option>
+                        <option value="EMPLOYEE">Nhân viên</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Nhóm đối tượng</label>
+                      <select 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={form.group}
+                        onChange={e => setForm({ ...form, group: e.target.value as any })}
+                      >
+                        <option value="FOUNDER">Founders</option>
+                        <option value="INVESTOR">Investors</option>
+                        <option value="ESOP">ESOP (Nhân sự)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ngày tham gia</label>
+                    <input 
+                      type="date" 
+                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      value={form.joinDate}
+                      onChange={e => setForm({ ...form, joinDate: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Tổng vốn định giá</span>
+                      <span className="text-lg font-black text-blue-600">
+                        {(form.capitalContribution + form.assetContributionValue + form.laborContributionValue + form.coreValueContributionValue).toLocaleString()} đ
+                      </span>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => editingId ? handleUpdate(editingId) : handleAdd()}
+                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-black flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 mt-4"
+                  >
+                    <Save size={18} /> {editingId ? 'Lưu thay đổi' : 'Xác nhận góp vốn'}
+                  </button>
+                </div>
+              </motion.div>
+            ) : isDistributing ? (
+              <motion.div 
+                key="dist-form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="bg-white rounded-3xl p-6 border border-purple-100 shadow-xl shadow-purple-50 sticky top-6"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-black text-gray-900 flex items-center gap-2">
+                    <Calculator size={18} className="text-purple-600"/>
+                    Chia lợi nhuận
+                  </h3>
+                  <button onClick={() => setIsDistributing(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tổng lợi nhuận (VND)</label>
+                    <input 
+                      type="number" 
+                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 font-black text-purple-600"
+                      value={distForm.totalProfit || ''}
+                      onChange={e => setDistForm({ ...distForm, totalProfit: Number(e.target.value) })}
+                      placeholder="Nhập số tiền..."
+                    />
+                  </div>
+
+                  {/* Multi-tier Allocation Table */}
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bảng tính toán Phân bổ Đa tầng</p>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">1. Trích lập các Bộ Quỹ (50%)</span>
+                        <span className="font-black text-red-500">-{ (distForm.totalProfit * 0.5).toLocaleString() } đ</span>
+                      </div>
+                      <div className="pl-4 space-y-1">
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-gray-400">• Dự phòng (R - 10%)</span>
+                          <span className="text-gray-600">{ (distForm.totalProfit * 0.1).toLocaleString() } đ</span>
+                        </div>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-gray-400">• Quỹ lương (S - 20%)</span>
+                          <span className="text-gray-600">{ (distForm.totalProfit * 0.2).toLocaleString() } đ</span>
+                        </div>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-gray-400">• Khen thưởng (B - 5%)</span>
+                          <span className="text-gray-600">{ (distForm.totalProfit * 0.05).toLocaleString() } đ</span>
+                        </div>
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-gray-400">• Phát triển (D - 15%)</span>
+                          <span className="text-gray-600">{ (distForm.totalProfit * 0.15).toLocaleString() } đ</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between text-xs pt-2 border-t border-gray-200">
+                      <span className="text-gray-900 font-bold">2. Lợi nhuận Ròng (P_net)</span>
+                      <span className="font-black text-gray-900">{ (distForm.totalProfit * 0.5).toLocaleString() } đ</span>
+                    </div>
+
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">3. Chia cổ tức (Div - 25%)</span>
+                      <span className="font-black text-green-600">+{ (distForm.totalProfit * 0.25).toLocaleString() } đ</span>
+                    </div>
+
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">4. Tái đầu tư (Re - 25%)</span>
+                      <span className="font-black text-blue-600">+{ (distForm.totalProfit * 0.25).toLocaleString() } đ</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Kỳ phân phối</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                      value={distForm.period}
+                      onChange={e => setDistForm({ ...distForm, period: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2 max-h-[150px] overflow-y-auto no-scrollbar pr-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dự kiến nhận (Cổ tức):</p>
+                    {shareholders.map(sh => (
+                      <div key={sh.id} className="flex justify-between items-center text-[10px] p-2 bg-white rounded-lg border border-gray-100">
+                        <span className="font-bold text-gray-600">{sh.name} ({sh.sharePercentage.toFixed(1)}%)</span>
+                        <span className="font-black text-green-600">
+                          {(distForm.totalProfit * 0.25 * (sh.sharePercentage/100)).toLocaleString()} đ
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button 
+                    onClick={handleDistribute}
+                    className="w-full py-3 bg-purple-600 text-white rounded-xl font-black flex items-center justify-center gap-2 hover:bg-purple-700 transition-all shadow-lg shadow-purple-100 mt-4"
+                  >
+                    <Calculator size={18} /> Xác nhận chia lợi nhuận
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="info-card"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl"
+              >
+                <PieChart size={48} className="mb-4 opacity-50" />
+                <h3 className="text-xl font-black mb-2">Quản trị Cổ phần</h3>
+                <p className="text-sm text-indigo-100 mb-6">
+                  Hệ thống tự động tính toán tỷ lệ sở hữu dựa trên tổng giá trị đóng góp (Tiền mặt + Công sức + Tài sản trí tuệ).
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                      <Check size={14} />
+                    </div>
+                    <p className="text-xs font-medium">Tự động cập nhật % sở hữu khi có vốn mới</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                      <Check size={14} />
+                    </div>
+                    <p className="text-xs font-medium">Tính toán chia lợi nhuận theo tỷ lệ thực tế</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                      <Check size={14} />
+                    </div>
+                    <p className="text-xs font-medium">Minh bạch hóa đóng góp công sức (Sweat Equity)</p>
                   </div>
                 </div>
-              </div>
-              
-              <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 space-y-2">
-                <p className="text-[11px] font-bold text-amber-900 flex items-center gap-2">
-                  <ShieldCheck size={14}/> Điểm nhấn quan trọng:
-                </p>
-                <ul className="text-[10px] text-amber-800 space-y-1 list-disc pl-4">
-                  <li><strong>Tính minh bạch:</strong> Mặc dù doanh thu 1 tỷ, nhưng chỉ 10% (100 triệu) được chia trực tiếp. 90% còn lại dùng để vận hành (60%), dự phòng an toàn (20%) và tái đầu tư (10%).</li>
-                  <li><strong>Giải thích thuật ngữ:</strong> OpEx bao gồm các nghĩa vụ bắt buộc (Thuế, Lương, Mặt bằng...) để xác định chính xác P_total.</li>
-                  <li><strong>Trực quan hóa:</strong> Phân định rõ luồng tiền bằng mã màu Đỏ (Chi phí/Quỹ), Xanh lá (Cổ tức) và Xanh dương (Tái đầu tư).</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Settings2 size={18} className="text-gray-600"/> Cấu hình phân phối
-            </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Tỉ lệ tái đầu tư mặc định</span>
-                <span className="font-bold text-indigo-600">20%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Kỳ đối soát</span>
-                <span className="font-bold text-gray-900">Hàng tháng</span>
-              </div>
-              <p className="text-[10px] text-gray-400 italic">Cấu hình này ảnh hưởng đến gợi ý khi thực hiện chia lợi nhuận.</p>
-            </div>
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
-
-      {/* Modals */}
-      {isAddingShareholder && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsAddingShareholder(false)} />
-          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in-95">
-            <h3 className="text-xl font-black mb-6">Thêm cổ đông / Thành viên góp vốn</h3>
-            <div className="space-y-4">
-              <input type="text" placeholder="Tên cổ đông" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={shForm.name} onChange={e => setShForm({...shForm, name: e.target.value})} />
-              <div className="grid grid-cols-2 gap-3">
-                <select className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" value={shForm.role} onChange={e => setShForm({...shForm, role: e.target.value as any})}>
-                  <option value="FOUNDER">Founder</option>
-                  <option value="INVESTOR">Investor</option>
-                  <option value="ADVISOR">Advisor</option>
-                  <option value="EMPLOYEE">Employee</option>
-                </select>
-                <select className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" value={shForm.status} onChange={e => setShForm({...shForm, status: e.target.value as any})}>
-                  <option value="ACTIVE">Hoạt động</option>
-                  <option value="PASSIVE">Thụ động</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 ml-1">Vốn góp bằng tiền / tài sản (đ)</label>
-                <input type="number" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={shForm.capitalContribution} onChange={e => setShForm({...shForm, capitalContribution: Number(e.target.value)})} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 ml-1">Định giá góp sức / trí tuệ (đ)</label>
-                <input type="number" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={shForm.laborContributionValue} onChange={e => setShForm({...shForm, laborContributionValue: Number(e.target.value)})} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 ml-1">Định giá khác (Mối quan hệ, IP...) (đ)</label>
-                <input type="number" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={shForm.otherContributionValue} onChange={e => setShForm({...shForm, otherContributionValue: Number(e.target.value)})} />
-              </div>
-              <button onClick={handleAddShareholder} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Lưu thông tin</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDistributing && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsDistributing(false)} />
-          <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-black mb-4">Phân phối lợi nhuận & Trích lập các Quỹ</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">Tổng lợi nhuận kỳ này (đ)</label>
-                  <input type="number" className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold text-green-600" value={distributionForm.totalProfit} onChange={e => setDistributionForm({...distributionForm, totalProfit: Number(e.target.value)})} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Quỹ dự phòng (%)</label>
-                    <input type="number" className="w-full p-2 bg-gray-50 rounded-lg outline-none text-sm" value={distributionForm.reserveFund} onChange={e => setDistributionForm({...distributionForm, reserveFund: Number(e.target.value)})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Quỹ lương (%)</label>
-                    <input type="number" className="w-full p-2 bg-gray-50 rounded-lg outline-none text-sm" value={distributionForm.salaryFund} onChange={e => setDistributionForm({...distributionForm, salaryFund: Number(e.target.value)})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Quỹ thưởng (%)</label>
-                    <input type="number" className="w-full p-2 bg-gray-50 rounded-lg outline-none text-sm" value={distributionForm.bonusFund} onChange={e => setDistributionForm({...distributionForm, bonusFund: Number(e.target.value)})} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Quỹ phát triển (%)</label>
-                    <input type="number" className="w-full p-2 bg-gray-50 rounded-lg outline-none text-sm" value={distributionForm.devFund} onChange={e => setDistributionForm({...distributionForm, devFund: Number(e.target.value)})} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-indigo-50 rounded-2xl p-5 space-y-3">
-                <h4 className="font-bold text-indigo-900 text-sm border-b border-indigo-100 pb-2 flex items-center gap-2">
-                  <Calculator size={16}/> Bảng tính toán (P_net)
-                </h4>
-                {(() => {
-                  const totalFundsPercent = distributionForm.reserveFund + distributionForm.salaryFund + distributionForm.bonusFund + distributionForm.devFund;
-                  const fundsAmount = (distributionForm.totalProfit * totalFundsPercent) / 100;
-                  const remainingProfit = distributionForm.totalProfit - fundsAmount;
-                  const distributableProfit = (remainingProfit * distributionForm.distributionRate) / 100;
-                  const retainedProfit = remainingProfit - distributableProfit;
-
-                  return (
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Σ Funds ({totalFundsPercent}%):</span>
-                        <span className="font-bold text-red-600">-{fundsAmount.toLocaleString()} đ</span>
-                      </div>
-                      <div className="flex justify-between border-t border-indigo-100 pt-2">
-                        <span className="text-gray-700 font-bold">P_net (Lợi nhuận ròng):</span>
-                        <span className="font-bold text-gray-900">{remainingProfit.toLocaleString()} đ</span>
-                      </div>
-                      <div className="flex justify-between text-indigo-600">
-                        <span>Dividends ({distributionForm.distributionRate}%):</span>
-                        <span className="font-bold">+{distributableProfit.toLocaleString()} đ</span>
-                      </div>
-                      <div className="flex justify-between text-indigo-600">
-                        <span>Retained ({100 - distributionForm.distributionRate}%):</span>
-                        <span className="font-bold">+{retainedProfit.toLocaleString()} đ</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-6 max-h-48 overflow-y-auto pr-2">
-              <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Dự kiến chi trả cho cổ đông (50% của phần còn lại)</p>
-              {shareholders.map(s => {
-                const totalFundsPercent = distributionForm.reserveFund + distributionForm.salaryFund + distributionForm.bonusFund + distributionForm.devFund;
-                const remainingProfit = distributionForm.totalProfit - (distributionForm.totalProfit * totalFundsPercent) / 100;
-                const distributableProfit = (remainingProfit * distributionForm.distributionRate) / 100;
-                const shareAmount = (distributableProfit * s.sharePercentage) / 100;
-                return (
-                  <div key={s.id} className="flex justify-between items-center p-2 bg-white border border-gray-100 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold">{s.name.charAt(0)}</div>
-                      <span className="text-xs font-medium">{s.name} ({s.sharePercentage.toFixed(1)}%)</span>
-                    </div>
-                    <span className="font-bold text-green-600 text-xs">+{shareAmount.toLocaleString()} đ</span>
-                  </div>
-                );
-              })}
-            </div>
-            
-            <div className="flex gap-3">
-              <button onClick={() => setIsDistributing(false)} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold">Hủy</button>
-              <button onClick={handleDistribute} className="flex-[2] bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100">Xác nhận & Phân bổ</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+
+const Check = ({ size, className }: { size: number, className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);

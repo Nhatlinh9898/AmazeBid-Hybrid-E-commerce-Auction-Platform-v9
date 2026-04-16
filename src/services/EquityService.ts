@@ -6,7 +6,12 @@ class EquityService {
   private laborCosts: LaborCost[] = [];
   private shareholders: Shareholder[] = [];
   private distributions: ProfitDistribution[] = [];
-  private listeners: (() => void)[] = [];
+  private listeners: ((data: { 
+    employees: Employee[], 
+    laborCosts: LaborCost[], 
+    shareholders: Shareholder[], 
+    distributions: ProfitDistribution[] 
+  }) => void)[] = [];
 
   constructor() {
     this.loadFromStorage();
@@ -33,11 +38,29 @@ class EquityService {
   }
 
   private notify() {
-    this.listeners.forEach(l => l());
+    const data = {
+      employees: this.employees,
+      laborCosts: this.laborCosts,
+      shareholders: this.shareholders,
+      distributions: this.distributions
+    };
+    this.listeners.forEach(l => l(data));
   }
 
-  subscribe(listener: () => void) {
+  subscribe(listener: (data: { 
+    employees: Employee[], 
+    laborCosts: LaborCost[], 
+    shareholders: Shareholder[], 
+    distributions: ProfitDistribution[] 
+  }) => void) {
     this.listeners.push(listener);
+    // Call immediately with current data
+    listener({
+      employees: this.employees,
+      laborCosts: this.laborCosts,
+      shareholders: this.shareholders,
+      distributions: this.distributions
+    });
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
     };
@@ -77,7 +100,8 @@ class EquityService {
     const newShareholder: Shareholder = { 
       ...shareholder, 
       id: `sh-${Math.random().toString(36).substring(2, 9)}`,
-      sharePercentage: 0 // Will be recalculated
+      sharePercentage: 0, // Will be recalculated
+      group: shareholder.group || (shareholder.role === 'FOUNDER' ? 'FOUNDER' : shareholder.role === 'EMPLOYEE' ? 'ESOP' : 'INVESTOR')
     };
     this.shareholders.push(newShareholder);
     this.recalculateShares(shareholder.ownerId);
@@ -85,21 +109,33 @@ class EquityService {
     return newShareholder;
   }
 
-  deleteShareholder(id: string, ownerId: string) {
+  deleteShareholder(id: string) {
+    const sh = this.shareholders.find(s => s.id === id);
+    if (!sh) return;
+    const ownerId = sh.ownerId;
     this.shareholders = this.shareholders.filter(s => s.id !== id);
     this.recalculateShares(ownerId);
+    this.saveToStorage();
+  }
+
+  updateShareholder(id: string, data: Partial<Omit<Shareholder, 'id' | 'ownerId' | 'sharePercentage'>>) {
+    const index = this.shareholders.findIndex(s => s.id === id);
+    if (index === -1) return;
+    
+    this.shareholders[index] = { ...this.shareholders[index], ...data };
+    this.recalculateShares(this.shareholders[index].ownerId);
     this.saveToStorage();
   }
 
   private recalculateShares(ownerId: string) {
     const myShareholders = this.shareholders.filter(s => s.ownerId === ownerId);
     const totalValue = myShareholders.reduce((sum, s) => 
-      sum + s.capitalContribution + s.laborContributionValue + s.otherContributionValue, 0);
+      sum + s.capitalContribution + s.assetContributionValue + s.laborContributionValue + s.coreValueContributionValue, 0);
 
     if (totalValue > 0) {
       this.shareholders = this.shareholders.map(s => {
         if (s.ownerId === ownerId) {
-          const myValue = s.capitalContribution + s.laborContributionValue + s.otherContributionValue;
+          const myValue = s.capitalContribution + s.assetContributionValue + s.laborContributionValue + s.coreValueContributionValue;
           return { ...s, sharePercentage: (myValue / totalValue) * 100 };
         }
         return s;
@@ -112,8 +148,24 @@ class EquityService {
   }
 
   // Profit Distribution
-  distributeProfit(ownerId: string, totalProfit: number, distributedAmount: number, retainedAmount: number, period: string) {
+  distributeProfit(ownerId: string, totalProfit: number, period: string) {
     const myShareholders = this.getShareholdersByOwner(ownerId);
+    if (myShareholders.length === 0) return;
+
+    // Tier 1: Fund Allocation (50% of Total Profit)
+    const reserveFund = totalProfit * 0.10;
+    const salaryFund = totalProfit * 0.20;
+    const bonusFund = totalProfit * 0.05;
+    const devFund = totalProfit * 0.15;
+    const totalFunds = reserveFund + salaryFund + bonusFund + devFund;
+
+    // Tier 2: Net Profit
+    const netProfit = totalProfit - totalFunds;
+
+    // Tier 3: Distribution (50% of Net Profit)
+    const distributedAmount = netProfit * 0.50;
+    const retainedAmount = netProfit * 0.50;
+
     const distributions = myShareholders.map(s => ({
       shareholderId: s.id,
       amount: (distributedAmount * s.sharePercentage) / 100
@@ -123,6 +175,12 @@ class EquityService {
       id: `dist-${Math.random().toString(36).substring(2, 9)}`,
       ownerId,
       totalProfit,
+      reserveFund,
+      salaryFund,
+      bonusFund,
+      devFund,
+      totalFunds,
+      netProfit,
       distributedAmount,
       retainedAmount,
       period,
