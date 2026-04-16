@@ -33,6 +33,24 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
     email: '',
     salaryBase: 0,
     salaryType: 'MONTHLY',
+    allowanceLunch: 0,
+    allowanceTravel: 0,
+    allowancePhone: 0,
+    allowanceResponsibility: 0,
+    allowanceUniform: 0,
+    allowanceHousing: 0,
+    allowanceOther: 0,
+    bonusStandard: 0,
+    bonusKPI: 0,
+    bonusTet: 0,
+    insuranceSocial: 0,
+    insuranceHealth: 0,
+    insuranceUnemployment: 0,
+    insuranceContribution: 0,
+    taxCode: '',
+    bankAccount: '',
+    bankName: '',
+    bankBranch: '',
     joinDate: new Date().toISOString().split('T')[0],
     status: 'ACTIVE'
   });
@@ -48,7 +66,15 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
   const handleAddEmployee = () => {
     equityService.addEmployee({ ...empForm, ownerId });
     setIsAddingEmployee(false);
-    setEmpForm({ name: '', role: '', phone: '', email: '', salaryBase: 0, salaryType: 'MONTHLY', joinDate: new Date().toISOString().split('T')[0], status: 'ACTIVE' });
+    setEmpForm({ 
+      name: '', role: '', phone: '', email: '', salaryBase: 0, salaryType: 'MONTHLY', 
+      allowanceLunch: 0, allowanceTravel: 0, allowancePhone: 0, 
+      allowanceResponsibility: 0, allowanceUniform: 0, allowanceHousing: 0, allowanceOther: 0,
+      bonusStandard: 0, bonusKPI: 0, bonusTet: 0,
+      insuranceSocial: 0, insuranceHealth: 0, insuranceUnemployment: 0, insuranceContribution: 0, 
+      taxCode: '', bankAccount: '', bankName: '', bankBranch: '',
+      joinDate: new Date().toISOString().split('T')[0], status: 'ACTIVE' 
+    });
   };
 
   const handleAddCost = () => {
@@ -179,24 +205,124 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
       {isAddingEmployee && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsAddingEmployee(false)} />
-          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in-95">
+          <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-black mb-6">Thêm nhân sự mới</h3>
-            <div className="space-y-4">
-              <input type="text" placeholder="Họ và tên" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.name} onChange={e => setEmpForm({...empForm, name: e.target.value})} />
-              <input type="text" placeholder="Vai trò (Vd: Đầu bếp, Phục vụ...)" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.role} onChange={e => setEmpForm({...empForm, role: e.target.value})} />
-              <div className="grid grid-cols-2 gap-4">
-                <input type="text" placeholder="Số điện thoại" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.phone} onChange={e => setEmpForm({...empForm, phone: e.target.value})} />
-                <input type="email" placeholder="Email" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.email} onChange={e => setEmpForm({...empForm, email: e.target.value})} />
+            <div className="space-y-6">
+              {/* Thông tin cơ bản */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Thông tin cơ bản</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input type="text" placeholder="Họ và tên" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.name} onChange={e => setEmpForm({...empForm, name: e.target.value})} />
+                  <input type="text" placeholder="Vai trò (Vd: Đầu bếp, Phục vụ...)" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.role} onChange={e => setEmpForm({...empForm, role: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input type="text" placeholder="Số điện thoại" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.phone} onChange={e => setEmpForm({...empForm, phone: e.target.value})} />
+                  <input type="email" placeholder="Email" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.email} onChange={e => setEmpForm({...empForm, email: e.target.value})} />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <input type="number" placeholder="Lương cơ bản" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.salaryBase} onChange={e => setEmpForm({...empForm, salaryBase: Number(e.target.value)})} />
-                <select className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.salaryType} onChange={e => setEmpForm({...empForm, salaryType: e.target.value as any})}>
-                  <option value="MONTHLY">Theo tháng</option>
-                  <option value="DAILY">Theo ngày</option>
-                  <option value="HOURLY">Theo giờ</option>
-                </select>
+
+              {/* Lương & Trợ cấp */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lương & Trợ cấp</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Lương cơ bản</label>
+                    <input type="number" placeholder="Lương cơ bản" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.salaryBase} onChange={e => setEmpForm({...empForm, salaryBase: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Hình thức trả</label>
+                    <select className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.salaryType} onChange={e => setEmpForm({...empForm, salaryType: e.target.value as any})}>
+                      <option value="MONTHLY">Theo tháng</option>
+                      <option value="DAILY">Theo ngày</option>
+                      <option value="HOURLY">Theo giờ</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Ăn trưa</label>
+                    <input type="number" placeholder="Ăn trưa" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.allowanceLunch} onChange={e => setEmpForm({...empForm, allowanceLunch: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Xăng xe</label>
+                    <input type="number" placeholder="Xăng xe" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.allowanceTravel} onChange={e => setEmpForm({...empForm, allowanceTravel: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Điện thoại</label>
+                    <input type="number" placeholder="Điện thoại" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.allowancePhone} onChange={e => setEmpForm({...empForm, allowancePhone: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Trách nhiệm</label>
+                    <input type="number" placeholder="Trách nhiệm" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.allowanceResponsibility} onChange={e => setEmpForm({...empForm, allowanceResponsibility: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Đồng phục</label>
+                    <input type="number" placeholder="Đồng phục" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.allowanceUniform} onChange={e => setEmpForm({...empForm, allowanceUniform: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Nhà ở</label>
+                    <input type="number" placeholder="Nhà ở" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.allowanceHousing} onChange={e => setEmpForm({...empForm, allowanceHousing: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Trợ cấp khác</label>
+                    <input type="number" placeholder="Khác" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.allowanceOther} onChange={e => setEmpForm({...empForm, allowanceOther: Number(e.target.value)})} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Thưởng cố định</label>
+                    <input type="number" placeholder="Thưởng" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.bonusStandard} onChange={e => setEmpForm({...empForm, bonusStandard: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Thưởng KPI</label>
+                    <input type="number" placeholder="KPI" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.bonusKPI} onChange={e => setEmpForm({...empForm, bonusKPI: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Thưởng Tết/Lễ</label>
+                    <input type="number" placeholder="Tết/Lễ" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.bonusTet} onChange={e => setEmpForm({...empForm, bonusTet: Number(e.target.value)})} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">BHXH</label>
+                    <input type="number" placeholder="BHXH" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.insuranceSocial} onChange={e => setEmpForm({...empForm, insuranceSocial: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">BHYT</label>
+                    <input type="number" placeholder="BHYT" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.insuranceHealth} onChange={e => setEmpForm({...empForm, insuranceHealth: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">BHTN</label>
+                    <input type="number" placeholder="BHTN" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.insuranceUnemployment} onChange={e => setEmpForm({...empForm, insuranceUnemployment: Number(e.target.value)})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 ml-2">Tổng đóng BH</label>
+                    <input type="number" placeholder="Tổng BH" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.insuranceContribution} onChange={e => setEmpForm({...empForm, insuranceContribution: Number(e.target.value)})} />
+                  </div>
+                </div>
               </div>
-              <button onClick={handleAddEmployee} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Lưu nhân sự</button>
+
+              {/* Tài khoản & Thuế */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tài khoản & Thuế</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input type="text" placeholder="Mã số thuế" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.taxCode} onChange={e => setEmpForm({...empForm, taxCode: e.target.value})} />
+                  <input type="text" placeholder="Số tài khoản" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.bankAccount} onChange={e => setEmpForm({...empForm, bankAccount: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input type="text" placeholder="Ngân hàng" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.bankName} onChange={e => setEmpForm({...empForm, bankName: e.target.value})} />
+                  <input type="text" placeholder="Chi nhánh" className="w-full p-3 bg-gray-50 rounded-xl outline-none" value={empForm.bankBranch} onChange={e => setEmpForm({...empForm, bankBranch: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <button onClick={handleAddEmployee} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
+                  Lưu nhân sự
+                </button>
+              </div>
             </div>
           </div>
         </div>

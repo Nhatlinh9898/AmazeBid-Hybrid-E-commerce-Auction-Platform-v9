@@ -498,6 +498,25 @@ export interface Employee {
   email?: string;
   salaryBase: number;
   salaryType: 'MONTHLY' | 'DAILY' | 'HOURLY';
+  // Detailed salary items
+  allowanceLunch: number;
+  allowanceTravel: number;
+  allowancePhone: number;
+  allowanceResponsibility?: number;
+  allowanceUniform?: number;
+  allowanceHousing?: number;
+  allowanceOther: number;
+  bonusStandard: number;
+  bonusKPI?: number;
+  bonusTet?: number;
+  insuranceSocial?: number;
+  insuranceHealth?: number;
+  insuranceUnemployment?: number;
+  insuranceContribution: number;
+  taxCode: string;
+  bankAccount: string;
+  bankName: string;
+  bankBranch?: string;
   joinDate: string;
   status: 'ACTIVE' | 'INACTIVE';
 }
