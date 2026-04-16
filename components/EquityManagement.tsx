@@ -32,9 +32,15 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
     name: '',
     capitalContribution: 0,
     assetContributionValue: 0,
+    assetDetails: '',
+    assetValueAtAddition: 0,
+    assetUsefulLife: 5,
     laborContributionValue: 0,
+    laborDetails: '',
     coreValueContributionValue: 0,
+    coreValueDetails: '',
     role: 'INVESTOR' as Shareholder['role'],
+    group: 'INVESTOR' as Shareholder['group'],
     status: 'ACTIVE' as Shareholder['status'],
     joinDate: new Date().toISOString().split('T')[0]
   });
@@ -117,8 +123,13 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
       name: '',
       capitalContribution: 0,
       assetContributionValue: 0,
+      assetDetails: '',
+      assetValueAtAddition: 0,
+      assetUsefulLife: 5,
       laborContributionValue: 0,
+      laborDetails: '',
       coreValueContributionValue: 0,
+      coreValueDetails: '',
       role: 'INVESTOR',
       group: 'INVESTOR',
       status: 'ACTIVE',
@@ -131,8 +142,13 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
       name: sh.name,
       capitalContribution: sh.capitalContribution,
       assetContributionValue: sh.assetContributionValue,
+      assetDetails: sh.assetDetails || '',
+      assetValueAtAddition: sh.assetValueAtAddition || 0,
+      assetUsefulLife: sh.assetUsefulLife || 5,
       laborContributionValue: sh.laborContributionValue,
+      laborDetails: sh.laborDetails || '',
       coreValueContributionValue: sh.coreValueContributionValue,
+      coreValueDetails: sh.coreValueDetails || '',
       role: sh.role,
       group: sh.group,
       status: sh.status,
@@ -381,6 +397,63 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                   </p>
                   <p className="text-[10px] text-orange-600 mt-2 italic">
                     * Giúp xây dựng niềm tin tuyệt đối giữa các cộng sự.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Valuation Breakdown & Ratios */}
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Tiền mặt (Cash)', val: shareholders.reduce((s, h) => s + h.capitalContribution, 0), color: 'bg-green-500' },
+                { label: 'Vật chất (Assets)', val: shareholders.reduce((s, h) => s + h.assetContributionValue, 0), color: 'bg-blue-500' },
+                { label: 'Công sức (Labor)', val: shareholders.reduce((s, h) => s + h.laborContributionValue, 0), color: 'bg-orange-500' },
+                { label: 'Cốt lõi (Core)', val: shareholders.reduce((s, h) => s + h.coreValueContributionValue, 0), color: 'bg-purple-500' },
+              ].map((item, idx) => (
+                <div key={idx} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{item.label}</p>
+                  <div className="flex items-end justify-between">
+                    <p className="text-sm font-black text-gray-900">{item.val.toLocaleString()} đ</p>
+                    <p className="text-xs font-black text-gray-400">{totalValuation > 0 ? ((item.val / totalValuation) * 100).toFixed(1) : 0}%</p>
+                  </div>
+                  <div className="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${item.color}`} style={{ width: `${totalValuation > 0 ? (item.val / totalValuation) * 100 : 0}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Contribution Valuation Formulas */}
+            <div className="mt-8 p-6 bg-blue-50 rounded-3xl border border-blue-100">
+              <h4 className="text-sm font-black text-blue-900 mb-4 flex items-center gap-2">
+                <Scale size={18} /> Công thức Định giá Đóng góp (Valuation Formulas)
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <h5 className="text-[10px] font-black text-blue-700 uppercase">1. Cơ sở Vật chất (Assets)</h5>
+                  <code className="text-[10px] block bg-white p-2 rounded border border-blue-200 font-bold text-blue-600">
+                    V_asset = V_init * (Life_rem / Life_total)
+                  </code>
+                  <p className="text-[9px] text-blue-800 leading-relaxed">
+                    Giá trị được tính dựa trên giá thị trường tại thời điểm góp và khấu hao theo thời gian sử dụng dự kiến.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <h5 className="text-[10px] font-black text-orange-700 uppercase">2. Giá trị Công sức (Labor)</h5>
+                  <code className="text-[10px] block bg-white p-2 rounded border border-orange-200 font-bold text-orange-600">
+                    V_labor = (Salary_m * Months) * Multiplier
+                  </code>
+                  <p className="text-[9px] text-orange-800 leading-relaxed">
+                    Quy đổi từ mức lương thị trường tương đương nhân với thời gian cam kết và hệ số kinh nghiệm (1.5x - 3x).
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <h5 className="text-[10px] font-black text-purple-700 uppercase">3. Giá trị Cốt lõi (Core)</h5>
+                  <code className="text-[10px] block bg-white p-2 rounded border border-purple-200 font-bold text-purple-600">
+                    V_core = Brand + IP + Network
+                  </code>
+                  <p className="text-[9px] text-purple-800 leading-relaxed">
+                    Định giá dựa trên giá trị thương hiệu, sở hữu trí tuệ, bí quyết kinh doanh và mạng lưới quan hệ sẵn có.
                   </p>
                 </div>
               </div>
@@ -709,6 +782,40 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                         placeholder="Máy móc, mặt bằng, trang thiết bị..."
                       />
                     </div>
+                    
+                    {form.assetContributionValue > 0 && (
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-blue-50 rounded-2xl border border-blue-100 space-y-3">
+                        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Chi tiết Vật chất</p>
+                        <input 
+                          type="text" 
+                          placeholder="Tên tài sản (VD: Máy pha cà phê, Mặt bằng...)"
+                          className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-blue-100"
+                          value={form.assetDetails}
+                          onChange={e => setForm({ ...form, assetDetails: e.target.value })}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[8px] text-blue-400 mb-1">Giá trị lúc thêm</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-blue-100"
+                              value={form.assetValueAtAddition || ''}
+                              onChange={e => setForm({ ...form, assetValueAtAddition: Number(e.target.value) })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[8px] text-blue-400 mb-1">Năm sử dụng dự kiến</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-blue-100"
+                              value={form.assetUsefulLife || ''}
+                              onChange={e => setForm({ ...form, assetUsefulLife: Number(e.target.value) })}
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
                     <div>
                       <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                         <TrendingUp size={10}/> Giá trị công sức (VND)
@@ -721,6 +828,19 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                         placeholder="Kỹ năng, thời gian, quản lý..."
                       />
                     </div>
+                    
+                    {form.laborContributionValue > 0 && (
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-orange-50 rounded-2xl border border-orange-100 space-y-2">
+                        <p className="text-[9px] font-black text-orange-400 uppercase tracking-widest">Mô tả Công sức</p>
+                        <textarea 
+                          placeholder="VD: Quản lý vận hành 12 tháng, Thiết kế hệ thống..."
+                          className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-orange-100 h-16"
+                          value={form.laborDetails}
+                          onChange={e => setForm({ ...form, laborDetails: e.target.value })}
+                        />
+                      </motion.div>
+                    )}
+
                     <div>
                       <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                         <Award size={10}/> Giá trị cốt lõi (VND)
@@ -733,6 +853,18 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                         placeholder="Thương hiệu, IP, Network, Bí quyết..."
                       />
                     </div>
+
+                    {form.coreValueContributionValue > 0 && (
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-purple-50 rounded-2xl border border-purple-100 space-y-2">
+                        <p className="text-[9px] font-black text-purple-400 uppercase tracking-widest">Mô tả Giá trị Cốt lõi</p>
+                        <textarea 
+                          placeholder="VD: Công thức độc quyền, Thương hiệu cá nhân, Mạng lưới đối tác..."
+                          className="w-full px-3 py-1.5 bg-white rounded-lg text-xs outline-none border border-purple-100 h-16"
+                          value={form.coreValueDetails}
+                          onChange={e => setForm({ ...form, coreValueDetails: e.target.value })}
+                        />
+                      </motion.div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

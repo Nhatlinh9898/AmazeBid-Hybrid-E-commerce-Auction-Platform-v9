@@ -518,9 +518,21 @@ export interface Shareholder {
   ownerId: string;
   name: string;
   capitalContribution: number; // Cash (Tiền mặt)
-  assetContributionValue: number; // Material basis (Cơ sở vật chất)
-  laborContributionValue: number; // Sweat equity (Công sức)
-  coreValueContributionValue: number; // Intangible assets (Giá trị cốt lõi)
+  
+  // Material basis (Cơ sở vật chất)
+  assetContributionValue: number; 
+  assetDetails?: string; // Chi tiết tài sản (Máy móc, mặt bằng...)
+  assetValueAtAddition?: number; // Giá trị tại thời điểm góp
+  assetUsefulLife?: number; // Thời gian sử dụng dự kiến (năm)
+  
+  // Sweat equity (Công sức)
+  laborContributionValue: number; 
+  laborDetails?: string; // Mô tả công sức (Quản lý, kỹ thuật...)
+  
+  // Intangible assets (Giá trị cốt lõi)
+  coreValueContributionValue: number; 
+  coreValueDetails?: string; // Mô tả giá trị cốt lõi (Thương hiệu, bí quyết...)
+  
   sharePercentage: number; // Calculated
   joinDate: string;
   role: 'FOUNDER' | 'INVESTOR' | 'ADVISOR' | 'EMPLOYEE';
