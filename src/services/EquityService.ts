@@ -196,6 +196,25 @@ class EquityService {
   getDistributionsByOwner(ownerId: string) {
     return this.distributions.filter(d => d.ownerId === ownerId);
   }
+
+  exitShareholder(shareholderId: string, exitValue: number, note: string) {
+    const index = this.shareholders.findIndex(s => s.id === shareholderId);
+    if (index !== -1) {
+      const sh = this.shareholders[index];
+      this.shareholders[index] = {
+        ...sh,
+        status: 'EXITED',
+        exitDate: new Date().toISOString().split('T')[0],
+        exitValue,
+        exitNote: note,
+        sharePercentage: 0 // Shares are returned or bought back
+      };
+      this.recalculateShares(sh.ownerId);
+      this.saveToStorage();
+      return this.shareholders[index];
+    }
+    return null;
+  }
 }
 
 export const equityService = new EquityService();

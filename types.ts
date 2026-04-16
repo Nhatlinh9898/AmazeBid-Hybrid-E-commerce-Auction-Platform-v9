@@ -543,7 +543,10 @@ export interface Shareholder {
   joinDate: string;
   role: 'FOUNDER' | 'INVESTOR' | 'ADVISOR' | 'EMPLOYEE';
   group: 'FOUNDER' | 'INVESTOR' | 'ESOP'; // New: Grouping for UI and legal
-  status: 'ACTIVE' | 'PASSIVE';
+  status: 'ACTIVE' | 'PASSIVE' | 'EXITED';
+  exitDate?: string;
+  exitValue?: number;
+  exitNote?: string;
 }
 
 export interface ProfitDistribution {

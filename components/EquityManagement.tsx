@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, PieChart, TrendingUp, Plus, Trash2, Edit2, Save, X, 
   DollarSign, Briefcase, Award, Calculator, History, 
-  Gavel, Scale, Landmark, ShieldCheck, ChevronRight
+  Gavel, Scale, Landmark, ShieldCheck, ChevronRight, LogOut
 } from 'lucide-react';
 import { Shareholder, ProfitDistribution } from '../types';
 import { equityService } from '../src/services/EquityService';
@@ -26,6 +26,8 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
   const [distributions, setDistributions] = useState<ProfitDistribution[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [isDistributing, setIsDistributing] = useState(false);
+  const [exitingShareholder, setExitingShareholder] = useState<Shareholder | null>(null);
+  const [exitNote, setExitNote] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -106,6 +108,11 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
     return initialContributions + totalReinvested;
   }, [shareholders, totalReinvested]);
 
+  const fairExitValue = useMemo(() => {
+    if (!exitingShareholder) return 0;
+    return (totalValuation * exitingShareholder.sharePercentage) / 100;
+  }, [exitingShareholder, totalValuation]);
+
   const handleAdd = () => {
     if (!form.name) return;
     equityService.addShareholder({ ...form, ownerId });
@@ -121,6 +128,14 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
 
   const handleDelete = (id: string) => {
     equityService.deleteShareholder(id);
+  };
+
+  const handleExit = () => {
+    if (exitingShareholder) {
+      equityService.exitShareholder(exitingShareholder.id, fairExitValue, exitNote);
+      setExitingShareholder(null);
+      setExitNote('');
+    }
   };
 
   const handleDistribute = () => {
@@ -334,7 +349,12 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                       </td>
                       <td className="py-4 text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => startEdit(sh)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={16}/></button>
+                          {sh.status !== 'EXITED' && (
+                            <>
+                              <button onClick={() => setExitingShareholder(sh)} className="p-2 text-orange-600 hover:bg-orange-50 rounded-xl transition-all" title="Thoái vốn"><LogOut size={16}/></button>
+                              <button onClick={() => startEdit(sh)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit2 size={16}/></button>
+                            </>
+                          )}
                           <button onClick={() => handleDelete(sh.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16}/></button>
                         </div>
                       </td>
@@ -344,6 +364,29 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
               </table>
             </div>
           </div>
+
+          {/* Exited Shareholders Section */}
+          {shareholders.some(s => s.status === 'EXITED') && (
+            <div className="mt-8 bg-gray-50 rounded-3xl p-6 border border-gray-200">
+              <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+                <History size={20} className="text-gray-400" /> Lịch sử Thoái vốn
+              </h3>
+              <div className="space-y-3">
+                {shareholders.filter(s => s.status === 'EXITED').map(sh => (
+                  <div key={sh.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-gray-900">{sh.name}</p>
+                      <p className="text-[10px] text-gray-400">Ngày thoái vốn: {sh.exitDate}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-orange-600">{sh.exitValue?.toLocaleString()} đ</p>
+                      <p className="text-[10px] text-gray-400 italic">{sh.exitNote}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Legal Rights & Obligations Section */}
           <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
@@ -872,7 +915,61 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
         {/* Sidebar Forms */}
         <div className="space-y-6">
           <AnimatePresence mode="wait">
-            {isAdding ? (
+            {exitingShareholder ? (
+              <motion.div 
+                key="exit-modal"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="bg-white rounded-3xl p-6 border border-orange-100 shadow-xl shadow-orange-50 sticky top-6"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-black text-gray-900 flex items-center gap-2">
+                    <LogOut size={18} className="text-orange-600"/> Thoái vốn cổ đông
+                  </h3>
+                  <button onClick={() => setExitingShareholder(null)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Cổ đông thoái vốn</p>
+                    <p className="font-black text-gray-900 text-lg">{exitingShareholder.name}</p>
+                    <p className="text-xs text-gray-500">Sở hữu: {exitingShareholder.sharePercentage.toFixed(1)}% cổ phần</p>
+                  </div>
+
+                  <div className="p-4 bg-gray-900 rounded-2xl text-white">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Giá trị thoái vốn dự kiến (Fair Value)</p>
+                    <p className="text-2xl font-black text-orange-400">{fairExitValue.toLocaleString()} đ</p>
+                    <p className="text-[9px] text-gray-400 mt-2 italic">
+                      * Tính toán dựa trên: (Giá trị Doanh nghiệp) x (% Sở hữu)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ghi chú thoái vốn</label>
+                    <textarea 
+                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 h-24"
+                      placeholder="Lý do thoái vốn, hình thức thanh toán..."
+                      value={exitNote}
+                      onChange={e => setExitNote(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
+                    <p className="text-[9px] text-blue-800 leading-relaxed">
+                      <strong>Lưu ý:</strong> Sau khi xác nhận, cổ phần của {exitingShareholder.name} sẽ được thu hồi và phân bổ lại cho các cổ đông còn lại theo tỷ lệ tương ứng.
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={handleExit}
+                    className="w-full py-3 bg-orange-600 text-white rounded-xl font-black flex items-center justify-center gap-2 hover:bg-orange-700 transition-all shadow-lg shadow-orange-100"
+                  >
+                    <LogOut size={18} /> Xác nhận Thoái vốn
+                  </button>
+                </div>
+              </motion.div>
+            ) : isAdding ? (
               <motion.div 
                 key="add-form"
                 initial={{ opacity: 0, x: 20 }}
