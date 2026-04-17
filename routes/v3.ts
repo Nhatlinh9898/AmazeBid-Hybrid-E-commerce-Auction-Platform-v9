@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db';
+import { PricingService } from '../services/pricingService';
 import { OrderStatus, ItemType, WalletTransaction, EscrowItem } from '../types';
 import Stripe from 'stripe';
 import bcrypt from 'bcryptjs';
@@ -988,14 +989,18 @@ router.get('/gamification/leaderboard', (req, res) => {
 });
 
 router.post('/pricing/calculate', (req, res) => {
-  const { costPrice, totalStock, markup = 0.2 } = req.body;
-  const suggestedPrice = costPrice * (1 + markup);
-  const plan = {
-    suggestedPrice,
-    estimatedProfit: (suggestedPrice - costPrice) * totalStock,
-    roi: markup * 100
-  };
-  sendSuccess(res, { plan, aiDescription: "Dựa trên phân tích thị trường, mức giá này tối ưu lợi nhuận." }, 'calculate_pricing');
+  const { costPrice, totalStock, markup = 0.25, productId } = req.body;
+  const products = db.get('products');
+  const product = products.find(p => p.id === productId);
+  
+  const plan = PricingService.calculatePlan(costPrice, totalStock, markup);
+  const aiDescription = PricingService.getAIStrategyDescription(plan, totalStock, product);
+
+  res.json({ 
+    success: true, 
+    data: { plan, aiDescription },
+    source: 'local_engine'
+  });
 });
 
 router.put('/products/:id/status', async (req, res) => {

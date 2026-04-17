@@ -5,6 +5,53 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-report, .printable-report * {
+    visibility: visible;
+  }
+  .printable-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    padding: 20px !important;
+    font-size: 12pt;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .bg-white {
+    background-color: white !important;
+  }
+  .bg-gray-50 {
+    background-color: #f9fafb !important;
+  }
+  .border {
+    border: 1px solid #e5e7eb !important;
+  }
+  .rounded-xl {
+    border-radius: 0 !important;
+  }
+  .shadow-sm, .shadow-lg {
+    shadow: none !important;
+  }
+  .print-full-height {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .page-break-before {
+    page-break-before: always;
+  }
+}
+
 @layer base {
   html, body, #root {
     height: 100%;

@@ -167,3 +167,57 @@ export function localSuggestCombos(products: Product[]): ComboSuggestion[] {
 
   return combos.slice(0, 3);
 }
+
+/**
+ * Phân tích lợi nhuận nội bộ
+ */
+export function localAnalyzeProfit(product: Product): { analysis: string, profitPerUnit: number, margin: number } {
+  const cost = product.costPrice || 0;
+  const price = product.price || 0;
+  const profit = price - cost;
+  const margin = price > 0 ? (profit / price) * 100 : 0;
+  const sold = product.sold || 0;
+  const stock = product.stock || 0;
+
+  let analysis = `[Local Model] Phân tích sản phẩm: ${product.title}\n`;
+  analysis += `- Lợi nhuận gộp: $${profit.toFixed(2)}/sp (${margin.toFixed(1)}%)\n`;
+  
+  if (margin < 15) {
+    analysis += "- Cảnh báo: Biên lợi nhuận đang ở mức thấp (<15%). Cần tối ưu chi phí nhập hoặc tăng giá bán.\n";
+  } else if (margin > 40) {
+    analysis += "- Tốt: Biên lợi nhuận rất cao (>40%). Có thể chạy thêm các chương trình khuyến mãi để đẩy nhanh doanh số.\n";
+  }
+
+  if (sold === 0 && stock > 20) {
+    analysis += "- Vấn đề: Tồn kho cao nhưng chưa có đơn hàng. Đề xuất: Chạy Flash Sale hoặc giảm giá 10-15% để kích cầu.\n";
+  } else if (sold > 0 && stock < 5) {
+    analysis += "- Cơ hội: Sản phẩm bán tốt nhưng sắp hết hàng. Đề xuất: Tăng giá nhẹ 5% để tối ưu lợi nhuận trong lúc chờ nhập hàng mới.\n";
+  } else if (sold > 20 && margin > 25) {
+    analysis += "- Hero Product: Sản phẩm chủ lực với biên lợi nhuận tốt và sức mua cao. Nên đầu tư thêm vào quảng cáo.\n";
+  }
+
+  return { analysis, profitPerUnit: profit, margin };
+}
+
+export function localSuggestPricing(product: Product): { suggestedPrice: number, reason: string } {
+  const cost = product.costPrice || 0;
+  const price = product.price || 0;
+  const sold = product.sold || 0;
+  const stock = product.stock || 0;
+  
+  let suggested: number;
+  let reason: string;
+
+  if (sold === 0 && stock > 0) {
+    suggested = cost * 1.15; // 15% margin for slow items
+    reason = "Giảm giá để kích cầu sản phẩm mới/tồn kho lâu.";
+  } else if (stock < 5 && sold > 10) {
+    suggested = price * 1.05;
+    reason = "Tăng giá nhẹ do cung < cầu (Stock thấp, Sold cao).";
+  } else {
+    suggested = cost * 1.3; // Default 30% margin
+    reason = "Mức giá tối ưu theo biên lợi nhuận mục tiêu 30%.";
+  }
+
+  return { suggestedPrice: Number(suggested.toFixed(2)), reason: "[Local Engine] " + reason };
+}

@@ -432,14 +432,13 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onAddProduct }) 
       minNegotiationPrice: parseFloat(formData.minNegotiationPrice) || (parseFloat(formData.price) * 0.8), // Default 80% if not set
       sold: 0,
       breakEvenQuantity: pricingPlan?.breakEvenQuantity || 0,
-      flashSalePrice: pricingPlan?.flashSalePrice || 0,
       isRecoveryPhase: formData.pricingStrategy === 'AUTO',
       systemFeeRate: 0.05,
       privacyMode: isHighValueAsset ? privacyMode : false,
       aiPriority: formData.aiPriority,
       aiTags: formData.aiTags.split(',').map(t => t.trim()).filter(t => t),
       isFlashSale: formData.isFlashSale,
-      flashSalePrice: parseFloat(formData.flashSalePrice) || 0,
+      flashSalePrice: formData.pricingStrategy === 'AUTO' ? (pricingPlan?.flashSalePrice || 0) : (parseFloat(formData.flashSalePrice) || 0),
       flashSaleEndTime: formData.flashSaleEndTime,
       packagingInfo: {
           weight: parseFloat(formData.weight) || 0,

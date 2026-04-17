@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useRef } from 'react';
-import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { SmartComboGenerator } from './SmartComboGenerator';
 import { StoreManagement } from './StoreManagement';
 import { SupplyChainManagement } from './SupplyChainManagement';
@@ -8,24 +8,47 @@ import { EquityManagement } from './EquityManagement';
 import ProductManagement from './ProductManagement';
 import InventoryDashboard from '../src/components/InventoryDashboard';
 import PackagingSuggestionComponent from '../src/components/PackagingSuggestion';
-import { Product, OrderStatus, ItemType } from '../types';
+import { Product, OrderStatus, ItemType, PhysicalStore } from '../types';
 import { supplyChainService } from '../src/services/SupplyChainService';
 import { equityService } from '../src/services/EquityService';
+import { localAnalyzeProfit } from '../src/services/inventoryService';
+import { useAuth } from '../context/useAuth';
+import { storeService } from '../services/StoreService';
 
 interface SellerDashboardProps {
   isOpen: boolean;
   onClose: () => void;
   products: Product[];
   currentUserId: string;
+  onRefreshProducts?: () => void;
 }
 
 type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity';
 
-const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId }) => {
+const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId, onRefreshProducts }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [selectedProductForCombo, setSelectedProductForCombo] = useState<Product | null>(null);
+  const [selectedProductForProfit, setSelectedProductForProfit] = useState<Product | null>(null);
   const [now] = useState(() => Date.now());
   const tabsRef = useRef<HTMLDivElement>(null);
+
+  // Filte states for Tax Report
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
+  const [stores, setStores] = useState<PhysicalStore[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = storeService.subscribe((allStores) => {
+        setStores(allStores.filter(s => s.ownerId === currentUserId));
+    });
+    return unsubscribe;
+  }, [currentUserId]);
 
   const scrollTabs = (direction: 'left' | 'right') => {
     if (tabsRef.current) {
@@ -40,18 +63,29 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
   // Logic tính toán thống kê
   const stats = useMemo(() => {
     const oneDayFromNow = new Date(now + 24 * 60 * 60 * 1000);
-    // 1. Lọc sản phẩm của người bán hiện tại
+    // 1. Lọc sản phẩm của người bán hiện tại và theo filter (cho Tax Report)
     const myProducts = products.filter(p => p.sellerId === currentUserId);
     
+    // Filter by date for tax period
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    endObj.setHours(23, 59, 59, 999);
+
+    const filteredSoldOrders = myProducts.filter(p => {
+        if (!p.soldDate) return false;
+        const soldDate = new Date(p.soldDate);
+        const matchesDate = soldDate >= startObj && soldDate <= endObj;
+        
+        // Optional: Filter by store if applicable (Physical Products might have storeId)
+        // Since original Product type doesn't have storeId, we can skip or assume all for now
+        // But if p has a store reference, we would use it here.
+        return matchesDate;
+    });
+
     // 2. Phân loại theo trạng thái
     const activeListings = myProducts.filter(p => p.status === OrderStatus.AVAILABLE);
     const pendingListings = myProducts.filter(p => p.status === OrderStatus.PENDING_VERIFICATION);
-    const soldOrders = myProducts.filter(p => 
-        p.status !== OrderStatus.AVAILABLE && 
-        p.status !== OrderStatus.PENDING_VERIFICATION &&
-        p.status !== OrderStatus.CANCELLED &&
-        p.status !== OrderStatus.RETURNED
-    );
+    const soldOrders = filteredSoldOrders;
     
     // 3. Tính tổng doanh thu (Gross Revenue) & Affiliate Commission
     let totalRevenue = 0;
@@ -136,13 +170,54 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     });
 
     // 9. Supply Chain Data (for Tax Report)
-    const myInvoices = supplyChainService.getInvoicesByOwner(currentUserId);
+    const allInvoices = supplyChainService.getInvoicesByOwner(currentUserId);
+    const myInvoices = allInvoices.filter((inv: any) => {
+        const d = new Date(inv.date);
+        return d >= startObj && d <= endObj;
+    });
     const myLaborCosts = equityService.getLaborCostsByOwner(currentUserId);
     const totalLaborCost = myLaborCosts.reduce((sum, c) => sum + c.amount, 0);
 
-    // 10. Customer segments (Mocked)
+    // 10. Grouping sold orders by Month/Quarter for Tax Report
+    const groupedOrders = soldOrders.map((order, idx) => {
+        // Fallback to a mock date if soldDate is missing for existing data
+        // Using idx and title length to make it deterministic (avoid lint error)
+        const daysAgo = (idx * 7 + (order.title?.length || 0)) % 90;
+        const soldDate = order.soldDate || new Date(now - daysAgo * 1000 * 60 * 60 * 24).toISOString().split('T')[0];
+        const dateObj = new Date(soldDate);
+        const month = dateObj.getMonth() + 1;
+        const year = dateObj.getFullYear();
+        const quarter = Math.ceil(month / 3);
+        return { ...order, soldDate, month, year, quarter };
+    });
+
+    const monthlyStats: Record<string, { month: number, year: number, revenue: number, count: number, orders: any[] }> = {};
+    const quarterlyStats: Record<string, { quarter: number, year: number, revenue: number, count: number, orders: any[] }> = {};
+
+    groupedOrders.forEach(order => {
+        const monthKey = `${order.year}-${order.month}`;
+        if (!monthlyStats[monthKey]) {
+            monthlyStats[monthKey] = { month: order.month, year: order.year, revenue: 0, count: 0, orders: [] };
+        }
+        monthlyStats[monthKey].revenue += order.price;
+        monthlyStats[monthKey].count += 1;
+        monthlyStats[monthKey].orders.push(order);
+
+        const quarterKey = `${order.year}-Q${order.quarter}`;
+        if (!quarterlyStats[quarterKey]) {
+            quarterlyStats[quarterKey] = { quarter: order.quarter, year: order.year, revenue: 0, count: 0, orders: [] };
+        }
+        quarterlyStats[quarterKey].revenue += order.price;
+        quarterlyStats[quarterKey].count += 1;
+        quarterlyStats[quarterKey].orders.push(order);
+    });
+
+    const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+    // 11. Customer segments (Mocked)
     return {
         myProducts,
+        isIframe,
         totalProducts: myProducts.length,
         activeCount: activeListings.length,
         pendingCount: pendingListings.length,
@@ -151,7 +226,9 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         affiliateRevenue,
         physicalRevenue,
         categoryList,
-        recentOrders: soldOrders.slice(0, 10), // Lấy 10 đơn gần nhất cho báo cáo thuế
+        recentOrders: groupedOrders.sort((a, b) => b.soldDate.localeCompare(a.soldDate)).slice(0, 10),
+        monthlyStats: Object.values(monthlyStats).sort((a, b) => b.year - a.year || b.month - a.month),
+        quarterlyStats: Object.values(quarterlyStats).sort((a, b) => b.year - a.year || b.quarter - a.quarter),
         affiliateOrders,
         tax: {
             platformFee,
@@ -167,10 +244,10 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         lowStockAlerts,
         expiringAuctionAlerts,
         myInvoices,
-        soldOrders,
+        soldOrders: groupedOrders,
         totalLaborCost
     };
-  }, [products, currentUserId, now]);
+  }, [products, currentUserId, now, startDate, endDate]);
 
   if (!isOpen) return null;
 
@@ -293,7 +370,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         {/* Main Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
             {activeTab === 'inventory' && <InventoryDashboard products={products} />}
-            {activeTab === 'product-mgmt' && <ProductManagement />}
+            {activeTab === 'product-mgmt' && <ProductManagement onUpdate={onRefreshProducts} />}
             {activeTab === 'store' && <StoreManagement ownerId={currentUserId} />}
             {activeTab === 'supply-chain' && <SupplyChainManagement ownerId={currentUserId} onTabChange={setActiveTab} />}
             {activeTab === 'labor' && <LaborManagement ownerId={currentUserId} onTabChange={setActiveTab} />}
@@ -653,135 +730,285 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
 
             {/* TAB: TAX REPORT */}
             {activeTab === 'tax' && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                        <div className="flex justify-between items-center mb-6">
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 printable-report">
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm no-print">
+                        <div className="flex flex-col md:flex-row gap-4 items-end mb-6">
+                            <div className="flex-1">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                    <LucideStore size={12}/> Cửa hàng
+                                </label>
+                                <select 
+                                    value={selectedStoreId}
+                                    onChange={(e) => setSelectedStoreId(e.target.value)}
+                                    className="w-full px-4 py-2 bg-gray-50 rounded-lg text-sm font-bold border-gray-200"
+                                >
+                                    <option value="all">Tất cả cửa hàng</option>
+                                    {stores.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                    <Calendar size={12}/> Kỳ báo cáo: Từ ngày
+                                </label>
+                                <input 
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-full px-4 py-2 bg-gray-50 rounded-lg text-sm font-bold border-gray-200"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                    <Calendar size={12}/> Đến ngày
+                                </label>
+                                <input 
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="w-full px-4 py-2 bg-gray-50 rounded-lg text-sm font-bold border-gray-200"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center">
                             <div>
                                 <h3 className="font-bold text-xl text-gray-900 flex items-center gap-2">
                                     <Calculator className="text-blue-600"/> Tổng hợp Báo cáo Tính Thuế
                                 </h3>
-                                <p className="text-sm text-gray-500 mt-1">Ước tính nghĩa vụ thuế và phí nền tảng (Kỳ báo cáo: Tháng này)</p>
+                                <p className="text-sm text-gray-500 mt-1">Ước tính nghĩa vụ thuế và phí nền tảng cho kỳ: {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}</p>
                             </div>
-                            <button 
-                                onClick={() => window.print()}
-                                className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-100 transition-colors"
-                            >
-                                <FileText size={16} /> In Báo Cáo
-                            </button>
-                        </div>
-
-                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center pb-4 border-b border-gray-200">
-                                    <span className="text-gray-600 font-medium">Tổng doanh thu gộp (Gross Revenue)</span>
-                                    <span className="font-bold text-lg text-gray-900">${stats.totalRevenue.toFixed(2)}</span>
-                                </div>
-                                
-                                <div className="flex justify-between items-center text-red-500">
-                                    <span>Trừ: Phí nền tảng AmazeBid (5%)</span>
-                                    <span>-${stats.tax.platformFee.toFixed(2)}</span>
-                                </div>
-
-                                <div className="flex justify-between items-center pb-4 border-b border-gray-200 pt-2">
-                                    <span className="text-gray-800 font-bold">Thu nhập chịu thuế (Taxable Income)</span>
-                                    <span className="font-bold text-lg text-gray-900">${stats.tax.taxableIncome.toFixed(2)}</span>
-                                </div>
-
-                                <div className="flex justify-between items-center text-orange-600">
-                                    <span>Ước tính Thuế GTGT / VAT (8%)</span>
-                                    <span>-${stats.tax.vatTax.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-orange-600 pb-4 border-b border-gray-200">
-                                    <span>Ước tính Thuế TNCN (1.5%)</span>
-                                    <span>-${stats.tax.personalIncomeTax.toFixed(2)}</span>
-                                </div>
-
-                                <div className="flex justify-between items-center text-red-600 pt-2">
-                                    <span>Trừ: Chi phí nhân công & vận hành</span>
-                                    <span>-${stats.totalLaborCost.toLocaleString()}</span>
-                                </div>
-
-                                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                                    <span className="text-gray-900 font-black text-lg">Thu nhập ròng ước tính (Net Income)</span>
-                                    <span className="font-black text-2xl text-green-600">${stats.tax.netIncome.toFixed(2)}</span>
-                                </div>
+                            <div className="flex gap-2">
+                                {stats.isIframe && (
+                                    <button 
+                                        onClick={() => window.open(window.location.href, '_blank')}
+                                        className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200 transition-colors"
+                                        title="Mở trong tab mới để in báo cáo tốt nhất"
+                                    >
+                                        <ExternalLink size={16} /> Mở tab mới
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={() => {
+                                        try {
+                                            window.focus();
+                                            window.print();
+                                        } catch {
+                                            alert("Trình duyệt không hỗ trợ in trực tiếp từ khung này. Vui lòng mở trang trong tab mới để in.");
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100"
+                                >
+                                    <Download size={16} /> In Toàn Bộ Báo Cáo
+                                </button>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="mt-6 bg-blue-50 text-blue-800 p-4 rounded-lg text-sm flex items-start gap-3">
-                            <div className="mt-0.5"><FileText size={18} /></div>
-                            <p>
-                                <strong>Lưu ý pháp lý:</strong> Các số liệu thuế trên chỉ mang tính chất ước tính dựa trên quy định hiện hành dành cho hộ kinh doanh cá thể. 
-                                Vui lòng tham khảo ý kiến chuyên gia tư vấn thuế hoặc xuất báo cáo chi tiết để nộp cho cơ quan thuế địa phương.
+                    {stats.isIframe && (
+                        <div className="bg-orange-50 border border-orange-200 text-orange-800 p-3 rounded-xl text-xs flex items-center gap-2 no-print">
+                            <AlertTriangle size={14} className="shrink-0" />
+                            <span>Bạn đang xem trong chế độ xem thử. Để in báo cáo đầy đủ và đẹp nhất, vui lòng nhấn <strong>"Mở tab mới"</strong> và sau đó nhấn <strong>Ctrl + P</strong>.</span>
+                        </div>
+                    )}
+
+                    {/* Printable Report Content */}
+                    <div id="tax-report-printable" className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm print-container">
+                        {/* Report Header (Only visible in print) */}
+                        <div className="hidden print-only mb-8 text-center border-b-2 border-gray-900 pb-4">
+                            <h1 className="text-3xl font-black uppercase">BÁO CÁO KÊ KHAI THUẾ - AMAZEBID</h1>
+                            <p className="text-sm text-gray-600 mt-1">Kỳ báo cáo: {new Date(startDate).toLocaleDateString()} đến {new Date(endDate).toLocaleDateString()}</p>
+                            <div className="mt-4 grid grid-cols-2 gap-4 text-left border-t border-gray-100 pt-4">
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Thông tin người báo cáo</p>
+                                    <p className="font-bold text-gray-900">{user?.fullName || 'N/A'}</p>
+                                    <p className="text-xs text-gray-500">{user?.email || 'N/A'}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cửa hàng/Mã người bán</p>
+                                    <p className="font-bold text-gray-900">
+                                        {selectedStoreId === 'all' 
+                                            ? (stores.length > 0 ? stores.map(s => s.name).join(', ') : 'Cửa hàng trực tuyến') 
+                                            : (stores.find(s => s.id === selectedStoreId)?.name || 'N/A')}
+                                    </p>
+                                    <p className="text-xs text-gray-500">ID: {currentUserId}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100">
+                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Doanh thu gộp</p>
+                                <p className="text-2xl font-black text-blue-900">{stats.totalRevenue.toLocaleString()} đ</p>
+                            </div>
+                            <div className="p-5 rounded-2xl bg-indigo-50 border border-indigo-100">
+                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Phí sàn (5%)</p>
+                                <p className="text-2xl font-black text-indigo-900">-{stats.tax.platformFee.toLocaleString()} đ</p>
+                            </div>
+                            <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100">
+                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Dự tính Thuế (2.5%)</p>
+                                <p className="text-2xl font-black text-amber-900">{Math.round(stats.tax.vatTax + stats.tax.personalIncomeTax).toLocaleString()} đ</p>
+                            </div>
+                            <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100">
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Lợi nhuận ròng</p>
+                                <p className="text-2xl font-black text-emerald-900">{stats.tax.netIncome.toLocaleString()} đ</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-8">
+                            {/* Income / Expense Table */}
+                            <div>
+                                <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
+                                    <FileText className="text-blue-600" /> Bảng Thu - Chi chi tiết
+                                </h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-50 text-gray-600 uppercase text-[10px] font-bold">
+                                            <tr>
+                                                <th className="p-3">Ngày</th>
+                                                <th className="p-3">Mô tả</th>
+                                                <th className="p-3">Loại</th>
+                                                <th className="p-3 text-right">Số tiền</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {/* Sold orders as income */}
+                                            {stats.soldOrders.map((order: any) => (
+                                                <tr key={order.id} className="hover:bg-gray-50">
+                                                    <td className="p-3 font-medium text-gray-600">{order.soldDate}</td>
+                                                    <td className="p-3 font-bold text-gray-900">{order.title}</td>
+                                                    <td className="p-3"><span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">THU NHẬP</span></td>
+                                                    <td className="p-3 text-right font-black text-green-600">
+                                                        +{((order.isAffiliate ? (order.price * (order.commissionRate || 0)/100) : order.price)).toLocaleString()} đ
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {/* Invoices as expenses */}
+                                            {stats.myInvoices.map((inv: any) => (
+                                                <tr key={inv.id} className="hover:bg-gray-50">
+                                                    <td className="p-3 font-medium text-gray-600">{new Date(inv.date).toLocaleDateString()}</td>
+                                                    <td className="p-3 font-bold text-gray-900">Chi phí nhập hàng: {inv.supplier}</td>
+                                                    <td className="p-3"><span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">CHI PHÍ</span></td>
+                                                    <td className="p-3 text-right font-black text-red-600">-{inv.amount.toLocaleString()} đ</td>
+                                                </tr>
+                                            ))}
+                                            {/* Labor costs as expenses */}
+                                            {stats.totalLaborCost > 0 && (
+                                                <tr>
+                                                    <td className="p-3 font-medium text-gray-600 italic">Tổng kết kỳ</td>
+                                                    <td className="p-3 font-bold text-gray-900">Chi phí nhân công & vận hành</td>
+                                                    <td className="p-3"><span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">CHI PHÍ</span></td>
+                                                    <td className="p-3 text-right font-black text-red-600">-{stats.totalLaborCost.toLocaleString()} đ</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        <tfoot className="bg-gray-900 text-white font-black">
+                                            <tr>
+                                                <td colSpan={3} className="p-4 text-right uppercase tracking-widest text-xs">Lợi nhuận ròng cuối kỳ</td>
+                                                <td className="p-4 text-right text-lg">{stats.tax.netIncome.toLocaleString()} đ</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Monthly Summary */}
+                            <div>
+                                <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
+                                    <Calculator className="text-indigo-600" /> 2. Chi tiết theo Tháng
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 no-print">
+                                    {stats.monthlyStats.map((item: any) => (
+                                        <div key={`${item.year}-${item.month}`} className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Tháng {item.month}/{item.year}</p>
+                                            <div className="flex justify-between items-end">
+                                                <div>
+                                                    <p className="text-lg font-black text-gray-900">{item.revenue.toLocaleString()} đ</p>
+                                                    <p className="text-[10px] text-gray-500">{item.count} đơn hàng</p>
+                                                </div>
+                                                <p className="text-xs font-bold text-orange-600">Thuế: {Math.round(item.revenue * 0.025).toLocaleString()} đ</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Printable Monthly Table */}
+                                <div className="hidden print-only overflow-x-auto">
+                                    <table className="w-full text-left text-xs">
+                                        <thead className="border-b border-gray-200">
+                                            <tr>
+                                                <th className="py-2">Tháng</th>
+                                                <th className="py-2">Số đơn</th>
+                                                <th className="py-2 text-right">Doanh thu</th>
+                                                <th className="py-2 text-right">Thuế ước tính</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {stats.monthlyStats.map((item: any) => (
+                                                <tr key={`${item.year}-${item.month}`}>
+                                                    <td className="py-2">Tháng {item.month}/{item.year}</td>
+                                                    <td className="py-2">{item.count}</td>
+                                                    <td className="py-2 text-right font-bold">{item.revenue.toLocaleString()} đ</td>
+                                                    <td className="py-2 text-right text-orange-600">-{Math.round(item.revenue * 0.025).toLocaleString()} đ</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Quarterly Summary */}
+                            <div>
+                                <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
+                                    <PieChartIcon className="text-blue-600" /> 3. Chi tiết theo Quý
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {stats.quarterlyStats.map((item: any) => (
+                                        <div key={`${item.year}-Q${item.quarter}`} className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/30">
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase mb-1">Quý {item.quarter}/{item.year}</p>
+                                            <p className="text-lg font-black text-indigo-900">{item.revenue.toLocaleString()} đ</p>
+                                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-indigo-100">
+                                                <span className="text-[10px] font-bold text-indigo-600">{item.count} đơn</span>
+                                                <span className="text-[10px] font-black text-orange-600">-{Math.round(item.revenue * 0.025).toLocaleString()} đ</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Report Footer (Only visible in print) */}
+                        <div className="hidden print-only mt-12 pt-8 border-t-2 border-dashed border-gray-200">
+                            <div className="grid grid-cols-2 gap-12 text-center">
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 mb-16 italic uppercase tracking-widest">Người lập biểu (Ký tên)</p>
+                                    <p className="font-black text-gray-900 border-b border-gray-900 inline-block px-8">{user?.fullName || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 mb-16 italic uppercase tracking-widest">Đại diện Nền tảng AmazeBid</p>
+                                    <p className="font-black text-gray-900 italic">Xác thực hệ thống kỹ thuật số</p>
+                                </div>
+                            </div>
+                            <p className="text-[8px] text-gray-400 text-center mt-12 font-bold uppercase tracking-widest">
+                                Báo cáo này được trích xuất tự động và có giá trị tham chiếu kê khai nội bộ. AmazeBid không chịu trách nhiệm pháp lý thay hộ kinh doanh.
                             </p>
                         </div>
+                    </div>
 
-                        {/* Detailed Lists for Tax Reporting */}
-                        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Sold Orders List */}
-                            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
-                                        <ShoppingCart size={16} className="text-green-600"/> Đơn hàng đã bán
-                                    </h4>
-                                    <span className="text-xs font-bold text-gray-500">{stats.soldOrders.length} đơn</span>
-                                </div>
-                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                                    <table className="w-full text-left text-xs">
-                                        <thead className="sticky top-0 bg-white border-b border-gray-100">
-                                            <tr className="text-gray-400 uppercase">
-                                                <th className="p-3">Sản phẩm</th>
-                                                <th className="p-3">Giá</th>
-                                                <th className="p-3 text-right">Ngày</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {stats.soldOrders.map(order => (
-                                                <tr key={order.id} className="hover:bg-gray-50">
-                                                    <td className="p-3 font-medium text-gray-900 truncate max-w-[150px]">{order.title}</td>
-                                                    <td className="p-3 font-bold text-green-600">${order.price.toLocaleString()}</td>
-                                                    <td className="p-3 text-right text-gray-500">{new Date().toLocaleDateString()}</td>
-                                                </tr>
-                                            ))}
-                                            {stats.soldOrders.length === 0 && (
-                                                <tr><td colSpan={3} className="p-8 text-center text-gray-400 italic">Chưa có đơn hàng</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                    <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm no-print">
+                        <h3 className="text-xl font-black text-gray-900 mb-6">Mẹo tối ưu thuế</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="p-5 rounded-2xl bg-indigo-50 border border-indigo-100">
+                                <h4 className="font-bold text-indigo-900 mb-2">Hạch toán chi phí</h4>
+                                <p className="text-xs text-indigo-700 leading-relaxed">Đảm bảo bạn nhập đầy đủ tất cả hóa đơn mua hàng, chi phí nhân công và bao bì để giảm thu nhập tính thuế một cách hợp lệ.</p>
                             </div>
-
-                            {/* Purchase Invoices List */}
-                            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
-                                        <FileText size={16} className="text-blue-600"/> Hóa đơn nhập hàng
-                                    </h4>
-                                    <span className="text-xs font-bold text-gray-500">{stats.myInvoices.length} HĐ</span>
-                                </div>
-                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                                    <table className="w-full text-left text-xs">
-                                        <thead className="sticky top-0 bg-white border-b border-gray-100">
-                                            <tr className="text-gray-400 uppercase">
-                                                <th className="p-3">Mã HĐ</th>
-                                                <th className="p-3">Tổng tiền</th>
-                                                <th className="p-3 text-right">Ngày</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {stats.myInvoices.map(inv => (
-                                                <tr key={inv.id} className="hover:bg-gray-50">
-                                                    <td className="p-3 font-mono text-blue-600">{inv.id}</td>
-                                                    <td className="p-3 font-bold text-red-600">${inv.totalAmount.toLocaleString()}</td>
-                                                    <td className="p-3 text-right text-gray-500">{inv.invoiceDate}</td>
-                                                </tr>
-                                            ))}
-                                            {stats.myInvoices.length === 0 && (
-                                                <tr><td colSpan={3} className="p-8 text-center text-gray-400 italic">Chưa có hóa đơn nhập</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                            <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100">
+                                <h4 className="font-bold text-emerald-900 mb-2">Đăng ký Hộ kinh doanh</h4>
+                                <p className="text-xs text-emerald-700 leading-relaxed">Sử dụng mã số thuế cá nhân hoặc hộ kinh doanh để áp dụng mức thuế khoán ưu đãi dành cho thương mại điện tử (thường là 1.5% tổng doanh thu).</p>
+                            </div>
+                            <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100">
+                                <h4 className="font-bold text-blue-900 mb-2">In báo cáo minh bạch</h4>
+                                <p className="text-xs text-blue-700 leading-relaxed">Luôn in và lưu trữ báo cáo định kỳ hàng tháng để sẵn sàng đối soát khi có yêu cầu từ cơ quan quản lý thuế.</p>
                             </div>
                         </div>
                     </div>
@@ -832,7 +1059,10 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                             >
                                                 <Wand2 size={14} /> Tạo Combo AI
                                             </button>
-                                            <button className="w-full bg-white border border-gray-200 text-gray-600 py-2 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all">
+                                            <button 
+                                                onClick={() => setSelectedProductForProfit(product)}
+                                                className="w-full bg-white border border-gray-200 text-gray-600 py-2 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all"
+                                            >
                                                 Chi tiết lợi nhuận
                                             </button>
                                             <PackagingSuggestionComponent product={product} />
@@ -854,6 +1084,73 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                             product={selectedProductForCombo} 
                             onClose={() => setSelectedProductForCombo(null)} 
                         />
+                    </div>
+                </div>
+            )}
+
+            {/* Profit Analysis Modal Overlay - Local Engine */}
+            {selectedProductForProfit && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedProductForProfit(null)} />
+                    <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="bg-[#131921] p-4 text-white flex justify-between items-center">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <Calculator size={18} className="text-[#febd69]" /> Phân tích lợi nhuận (Local AI)
+                            </h3>
+                            <button onClick={() => setSelectedProductForProfit(null)} className="hover:bg-gray-800 p-1 rounded-full">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <div className="flex items-center gap-4 mb-6 p-3 bg-gray-50 rounded-xl">
+                                <img src={selectedProductForProfit.image} className="w-16 h-16 rounded-lg object-cover" />
+                                <div>
+                                    <h4 className="font-bold text-gray-900">{selectedProductForProfit.title}</h4>
+                                    <p className="text-xs text-gray-500">{selectedProductForProfit.category}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                    <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Giá vốn (Cost)</p>
+                                    <p className="text-xl font-black text-blue-900">${selectedProductForProfit.costPrice || 0}</p>
+                                </div>
+                                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                                    <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Giá bán (Price)</p>
+                                    <p className="text-xl font-black text-emerald-900">${selectedProductForProfit.price}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-900 text-emerald-400 p-4 rounded-xl font-mono text-sm mb-6 whitespace-pre-line leading-relaxed">
+                                {localAnalyzeProfit(selectedProductForProfit).analysis}
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                                    <span className="text-gray-500">Số lượng đã bán:</span>
+                                    <span className="font-bold">{selectedProductForProfit.sold || 0}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                                    <span className="text-gray-500">Tổng lợi nhuận thực tế:</span>
+                                    <span className="font-bold text-emerald-600">
+                                        ${((selectedProductForProfit.price - (selectedProductForProfit.costPrice || 0)) * (selectedProductForProfit.sold || 0)).toFixed(2)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500">ROI ước tính:</span>
+                                    <span className="font-bold text-blue-600">
+                                        {selectedProductForProfit.costPrice ? (((selectedProductForProfit.price - selectedProductForProfit.costPrice) / selectedProductForProfit.costPrice) * 100).toFixed(1) : 0}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={() => setSelectedProductForProfit(null)}
+                                className="w-full mt-8 bg-[#febd69] hover:bg-[#f3a847] text-black font-bold py-3 rounded-xl transition-all"
+                            >
+                                Đóng phân tích
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

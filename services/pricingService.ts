@@ -1,4 +1,5 @@
 import { Product } from '../types';
+import { localAnalyzeProfit } from '../src/services/inventoryService';
 
 export interface PricingPlan {
   sellingPrice: number;
@@ -51,10 +52,15 @@ export class PricingService {
   }
 
   /**
-   * AI Skill: Generate a pricing strategy description
+   * AI Skill: Generate a pricing strategy description (Now Local)
    */
-  static getAIStrategyDescription(plan: PricingPlan, totalStock: number): string {
-    return `Chiến lược định giá AI:
+  static getAIStrategyDescription(plan: PricingPlan, totalStock: number, product?: Product): string {
+    if (product) {
+      const { analysis } = localAnalyzeProfit(product);
+      return analysis;
+    }
+    
+    return `Chiến lược định giá nội bộ:
 - Giá bán đề xuất: $${plan.sellingPrice} (Lợi nhuận gộp: $${(plan.sellingPrice - plan.flashSalePrice/1.1).toFixed(2)}/sp)
 - Điểm hòa vốn: Bán ${plan.breakEvenQuantity}/${totalStock} sản phẩm để thu hồi vốn.
 - Giai đoạn 2: Sau khi hòa vốn, ${totalStock - plan.breakEvenQuantity} sản phẩm còn lại sẽ được đẩy vào Flash Sale với giá cực sốc $${plan.flashSalePrice} để tối ưu hóa lợi nhuận và giải phóng kho.

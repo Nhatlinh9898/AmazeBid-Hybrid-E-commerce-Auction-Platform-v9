@@ -314,6 +314,7 @@ export interface Product {
   // AI Order Classification
   aiPriority?: 'URGENT' | 'NORMAL' | 'LOW';
   aiTags?: string[];
+  soldDate?: string; // ISO format: YYYY-MM-DD
   // Fraud Detection
   isFraudulent?: boolean;
   fraudReason?: string;

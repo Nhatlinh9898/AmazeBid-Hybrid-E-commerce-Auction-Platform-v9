@@ -7,7 +7,11 @@ import { Product, OrderStatus } from '../types';
 import { api } from '../services/api';
 import { useAuth } from '../context/useAuth';
 
-const ProductManagement: React.FC = () => {
+interface ProductManagementProps {
+  onUpdate?: () => void;
+}
+
+const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,15 +42,23 @@ const ProductManagement: React.FC = () => {
 
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct) return;
+    if (!editingProduct || !editingProduct.id) return;
 
     setIsSaving(true);
     try {
-      // In a real app, we would call an update API
-      // For now, we simulate success
+      await api.products.update(editingProduct.id, {
+        title: editingProduct.title,
+        price: editingProduct.price,
+        stock: editingProduct.stock,
+        category: editingProduct.category,
+        description: editingProduct.description,
+        status: editingProduct.status
+      });
+      
       setProducts(prev => prev.map(p => p.id === editingProduct.id ? editingProduct : p));
       setEditingProduct(null);
-      alert('Cập nhật sản phẩm thành công!');
+      if (onUpdate) onUpdate();
+      alert('Cập nhật sản phẩm thành công! Dữ liệu kho hàng cũng đã được đồng bộ.');
     } catch (error) {
       console.error('Error updating product:', error);
       alert('Lỗi khi cập nhật sản phẩm');
@@ -56,14 +68,16 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return;
+    if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này? Thao tác này sẽ xóa sản phẩm khỏi kho hàng.')) return;
 
     try {
-      // Simulate delete
+      await api.products.delete(id);
       setProducts(prev => prev.filter(p => p.id !== id));
-      alert('Đã xóa sản phẩm');
+      if (onUpdate) onUpdate();
+      alert('Đã xóa sản phẩm thành công');
     } catch (error) {
       console.error('Error deleting product:', error);
+      alert('Lỗi khi xóa sản phẩm');
     }
   };
 
