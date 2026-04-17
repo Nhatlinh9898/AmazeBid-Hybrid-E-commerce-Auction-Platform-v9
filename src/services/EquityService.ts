@@ -79,6 +79,13 @@ class EquityService {
     this.saveToStorage();
   }
 
+  updateEmployee(id: string, data: Partial<Omit<Employee, 'id' | 'ownerId'>>) {
+    const index = this.employees.findIndex(e => e.id === id);
+    if (index === -1) return;
+    this.employees[index] = { ...this.employees[index], ...data };
+    this.saveToStorage();
+  }
+
   getEmployeesByOwner(ownerId: string) {
     return this.employees.filter(e => e.ownerId === ownerId);
   }

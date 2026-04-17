@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Truck, Package, Plus, Trash2, Phone, User, 
-  MapPin, FileText, Star, PieChart as PieChartIcon
+  MapPin, FileText, Star, PieChart as PieChartIcon,
+  Edit2
 } from 'lucide-react';
 import { Supplier, RawMaterial, PurchaseInvoice } from '../types';
 import { supplyChainService } from '../src/services/SupplyChainService';
@@ -19,6 +20,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = supplyChainService.subscribe((data) => {
@@ -66,24 +68,66 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
   });
 
   const handleAddSupplier = () => {
-    supplyChainService.addSupplier({ ...supplierForm, ownerId });
-    setIsAdding(false);
-    setSupplierForm({ name: '', contactPerson: '', phone: '', email: '', address: '', website: '', rating: 5 });
+    if (editingId) {
+      supplyChainService.updateSupplier(editingId, supplierForm);
+    } else {
+      supplyChainService.addSupplier({ ...supplierForm, ownerId });
+    }
+    closeModal();
   };
 
   const handleAddMaterial = () => {
-    supplyChainService.addMaterial({ ...materialForm, ownerId });
+    if (editingId) {
+      supplyChainService.updateMaterial(editingId, materialForm);
+    } else {
+      supplyChainService.addMaterial({ ...materialForm, ownerId });
+    }
+    closeModal();
+  };
+
+  const closeModal = () => {
     setIsAdding(false);
+    setEditingId(null);
+    setSupplierForm({ name: '', contactPerson: '', phone: '', email: '', address: '', website: '', rating: 5 });
     setMaterialForm({ 
-      name: '', 
-      category: 'Nguyên liệu chính', 
-      unit: 'kg', 
-      costPrice: 0, 
-      currency: 'VND', 
-      supplierId: '', 
-      stock: 0, 
-      minStockAlert: 5 
+      name: '', category: 'Nguyên liệu chính', unit: 'kg', costPrice: 0, 
+      currency: 'VND', supplierId: '', stock: 0, minStockAlert: 5 
     });
+    setInvoiceForm({ 
+      supplierId: '', items: [], totalAmount: 0, currency: 'VND',
+      invoiceDate: new Date().toISOString().split('T')[0], status: 'PAID',
+      invoiceType: 'Hóa đơn VAT', purpose: 'Nhập hàng tồn kho', requesterName: '',
+      description: '', imageUrl: ''
+    });
+  };
+
+  const startEditMaterial = (mat: RawMaterial) => {
+    setEditingId(mat.id);
+    setMaterialForm({
+      name: mat.name,
+      category: mat.category,
+      unit: mat.unit,
+      costPrice: mat.costPrice,
+      currency: mat.currency,
+      supplierId: mat.supplierId,
+      stock: mat.stock,
+      minStockAlert: mat.minStockAlert
+    });
+    setIsAdding(true);
+  };
+
+  const startEditSupplier = (sup: Supplier) => {
+    setEditingId(sup.id);
+    setSupplierForm({
+      name: sup.name,
+      contactPerson: sup.contactPerson,
+      phone: sup.phone,
+      email: sup.email || '',
+      address: sup.address,
+      website: sup.website || '',
+      rating: sup.rating || 5
+    });
+    setIsAdding(true);
   };
 
   const handleAddInvoice = () => {
@@ -157,6 +201,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                 <div className="flex justify-between items-start mb-3">
                   <div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Package size={20}/></div>
                   <div className="flex gap-1">
+                    <button onClick={() => startEditMaterial(mat)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={14}/></button>
                     <button onClick={() => supplyChainService.deleteMaterial(mat.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
                   </div>
                 </div>
@@ -205,7 +250,10 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => supplyChainService.deleteSupplier(sup.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
+                  <div className="flex gap-2">
+                    <button onClick={() => startEditSupplier(sup)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={14}/></button>
+                    <button onClick={() => supplyChainService.deleteSupplier(sup.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
@@ -293,9 +341,11 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
       {/* Add Modal (Simplified for brevity) */}
       {isAdding && (
         <div className="fixed inset-0 z-[350] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsAdding(false)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
           <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in-95">
-            <h3 className="text-xl font-black mb-6">Thêm {activeSubTab === 'materials' ? 'Vật tư' : activeSubTab === 'suppliers' ? 'Nhà cung cấp' : 'Hóa đơn'}</h3>
+            <h3 className="text-xl font-black mb-6">
+              {editingId ? 'Chỉnh sửa' : 'Thêm'} {activeSubTab === 'materials' ? 'Vật tư/Dịch vụ' : activeSubTab === 'suppliers' ? 'Nhà cung cấp' : 'Hóa đơn'}
+            </h3>
             
             {activeSubTab === 'materials' && (
               <div className="space-y-4">
@@ -317,7 +367,10 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                     <option value="Linh kiện">Linh kiện</option>
                     <option value="Bao bì">Bao bì</option>
                     <option value="Văn phòng phẩm">Văn phòng phẩm</option>
-                    <option value="Dịch vụ">Dịch vụ</option>
+                    <option value="Điện & Nước">Điện & Nước</option>
+                    <option value="Nhiên liệu (Gas/Xăng)">Nhiên liệu (Gas/Xăng)</option>
+                    <option value="Hạ tầng (Mạng/Cloud/AI)">Hạ tầng (Mạng/Cloud/AI)</option>
+                    <option value="Dịch vụ thuê ngoài">Dịch vụ thuê ngoài</option>
                     <option value="Khác">Khác</option>
                   </select>
                   <select 
@@ -332,7 +385,10 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                     <option value="bộ">bộ (Set)</option>
                     <option value="thùng">thùng (Box)</option>
                     <option value="lít">lít (Liter)</option>
-                    <option value="giờ">giờ (Hour)</option>
+                    <option value="m3">m3 (Khối)</option>
+                    <option value="kWh">kWh (Điện)</option>
+                    <option value="tháng">tháng (Month)</option>
+                    <option value="lần">lần (Time)</option>
                   </select>
                 </div>
 
@@ -405,6 +461,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                   >
                     <option value="Hóa đơn VAT">Hóa đơn VAT</option>
                     <option value="Hóa đơn bán lẻ">Hóa đơn bán lẻ</option>
+                    <option value="Hợp đồng dịch vụ">Hợp đồng dịch vụ</option>
                     <option value="Phiếu thu">Phiếu thu</option>
                     <option value="Khác">Khác</option>
                   </select>
@@ -417,13 +474,20 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                   />
                 </div>
 
-                <input 
-                  type="text" 
-                  placeholder="Mục đích chi tiêu (VD: Nhập hàng tồn kho...)" 
+                <select 
                   className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm" 
                   value={invoiceForm.purpose} 
-                  onChange={e => setInvoiceForm({...invoiceForm, purpose: e.target.value})} 
-                />
+                  onChange={e => setInvoiceForm({...invoiceForm, purpose: e.target.value})}
+                >
+                  <option value="Nhập hàng tồn kho">Nhập hàng tồn kho</option>
+                  <option value="Thanh toán tiền điện">Thanh toán tiền điện</option>
+                  <option value="Thanh toán tiền nước">Thanh toán tiền nước</option>
+                  <option value="Cước Internet/Phần mềm">Cước Internet/Phần mềm</option>
+                  <option value="Phí AI & Cloud">Phí AI & Cloud</option>
+                  <option value="Nhiên liệu & Vận hành">Nhiên liệu & Vận hành</option>
+                  <option value="Phí dịch vụ ngoài">Phí dịch vụ ngoài</option>
+                  <option value="Khác">Khác</option>
+                </select>
 
                 <textarea 
                   placeholder="Mô tả chi tiết hóa đơn (Các mặt hàng chi trả...)" 

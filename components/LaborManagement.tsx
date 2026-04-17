@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, UserPlus, DollarSign, Briefcase, 
-  Trash2, Plus, Phone, Mail, TrendingDown, PieChart as PieChartIcon
+  Trash2, Plus, Phone, Mail, TrendingDown, PieChart as PieChartIcon,
+  Edit2
 } from 'lucide-react';
 import { Employee, LaborCost } from '../types';
 import { equityService } from '../src/services/EquityService';
@@ -16,6 +17,7 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [laborCosts, setLaborCosts] = useState<LaborCost[]>([]);
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [isAddingCost, setIsAddingCost] = useState(false);
 
   useEffect(() => {
@@ -64,8 +66,17 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
   });
 
   const handleAddEmployee = () => {
-    equityService.addEmployee({ ...empForm, ownerId });
+    if (editingEmployeeId) {
+      equityService.updateEmployee(editingEmployeeId, empForm);
+    } else {
+      equityService.addEmployee({ ...empForm, ownerId });
+    }
+    closeEmployeeModal();
+  };
+
+  const closeEmployeeModal = () => {
     setIsAddingEmployee(false);
+    setEditingEmployeeId(null);
     setEmpForm({ 
       name: '', role: '', phone: '', email: '', salaryBase: 0, salaryType: 'MONTHLY', 
       allowanceLunch: 0, allowanceTravel: 0, allowancePhone: 0, 
@@ -75,6 +86,39 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
       taxCode: '', bankAccount: '', bankName: '', bankBranch: '',
       joinDate: new Date().toISOString().split('T')[0], status: 'ACTIVE' 
     });
+  };
+
+  const startEditEmployee = (emp: Employee) => {
+    setEditingEmployeeId(emp.id);
+    setEmpForm({
+      name: emp.name,
+      role: emp.role,
+      phone: emp.phone,
+      email: emp.email || '',
+      salaryBase: emp.salaryBase,
+      salaryType: emp.salaryType,
+      allowanceLunch: emp.allowanceLunch || 0,
+      allowanceTravel: emp.allowanceTravel || 0,
+      allowancePhone: emp.allowancePhone || 0,
+      allowanceResponsibility: emp.allowanceResponsibility || 0,
+      allowanceUniform: emp.allowanceUniform || 0,
+      allowanceHousing: emp.allowanceHousing || 0,
+      allowanceOther: emp.allowanceOther || 0,
+      bonusStandard: emp.bonusStandard || 0,
+      bonusKPI: emp.bonusKPI || 0,
+      bonusTet: emp.bonusTet || 0,
+      insuranceSocial: emp.insuranceSocial || 0,
+      insuranceHealth: emp.insuranceHealth || 0,
+      insuranceUnemployment: emp.insuranceUnemployment || 0,
+      insuranceContribution: emp.insuranceContribution || 0,
+      taxCode: emp.taxCode || '',
+      bankAccount: emp.bankAccount || '',
+      bankName: emp.bankName || '',
+      bankBranch: emp.bankBranch || '',
+      joinDate: emp.joinDate,
+      status: emp.status
+    });
+    setIsAddingEmployee(true);
   };
 
   const handleAddCost = () => {
@@ -160,9 +204,14 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <button onClick={() => equityService.deleteEmployee(emp.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
-                          <Trash2 size={16}/>
-                        </button>
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => startEditEmployee(emp)} className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors">
+                            <Edit2 size={16}/>
+                          </button>
+                          <button onClick={() => equityService.deleteEmployee(emp.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                            <Trash2 size={16}/>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -204,9 +253,9 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
       {/* Modals */}
       {isAddingEmployee && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsAddingEmployee(false)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeEmployeeModal} />
           <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-black mb-6">Thêm nhân sự mới</h3>
+            <h3 className="text-xl font-black mb-6">{editingEmployeeId ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự mới'}</h3>
             <div className="space-y-6">
               {/* Thông tin cơ bản */}
               <div className="space-y-4">

@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { forecastDemand, suggestCombos, DemandForecast, ComboSuggestion } from '../services/inventoryService';
-import { TrendingUp, Wand2 } from 'lucide-react';
+import { 
+  forecastDemand, suggestCombos, 
+  localForecastDemand, localSuggestCombos,
+  DemandForecast, ComboSuggestion 
+} from '../services/inventoryService';
+import { TrendingUp, Wand2, Database, Zap } from 'lucide-react';
 
 interface InventoryDashboardProps {
   products: Product[];
@@ -11,14 +15,25 @@ const InventoryDashboard: React.FC<InventoryDashboardProps> = ({ products }) => 
   const [forecasts, setForecasts] = useState<DemandForecast[]>([]);
   const [combos, setCombos] = useState<ComboSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<'AI' | 'LOCAL'>('LOCAL');
 
   const handleRunAnalysis = async () => {
     setIsLoading(true);
     try {
-      const [forecastResult, comboResult] = await Promise.all([
-        forecastDemand(products),
-        suggestCombos(products)
-      ]);
+      let forecastResult: DemandForecast[] = [];
+      let comboResult: ComboSuggestion[] = [];
+
+      if (analysisMode === 'AI') {
+        [forecastResult, comboResult] = await Promise.all([
+          forecastDemand(products),
+          suggestCombos(products)
+        ]);
+      } else {
+        // Run local synchronous analysis
+        forecastResult = localForecastDemand(products);
+        comboResult = localSuggestCombos(products);
+      }
+      
       setForecasts(forecastResult);
       setCombos(comboResult);
     } catch (error) {
@@ -34,13 +49,33 @@ const InventoryDashboard: React.FC<InventoryDashboardProps> = ({ products }) => 
         <h2 className="text-xl font-bold flex items-center gap-2">
           <TrendingUp className="text-indigo-600" /> Quản lý Kho & Dự báo
         </h2>
-        <button 
-          onClick={handleRunAnalysis}
-          disabled={isLoading}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2"
-        >
-          <Wand2 size={16} /> {isLoading ? 'Đang phân tích...' : 'Chạy AI Phân tích'}
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex bg-gray-100 p-1 rounded-lg">
+            <button 
+              onClick={() => setAnalysisMode('LOCAL')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${analysisMode === 'LOCAL' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <Database size={14} /> Nội bộ
+            </button>
+            <button 
+              onClick={() => setAnalysisMode('AI')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${analysisMode === 'AI' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <Zap size={14} /> AI Cloud
+            </button>
+          </div>
+          <button 
+            onClick={handleRunAnalysis}
+            disabled={isLoading}
+            className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
+              analysisMode === 'LOCAL' 
+                ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
+                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
+            }`}
+          >
+            <Wand2 size={16} /> {isLoading ? 'Đang phân tích...' : analysisMode === 'LOCAL' ? 'Phân tích Dữ liệu' : 'Chạy AI Phân tích'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
