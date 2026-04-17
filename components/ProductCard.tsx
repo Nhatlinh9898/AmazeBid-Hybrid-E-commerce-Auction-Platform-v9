@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Star, Clock, Gavel, ShoppingCart, ExternalLink, Link2, Smartphone, MessageSquare, ShieldAlert, X } from 'lucide-react';
+import { Star, Clock, Gavel, ShoppingCart, ExternalLink, Link2, Smartphone, MessageSquare, ShieldAlert, X, Sparkles } from 'lucide-react';
 import { Product, ItemType } from '../types';
 import ARTryOnModal from './ARTryOnModal';
 import { AISalesAssistant } from './AISalesAssistant';
@@ -14,24 +14,35 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onPlaceBid, onChatWithSeller }) => {
   const [timeLeft, setTimeLeft] = useState<string>('');
+  const [auctionStatus, setAuctionStatus] = useState<'UPCOMING' | 'LIVE' | 'ENDED' | 'NONE'>('NONE');
   const [isARModalOpen, setIsARModalOpen] = useState(false);
   const [isNegotiationOpen, setIsNegotiationOpen] = useState(false);
 
   useEffect(() => {
-    if (product.type === ItemType.AUCTION && product.endTime) {
+    if (product.type === ItemType.AUCTION) {
       const timer = setInterval(() => {
         const now = new Date().getTime();
-        const end = new Date(product.endTime!).getTime();
-        const diff = end - now;
+        const start = product.startTime ? new Date(product.startTime).getTime() : now;
+        const end = product.endTime ? new Date(product.endTime).getTime() : 0;
 
-        if (diff <= 0) {
-          setTimeLeft('Ended');
-          clearInterval(timer);
-        } else {
+        if (now < start) {
+          setAuctionStatus('UPCOMING');
+          const diff = start - now;
           const hours = Math.floor(diff / (1000 * 60 * 60));
           const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
           const secs = Math.floor((diff % (1000 * 60)) / 1000);
           setTimeLeft(`${hours}h ${mins}m ${secs}s`);
+        } else if (now < end) {
+          setAuctionStatus('LIVE');
+          const diff = end - now;
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const secs = Math.floor((diff % (1000 * 60)) / 1000);
+          setTimeLeft(`${hours}h ${mins}m ${secs}s`);
+        } else {
+          setAuctionStatus('ENDED');
+          setTimeLeft('Kết thúc');
+          clearInterval(timer);
         }
       }, 1000);
       return () => clearInterval(timer);
@@ -57,8 +68,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onPlace
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         {product.type === ItemType.AUCTION && (
-          <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-            <Clock size={10} /> ĐANG ĐẤU GIÁ
+          <div className={`absolute top-2 left-2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md ${auctionStatus === 'UPCOMING' ? 'bg-indigo-600' : 'bg-red-600 animate-pulse'}`}>
+            <Clock size={10} /> 
+            {auctionStatus === 'UPCOMING' ? 'CHỜ ĐẤU GIÁ' : 'ĐANG ĐẤU GIÁ'}
           </div>
         )}
         <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
@@ -112,9 +124,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onPlace
         {product.type === ItemType.FIXED_PRICE ? (
           <div>
             <div className="flex items-baseline gap-1">
-              <span className="text-xs font-bold self-start mt-1">$</span>
-              <span className="text-xl font-bold">{Math.floor(product.price)}</span>
-              <span className="text-xs font-bold">{(product.price % 1).toFixed(2).substring(2)}</span>
+              <span className="text-xs font-bold self-start mt-1">{product.currency === 'VND' ? 'đ' : '$'}</span>
+              <span className="text-xl font-bold">{Math.floor(product.price).toLocaleString()}</span>
+              {product.currency !== 'VND' && <span className="text-xs font-bold">{(product.price % 1).toFixed(2).substring(2)}</span>}
+              {product.unit && <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">/ {product.unit}</span>}
             </div>
             
             {product.isAffiliate ? (
@@ -155,23 +168,45 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onPlace
           </div>
         ) : (
             // Auction Action
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[10px] text-gray-500 uppercase font-bold">Giá hiện tại</span>
-              <span className="text-xs font-bold text-red-600 flex items-center gap-1">
-                <Clock size={12} /> {timeLeft}
-              </span>
+          <div className="space-y-2">
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-[9px] font-bold text-gray-500 uppercase">Giá hiện tại</p>
+                <div className="flex items-baseline gap-1 -mt-1">
+                  <span className="text-xs font-bold text-gray-400">{product.currency === 'VND' ? 'đ' : '$'}</span>
+                  <span className="text-xl font-bold text-[#131921]">
+                    {(product.currentBid || product.price).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] font-bold text-indigo-600 uppercase">
+                  {auctionStatus === 'UPCOMING' ? 'Mở sau' : auctionStatus === 'LIVE' ? 'Còn lại' : 'Trạng thái'}
+                </p>
+                <p className={`text-xs font-black ${auctionStatus === 'LIVE' ? 'text-red-600' : 'text-[#131921]'}`}>{timeLeft}</p>
+              </div>
             </div>
-            <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-lg font-bold text-red-600">${product.currentBid?.toFixed(2)}</span>
-              <span className="text-[10px] text-gray-500">({product.bidCount} lượt trả)</span>
-            </div>
+            
             <button 
               onClick={handleAction}
-              className="w-full bg-[#131921] hover:bg-black text-white text-xs py-2 rounded-full font-medium flex items-center justify-center gap-2"
+              disabled={auctionStatus === 'UPCOMING' || auctionStatus === 'ENDED'}
+              className={`w-full text-xs py-2 rounded-full font-bold flex items-center justify-center gap-2 shadow-sm transition-all ${
+                auctionStatus === 'UPCOMING' 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' 
+                  : auctionStatus === 'ENDED'
+                    ? 'bg-gray-800 text-white opacity-50 cursor-not-allowed'
+                    : 'bg-[#febd69] hover:bg-[#f3a847] text-black ring-2 ring-[#febd69] ring-offset-1'
+              }`}
             >
-              <Gavel size={14} /> Trả giá ngay
+              <Gavel size={14} /> 
+              {auctionStatus === 'UPCOMING' ? 'CHỜ MỞ THẦU' : auctionStatus === 'ENDED' ? 'ĐÃ KẾT THÚC' : 'TRẢ GIÁ NGAY'}
             </button>
+            <p className="text-[9px] text-center text-gray-400 font-medium">
+              {auctionStatus === 'UPCOMING' 
+                ? 'Sản phẩm đang trong giai đoạn thẩm định' 
+                : `${product.bidCount || 0} lượt trả giá`
+              }
+            </p>
           </div>
         )}
       </div>

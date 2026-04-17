@@ -123,7 +123,12 @@ router.post('/bids', async (req, res) => {
     const product = products[productIndex];
     
     if (product.type !== ItemType.AUCTION) throw new Error('Sản phẩm không phải dạng đấu giá');
-    if (product.endTime && new Date(product.endTime) < new Date()) throw new Error('Phiên đấu giá đã kết thúc');
+    
+    const now = new Date();
+    if (product.startTime && new Date(product.startTime) > now) {
+      throw new Error('Phiên đấu giá chưa bắt đầu (Đang trong giai đoạn thẩm định)');
+    }
+    if (product.endTime && new Date(product.endTime) < now) throw new Error('Phiên đấu giá đã kết thúc');
     
     const currentPrice = product.currentBid || product.price;
     if (amount <= currentPrice) throw new Error('Giá đặt phải cao hơn giá hiện tại');

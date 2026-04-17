@@ -29,5 +29,9 @@ You are acting as a Senior Full-Stack Engineer specializing in Hybrid E-commerce
 - **DO NOT** expose sensitive API keys (like Stripe Secret or Gemini API Key) to the client-side code. Always proxy them through the Express backend.
 - **DO NOT** write long-winded explanations for basic React or TypeScript concepts. Be concise and action-oriented.
 
-## 5. Agent Skills
+## 5. Operational Maintenance
+- **Memory Management:** If the build fails with exit status 137 (OOM), temporarily disable the P2P Relay in `server.ts`. 
+- **P2P Relay:** Refer to `P2P_OPERATIONS.md` for instructions on how to toggle the GunDB mesh network.
+
+## 6. Agent Skills
 - If you need deep architectural understanding of the Auction logic, P2P Mesh, or Escrow payments, activate the `amazebid-core` skill.

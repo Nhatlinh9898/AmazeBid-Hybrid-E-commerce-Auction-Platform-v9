@@ -279,7 +279,9 @@ export interface Product {
   image: string;
   category: string;
   type: ItemType;
+  startTime?: string; // New: Auction start time (Warm-up period)
   endTime?: string; 
+  autoRestart?: boolean; // New: Auto-restart auction if no bids
   rating: number;
   reviewCount: number;
   status: OrderStatus;
@@ -296,6 +298,8 @@ export interface Product {
   flashSaleEndTime?: string;
   stock?: number;
   sold?: number;
+  unit?: string;         // New: Unit (Cái, Kg, Bộ...)
+  currency?: string;     // New: Currency (VND, USD, EUR...)
   // Automatic Pricing & Recovery Logic
   costPrice?: number;         // Real value/Cost per unit
   totalStock?: number;        // Initial stock

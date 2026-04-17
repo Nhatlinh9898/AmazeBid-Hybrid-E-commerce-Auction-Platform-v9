@@ -5,7 +5,8 @@ import { Server } from 'socket.io';
 import http from 'http';
 import cors from 'cors';
 import v3Router from './routes/v3';
-import { p2p } from './services/p2pService';
+// import { p2p } from './services/p2pService';
+import { db } from './db';
 
 async function startServer() {
   const app = express();
@@ -122,7 +123,50 @@ async function startServer() {
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
     
+    // Background Auction Manager (Runs every 1 minute)
+    setInterval(async () => {
+      try {
+        const products = db.get('products') || [];
+        const now = new Date();
+        let changed = false;
+
+        const updatedProducts = products.map((p: any) => {
+          if (p.type === 'AUCTION' && p.endTime && new Date(p.endTime) < now) {
+            // Auction ended. Check bids.
+            const bidCount = p.bidCount || 0;
+            if (bidCount === 0 && p.autoRestart) {
+              console.log(`[AuctionManager] Auto-restarting auction for ${p.title} (${p.id})`);
+              changed = true;
+              
+              const oldStart = p.startTime ? new Date(p.startTime).getTime() : now.getTime();
+              const oldEnd = new Date(p.endTime).getTime();
+              const duration = oldEnd - oldStart;
+              
+              // Set new start to now and extend end by the same duration
+              return {
+                ...p,
+                startTime: now.toISOString(),
+                endTime: new Date(now.getTime() + duration).toISOString(),
+                currentBid: p.price, // Reset to starting price
+                bidHistory: [],
+                status: 'AVAILABLE'
+              };
+            }
+          }
+          return p;
+        });
+
+        if (changed) {
+          await db.update('products', () => updatedProducts);
+          io.emit('auction:restarted', { message: 'Some auctions have been restarted' });
+        }
+      } catch (err) {
+        console.error('[AuctionManager] Error:', err);
+      }
+    }, 60000); // 1 minute
+
     // Initialize P2P Relay Node after server starts
+    /*
     try {
       console.log('[Server] Initializing P2P Relay Node...');
       p2p.initServer(server);
@@ -130,6 +174,7 @@ async function startServer() {
     } catch (err: any) {
       console.error('[Server] P2P Initialization failed:', err.message);
     }
+    */
   });
 }
 

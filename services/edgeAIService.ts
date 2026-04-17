@@ -119,6 +119,88 @@ class EdgeAIService {
   }
 
   /**
+   * Khởi tạo mô hình Phân loại (Sử dụng mô hình Zero-shot cực nhẹ)
+   */
+  async initClassifier() {
+    if (this.classifier || this.isInitializing) return;
+    this.isInitializing = true;
+    try {
+      this.classifier = await pipeline('zero-shot-classification', 'Xenova/mobilebert-uncased-mnli', {
+        device: 'webgpu',
+      });
+    } catch {
+      this.classifier = await pipeline('zero-shot-classification', 'Xenova/mobilebert-uncased-mnli');
+    } finally {
+      this.isInitializing = false;
+    }
+  }
+
+  /**
+   * Phân loại danh mục sản phẩm cục bộ
+   */
+  async classify(text: string, candidateLabels: string[]): Promise<string | null> {
+    await this.initClassifier();
+    if (!this.classifier) return null;
+
+    try {
+      const output = await this.classifier(text, candidateLabels);
+      return output.labels[0];
+    } catch (error) {
+      console.error('Edge Classification Error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Tìm kiếm thông minh trong kho dữ liệu cục bộ (Local Data Vault)
+   * Kết hợp Phân loại AI và Thuật toán so khớp chuỗi
+   */
+  async findBestMatch(input: string, items: any[]): Promise<any | null> {
+    if (!input || items.length === 0) return null;
+
+    try {
+      // 1. Dùng AI phân loại input để thu hẹp phạm vi
+      const categories = Array.from(new Set(items.map(item => item.category))).filter((c): c is string => !!c);
+      const predictedCategory = await this.classify(input, categories);
+
+      // 2. Lọc các item thuộc danh mục dự đoán (nếu độ tin cậy cao - ở đây lấy top 1)
+      let candidateItems = items;
+      if (predictedCategory) {
+        candidateItems = items.filter(item => item.category === predictedCategory);
+      }
+
+      // 3. Sử dụng Fuzzy Match đơn giản (Jaccard Similarity trên các từ)
+      const inputWords = new Set(input.toLowerCase().split(/\s+/));
+      
+      let bestMatch = null;
+      let maxScore = 0;
+
+      for (const item of candidateItems) {
+        const itemWords = new Set(item.title.toLowerCase().split(/\s+/));
+        const intersection = new Set([...inputWords].filter(x => itemWords.has(x)));
+        const union = new Set([...inputWords, ...itemWords]);
+        const score = intersection.size / union.size;
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestMatch = item;
+        }
+      }
+
+      // Nếu điểm quá thấp, thử lại trên toàn bộ kho (không quan tâm category)
+      if (maxScore < 0.1 && candidateItems.length !== items.length) {
+        return this.findBestMatch(input, items.filter(i => i.category !== predictedCategory));
+      }
+
+      return maxScore > 0 ? bestMatch : null;
+    } catch (error) {
+      console.error('Edge Semantic Search Error:', error);
+      // Fallback: Tìm theo từ khóa đơn giản
+      return null;
+    }
+  }
+
+  /**
    * Thực hiện Rewrite nội dung tại Edge
    */
   async rewrite(text: string, instruction: string): Promise<string | null> {
