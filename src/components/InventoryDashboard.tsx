@@ -5,17 +5,40 @@ import {
   localForecastDemand, localSuggestCombos,
   DemandForecast, ComboSuggestion 
 } from '../services/inventoryService';
-import { TrendingUp, Wand2, Database, Zap } from 'lucide-react';
+import { TrendingUp, Wand2, Database, Zap, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { marketplaceSyncService } from '../../services/marketplaceSyncService';
+import { useAuth } from '../../context/useAuth';
 
 interface InventoryDashboardProps {
   products: Product[];
+  onRefreshProducts?: () => void;
 }
 
-const InventoryDashboard: React.FC<InventoryDashboardProps> = ({ products }) => {
+const InventoryDashboard: React.FC<InventoryDashboardProps> = ({ products, onRefreshProducts }) => {
+  const { user } = useAuth();
   const [forecasts, setForecasts] = useState<DemandForecast[]>([]);
   const [combos, setCombos] = useState<ComboSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ updated: number, total: number } | null>(null);
   const [analysisMode, setAnalysisMode] = useState<'AI' | 'LOCAL'>('LOCAL');
+
+  const handleSyncMarketplace = async () => {
+    if (!user) return;
+    setIsSyncing(true);
+    try {
+      const result = await marketplaceSyncService.syncInventory(user.id);
+      setSyncResult(result);
+      if (result.updated > 0 && onRefreshProducts) {
+        onRefreshProducts();
+      }
+      setTimeout(() => setSyncResult(null), 5000);
+    } catch (error) {
+      console.error("Sync failed:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleRunAnalysis = async () => {
     setIsLoading(true);
@@ -50,6 +73,20 @@ const InventoryDashboard: React.FC<InventoryDashboardProps> = ({ products }) => 
           <TrendingUp className="text-indigo-600" /> Quản lý Kho & Dự báo
         </h2>
         <div className="flex items-center gap-4">
+          {syncResult && (
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100 animate-in fade-in slide-in-from-right-4">
+              <CheckCircle2 size={12}/> Đã đồng bộ {syncResult.updated}/{syncResult.total} món
+            </div>
+          )}
+          <button 
+            onClick={handleSyncMarketplace}
+            disabled={isSyncing}
+            className="p-2 border border-orange-200 text-orange-600 rounded-lg hover:bg-orange-50 transition-all flex items-center gap-2 text-xs font-bold"
+            title="Đồng bộ sản phẩm Store với Marketplace"
+          >
+            <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ Store'}
+          </button>
           <div className="flex bg-gray-100 p-1 rounded-lg">
             <button 
               onClick={() => setAnalysisMode('LOCAL')}

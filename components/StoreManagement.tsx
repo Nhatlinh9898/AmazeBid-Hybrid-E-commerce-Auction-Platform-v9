@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Edit2, Save, ShoppingBag, Store as LucideStore, Loader2, Image as ImageIcon, Check, AlertCircle, Calculator, ChevronRight, Scale } from 'lucide-react';
-import { PhysicalStore, StoreMenuItem, RawMaterial, ProductRecipe, ProductIngredient } from '../types';
+import { X, Plus, Trash2, Edit2, Save, ShoppingBag, Store as LucideStore, Loader2, Image as ImageIcon, Check, AlertCircle, Calculator, ChevronRight, Scale, Globe } from 'lucide-react';
+import { PhysicalStore, StoreMenuItem, RawMaterial, ProductRecipe, ProductIngredient, ItemType, OrderStatus } from '../types';
 import { storeService } from '../services/StoreService';
 import { supplyChainService } from '../src/services/SupplyChainService';
+import { api } from '../services/api';
 
 interface StoreManagementProps {
   ownerId: string;
+  onRefreshProducts?: () => void;
 }
 
-export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId }) => {
+export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRefreshProducts }) => {
   const [stores, setStores] = useState<PhysicalStore[]>([]);
   const [selectedStore, setSelectedStore] = useState<PhysicalStore | null>(null);
   const [isEditingMenu, setIsEditingMenu] = useState(false);
@@ -18,6 +20,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId }) => 
   const [isLoading, setIsLoading] = useState(true);
   const [availableMaterials, setAvailableMaterials] = useState<RawMaterial[]>([]);
   const [showRecipeEditor, setShowRecipeEditor] = useState(false);
+  const [isPublishing, setIsPublishing] = useState<string | null>(null);
 
   // Form state for new/edit item
   const [itemForm, setItemForm] = useState<{
@@ -112,6 +115,48 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId }) => 
     itemForm.recipe.totalCost,
     itemForm.recipe.costPerPortion
   ]);
+
+  const handlePublishToMarketplace = async (item: StoreMenuItem) => {
+    if (!selectedStore) return;
+    
+    setIsPublishing(item.id);
+    try {
+      // Check if product already exists to avoid duplicates
+      const { products } = await api.products.getAll();
+      const existingProduct = products.find(p => p.storeId === selectedStore.id && p.menuItemId === item.id);
+      
+      if (existingProduct) {
+        alert('Món này đã được đăng bán trên Marketplace!');
+        return;
+      }
+
+      // Create new product
+      await api.products.create({
+        title: item.name,
+        description: item.description || `Món ăn đặc sắc từ ${selectedStore.name}. Địa chỉ: ${selectedStore.address}`,
+        price: item.price,
+        costPrice: item.recipe?.costPerPortion || item.price * 0.5,
+        image: item.image,
+        category: item.category || 'Food & Drink',
+        type: ItemType.FIXED_PRICE,
+        status: OrderStatus.AVAILABLE,
+        sellerId: ownerId,
+        storeId: selectedStore.id,
+        menuItemId: item.id,
+        stock: 999, // Food items are usually produced on demand
+        rating: 4.5,
+        reviewCount: 0
+      });
+
+      alert(`Đã đăng bán "${item.name}" lên Marketplace thành công!`);
+      if (onRefreshProducts) onRefreshProducts();
+    } catch (error) {
+      console.error('Error publishing to marketplace:', error);
+      alert('Lỗi khi đăng bán lên Marketplace');
+    } finally {
+      setIsPublishing(null);
+    }
+  };
 
   const handleUpdateStore = () => {
     if (!selectedStore) return;
@@ -341,6 +386,13 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId }) => 
                       <div className="flex justify-between items-start">
                         <h4 className="font-bold text-gray-900 truncate">{item.name}</h4>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => handlePublishToMarketplace(item)} 
+                            disabled={isPublishing === item.id}
+                            className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg title='Đăng lên Marketplace'"
+                          >
+                            {isPublishing === item.id ? <Loader2 size={14} className="animate-spin"/> : <Globe size={14}/>}
+                          </button>
                           <button onClick={() => startEdit(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 size={14}/></button>
                           <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
                         </div>

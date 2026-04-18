@@ -369,9 +369,9 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
 
         {/* Main Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-            {activeTab === 'inventory' && <InventoryDashboard products={products} />}
+            {activeTab === 'inventory' && <InventoryDashboard products={products} onRefreshProducts={onRefreshProducts} />}
             {activeTab === 'product-mgmt' && <ProductManagement onUpdate={onRefreshProducts} />}
-            {activeTab === 'store' && <StoreManagement ownerId={currentUserId} />}
+            {activeTab === 'store' && <StoreManagement ownerId={currentUserId} onRefreshProducts={onRefreshProducts} />}
             {activeTab === 'supply-chain' && <SupplyChainManagement ownerId={currentUserId} onTabChange={setActiveTab} />}
             {activeTab === 'labor' && <LaborManagement ownerId={currentUserId} onTabChange={setActiveTab} />}
             {activeTab === 'equity' && (

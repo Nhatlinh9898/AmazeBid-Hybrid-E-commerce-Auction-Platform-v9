@@ -14,7 +14,8 @@ export enum OrderStatus {
   DELIVERED = 'DELIVERED',
   COMPLETED = 'COMPLETED',
   RETURNED = 'RETURNED',
-  CANCELLED = 'CANCELLED'
+  CANCELLED = 'CANCELLED',
+  OUT_OF_STOCK = 'OUT_OF_STOCK'
 }
 
 export interface Bid {
@@ -315,6 +316,9 @@ export interface Product {
   minNegotiationPrice?: number; // Minimum price the AI can accept
   isNegotiable?: boolean;
   privacyMode?: boolean;
+  // Store Integration
+  storeId?: string;
+  menuItemId?: string;
   // AI Order Classification
   aiPriority?: 'URGENT' | 'NORMAL' | 'LOW';
   aiTags?: string[];
