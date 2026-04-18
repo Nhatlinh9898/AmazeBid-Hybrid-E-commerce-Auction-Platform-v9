@@ -246,10 +246,10 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
             </div>
             <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase tracking-widest">Giá trị Doanh nghiệp</span>
           </div>
-          <h3 className="text-3xl font-black mb-1">{totalValuation.toLocaleString()} đ</h3>
+          <h3 className="text-3xl font-black mb-1">{(totalValuation || 0).toLocaleString()} đ</h3>
           <div className="flex flex-col gap-1">
-            <p className="text-blue-100 text-[10px] font-medium">Vốn góp: {(totalValuation - totalReinvested).toLocaleString()} đ</p>
-            <p className="text-green-300 text-[10px] font-bold">Tích lũy tái đầu tư: +{totalReinvested.toLocaleString()} đ</p>
+            <p className="text-blue-100 text-[10px] font-medium">Vốn góp: {( (totalValuation || 0) - (totalReinvested || 0) ).toLocaleString()} đ</p>
+            <p className="text-green-300 text-[10px] font-bold">Tích lũy tái đầu tư: +{(totalReinvested || 0).toLocaleString()} đ</p>
           </div>
         </div>
 
@@ -272,7 +272,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Lợi nhuận chia</span>
           </div>
           <h3 className="text-3xl font-black text-gray-900 mb-1">
-            {distributions.reduce((sum, d) => sum + d.distributedAmount, 0).toLocaleString()} đ
+            {(distributions.reduce((sum, d) => sum + (d.distributedAmount || 0), 0)).toLocaleString()} đ
           </h3>
           <p className="text-gray-500 text-xs font-medium">Tổng lợi nhuận đã phân phối</p>
         </div>
@@ -285,7 +285,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
             <span className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-full uppercase tracking-widest">Có thể chia dự kiến</span>
           </div>
           <h3 className="text-3xl font-black mb-1">
-            {(calculatedProfit.netProfitAfterTax * 0.25).toLocaleString()} đ
+            {((calculatedProfit.netProfitAfterTax || 0) * 0.25).toLocaleString()} đ
           </h3>
           <p className="text-emerald-100 text-xs font-medium">Dựa trên hiệu suất kinh doanh hiện tại (Div = P * 25%)</p>
         </div>
@@ -335,7 +335,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                       </td>
                       <td className="py-4">
                         <p className="font-black text-gray-900">
-                          {(sh.capitalContribution + sh.assetContributionValue + sh.laborContributionValue + sh.coreValueContributionValue).toLocaleString()} đ
+                          {((sh.capitalContribution || 0) + (sh.assetContributionValue || 0) + (sh.laborContributionValue || 0) + (sh.coreValueContributionValue || 0)).toLocaleString()} đ
                         </p>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {sh.capitalContribution > 0 && <span className="text-[7px] font-bold bg-green-50 text-green-600 px-1 py-0.5 rounded uppercase">Tiền</span>}
@@ -352,7 +352,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                               style={{ width: `${sh.sharePercentage}%` }}
                             />
                           </div>
-                          <span className="text-sm font-black text-blue-600">{sh.sharePercentage.toFixed(1)}%</span>
+                          <span className="text-sm font-black text-blue-600">{(sh.sharePercentage || 0).toFixed(1)}%</span>
                         </div>
                       </td>
                       <td className="py-4">
@@ -396,7 +396,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                       <p className="text-[10px] text-gray-400">Ngày cập nhật: {sh.exitDate}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-black text-orange-600">{sh.exitValue?.toLocaleString()} đ</p>
+                      <p className="font-black text-orange-600">{(sh.exitValue || 0).toLocaleString()} đ</p>
                       <p className="text-[10px] text-gray-400 italic">{sh.exitNote}</p>
                     </div>
                   </div>
@@ -522,8 +522,8 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                 <div key={idx} className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{item.label}</p>
                   <div className="flex items-end justify-between">
-                    <p className="text-sm font-black text-gray-900">{item.val.toLocaleString()} đ</p>
-                    <p className="text-xs font-black text-gray-400">{totalValuation > 0 ? ((item.val / totalValuation) * 100).toFixed(1) : 0}%</p>
+                    <p className="text-sm font-black text-gray-900">{(item.val || 0).toLocaleString()} đ</p>
+                    <p className="text-xs font-black text-gray-400">{totalValuation > 0 ? (((item.val || 0) / totalValuation) * 100).toFixed(1) : 0}%</p>
                   </div>
                   <div className="mt-2 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
                     <div className={`h-full ${item.color}`} style={{ width: `${totalValuation > 0 ? (item.val / totalValuation) * 100 : 0}%` }} />
@@ -641,21 +641,21 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                 <div className="space-y-4">
                   <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">1. Lợi nhuận sau thuế (P)</p>
                   <div className="bg-white p-4 rounded-2xl border border-emerald-100">
-                    <p className="text-2xl font-black text-gray-900">{calculatedProfit.netProfitAfterTax.toLocaleString()} đ</p>
+                    <p className="text-2xl font-black text-gray-900">{(calculatedProfit.netProfitAfterTax || 0).toLocaleString()} đ</p>
                     <p className="text-[9px] text-gray-500 mt-1 italic">Lợi nhuận thực tế sau khi trừ mọi chi phí & thuế.</p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">2. Lợi nhuận Ròng (P_net)</p>
                   <div className="bg-white p-4 rounded-2xl border border-emerald-100">
-                    <p className="text-2xl font-black text-blue-600">{(calculatedProfit.netProfitAfterTax * 0.5).toLocaleString()} đ</p>
+                    <p className="text-2xl font-black text-blue-600">{((calculatedProfit.netProfitAfterTax || 0) * 0.5).toLocaleString()} đ</p>
                     <p className="text-[9px] text-gray-500 mt-1 italic">Phần còn lại sau khi trích lập 50% vào các quỹ (R, S, B, D).</p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">3. Cổ tức có thể chia (Div)</p>
                   <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg shadow-emerald-100">
-                    <p className="text-2xl font-black text-white">{(calculatedProfit.netProfitAfterTax * 0.25).toLocaleString()} đ</p>
+                    <p className="text-2xl font-black text-white">{((calculatedProfit.netProfitAfterTax || 0) * 0.25).toLocaleString()} đ</p>
                     <p className="text-[9px] text-emerald-100 mt-1 italic">Số tiền mặt tối đa có thể chi trả cho cổ đông (50% của P_net).</p>
                   </div>
                 </div>
@@ -668,7 +668,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     <div key={sh.id} className="p-3 bg-white rounded-xl border border-emerald-50">
                       <p className="text-[9px] font-bold text-gray-500 truncate">{sh.name}</p>
                       <p className="text-xs font-black text-emerald-600">
-                        {(calculatedProfit.netProfitAfterTax * 0.25 * (sh.sharePercentage / 100)).toLocaleString()} đ
+                        {((calculatedProfit.netProfitAfterTax || 0) * 0.25 * (sh.sharePercentage / 100)).toLocaleString()} đ
                       </p>
                       <p className="text-[8px] text-gray-400">{sh.sharePercentage.toFixed(1)}% cổ phần</p>
                     </div>
@@ -920,11 +920,11 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     <div className="flex justify-between items-center mb-3">
                       <div>
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kỳ: {dist.period}</p>
-                        <h4 className="font-black text-gray-900">Tổng lợi nhuận: {dist.totalProfit.toLocaleString()} đ</h4>
+                        <h4 className="font-black text-gray-900">Tổng lợi nhuận: {(dist.totalProfit || 0).toLocaleString()} đ</h4>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-black text-green-600 uppercase tracking-widest">Đã chia</p>
-                        <p className="font-black text-green-600">{dist.distributedAmount.toLocaleString()} đ</p>
+                        <p className="font-black text-green-600">{(dist.distributedAmount || 0).toLocaleString()} đ</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -933,7 +933,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                         return (
                           <div key={d.shareholderId} className="bg-white px-3 py-1.5 rounded-xl border border-gray-100 flex items-center gap-2">
                             <span className="text-[10px] font-bold text-gray-600">{sh?.name}:</span>
-                            <span className="text-xs font-black text-blue-600">{d.amount.toLocaleString()} đ</span>
+                            <span className="text-xs font-black text-blue-600">{(d.amount || 0).toLocaleString()} đ</span>
                           </div>
                         );
                       })}
@@ -985,7 +985,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Giá trị nhận về (Fair Value)</p>
-                        <p className="text-2xl font-black text-orange-400">{fairExitValue.toLocaleString()} đ</p>
+                        <p className="text-2xl font-black text-orange-400">{(fairExitValue || 0).toLocaleString()} đ</p>
                       </div>
                     </div>
                     <p className="text-[9px] text-gray-400 italic">
@@ -1317,7 +1317,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Tổng vốn định giá</span>
                       <span className="text-lg font-black text-blue-600">
-                        {(form.capitalContribution + form.assetContributionValue + form.laborContributionValue + form.coreValueContributionValue).toLocaleString()} đ
+                        {((form.capitalContribution || 0) + (form.assetContributionValue || 0) + (form.laborContributionValue || 0) + (form.coreValueContributionValue || 0)).toLocaleString()} đ
                       </span>
                     </div>
                   </div>
@@ -1401,15 +1401,15 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                   <div className="p-4 bg-gray-900 rounded-2xl text-white space-y-2">
                     <div className="flex justify-between text-[10px]">
                       <span className="text-gray-400">Lợi nhuận Trước thuế (EBIT)</span>
-                      <span className="font-bold">{calculatedProfit.ebit.toLocaleString()} đ</span>
+                      <span className="font-bold">{(calculatedProfit.ebit || 0).toLocaleString()} đ</span>
                     </div>
                     <div className="flex justify-between text-[10px]">
                       <span className="text-gray-400">Thuế TNDN ({distForm.taxRate}%)</span>
-                      <span className="font-bold text-orange-400">-{calculatedProfit.taxAmount.toLocaleString()} đ</span>
+                      <span className="font-bold text-orange-400">-{(calculatedProfit.taxAmount || 0).toLocaleString()} đ</span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-white/10">
                       <span className="text-xs font-black text-blue-400">LỢI NHUẬN SAU THUẾ (P)</span>
-                      <span className="text-lg font-black text-green-400">{calculatedProfit.netProfitAfterTax.toLocaleString()} đ</span>
+                      <span className="text-lg font-black text-green-400">{(calculatedProfit.netProfitAfterTax || 0).toLocaleString()} đ</span>
                     </div>
                   </div>
 
@@ -1420,41 +1420,41 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                     <div className="space-y-2">
                       <div className="flex justify-between text-xs">
                         <span className="text-gray-500">1. Trích lập các Bộ Quỹ (50%)</span>
-                        <span className="font-black text-red-500">-{ (calculatedProfit.netProfitAfterTax * 0.5).toLocaleString() } đ</span>
+                        <span className="font-black text-red-500">-{ ((calculatedProfit.netProfitAfterTax || 0) * 0.5).toLocaleString() } đ</span>
                       </div>
                       <div className="pl-4 space-y-1">
                         <div className="flex justify-between text-[10px]">
                           <span className="text-gray-400">• Dự phòng (R - 10%)</span>
-                          <span className="text-gray-600">{ (calculatedProfit.netProfitAfterTax * 0.1).toLocaleString() } đ</span>
+                          <span className="text-gray-600">{ ((calculatedProfit.netProfitAfterTax || 0) * 0.1).toLocaleString() } đ</span>
                         </div>
                         <div className="flex justify-between text-[10px]">
                           <span className="text-gray-400">• Quỹ lương (S - 20%)</span>
-                          <span className="text-gray-600">{ (calculatedProfit.netProfitAfterTax * 0.2).toLocaleString() } đ</span>
+                          <span className="text-gray-600">{ ((calculatedProfit.netProfitAfterTax || 0) * 0.2).toLocaleString() } đ</span>
                         </div>
                         <div className="flex justify-between text-[10px]">
                           <span className="text-gray-400">• Khen thưởng (B - 5%)</span>
-                          <span className="text-gray-600">{ (calculatedProfit.netProfitAfterTax * 0.05).toLocaleString() } đ</span>
+                          <span className="text-gray-600">{ ((calculatedProfit.netProfitAfterTax || 0) * 0.05).toLocaleString() } đ</span>
                         </div>
                         <div className="flex justify-between text-[10px]">
                           <span className="text-gray-400">• Phát triển (D - 15%)</span>
-                          <span className="text-gray-600">{ (calculatedProfit.netProfitAfterTax * 0.15).toLocaleString() } đ</span>
+                          <span className="text-gray-600">{ ((calculatedProfit.netProfitAfterTax || 0) * 0.15).toLocaleString() } đ</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex justify-between text-xs pt-2 border-t border-gray-200">
                       <span className="text-gray-900 font-bold">2. Lợi nhuận Ròng (P_net)</span>
-                      <span className="font-black text-gray-900">{ (calculatedProfit.netProfitAfterTax * 0.5).toLocaleString() } đ</span>
+                      <span className="font-black text-gray-900">{ ((calculatedProfit.netProfitAfterTax || 0) * 0.5).toLocaleString() } đ</span>
                     </div>
 
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">3. Chia cổ tức (Div - 25%)</span>
-                      <span className="font-black text-green-600">+{ (calculatedProfit.netProfitAfterTax * 0.25).toLocaleString() } đ</span>
+                      <span className="font-black text-green-600">+{ ((calculatedProfit.netProfitAfterTax || 0) * 0.25).toLocaleString() } đ</span>
                     </div>
 
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">4. Tái đầu tư (Re - 25%)</span>
-                      <span className="font-black text-blue-600">+{ (calculatedProfit.netProfitAfterTax * 0.25).toLocaleString() } đ</span>
+                      <span className="font-black text-blue-600">+{ ((calculatedProfit.netProfitAfterTax || 0) * 0.25).toLocaleString() } đ</span>
                     </div>
                   </div>
 
@@ -1474,7 +1474,7 @@ export const EquityManagement: React.FC<EquityManagementProps> = ({
                       <div key={sh.id} className="flex justify-between items-center text-[10px] p-2 bg-white rounded-lg border border-gray-100">
                         <span className="font-bold text-gray-600">{sh.name} ({sh.sharePercentage.toFixed(1)}%)</span>
                         <span className="font-black text-green-600">
-                          {(calculatedProfit.netProfitAfterTax * 0.25 * (sh.sharePercentage/100)).toLocaleString()} đ
+                          {((calculatedProfit.netProfitAfterTax || 0) * 0.25 * (sh.sharePercentage/100)).toLocaleString()} đ
                         </span>
                       </div>
                     ))}

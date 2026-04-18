@@ -218,7 +218,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Giá thành:</span>
-                    <span className="font-bold text-blue-600">{mat.costPrice.toLocaleString()} {mat.currency || 'VND'}</span>
+                    <span className="font-bold text-blue-600">{(mat.costPrice || 0).toLocaleString()} {mat.currency || 'VND'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Nhà cung cấp:</span>
@@ -316,7 +316,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
                           <span className="text-[10px] text-gray-400 italic">Chưa có ảnh</span>
                         )}
                       </td>
-                      <td className="p-4 text-sm font-black text-gray-900">{inv.totalAmount.toLocaleString()} {inv.currency || 'VND'}</td>
+                      <td className="p-4 text-sm font-black text-gray-900">{(inv.totalAmount || 0).toLocaleString()} {inv.currency || 'VND'}</td>
                       <td className="p-4 text-right">
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${inv.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                           {inv.status}

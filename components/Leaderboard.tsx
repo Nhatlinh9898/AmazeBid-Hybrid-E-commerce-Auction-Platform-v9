@@ -73,7 +73,7 @@ const Leaderboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-xs font-bold truncate w-20 text-center">{leaderboard[1].fullName}</p>
-              <p className="text-[10px] text-blue-200">{leaderboard[1].points.toLocaleString()} pts</p>
+              <p className="text-[10px] text-blue-200">{(leaderboard[1].points || 0).toLocaleString()} pts</p>
             </div>
           )}
 
@@ -94,7 +94,7 @@ const Leaderboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm font-black truncate w-24 text-center">{leaderboard[0].fullName}</p>
-              <p className="text-xs text-yellow-200 font-bold">{leaderboard[0].points.toLocaleString()} pts</p>
+              <p className="text-xs text-yellow-200 font-bold">{(leaderboard[0].points || 0).toLocaleString()} pts</p>
             </div>
           )}
 
@@ -112,7 +112,7 @@ const Leaderboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-xs font-bold truncate w-20 text-center">{leaderboard[2].fullName}</p>
-              <p className="text-[10px] text-blue-200">{leaderboard[2].points.toLocaleString()} pts</p>
+              <p className="text-[10px] text-blue-200">{(leaderboard[2].points || 0).toLocaleString()} pts</p>
             </div>
           )}
         </div>
@@ -153,7 +153,7 @@ const Leaderboard: React.FC = () => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-black text-gray-900">{user.points.toLocaleString()}</p>
+                <p className="text-sm font-black text-gray-900">{(user.points || 0).toLocaleString()}</p>
                 <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Điểm tích lũy</p>
               </div>
             </div>

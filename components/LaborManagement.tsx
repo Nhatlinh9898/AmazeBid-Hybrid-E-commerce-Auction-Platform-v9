@@ -144,7 +144,7 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
             <div className="bg-red-50 p-2 rounded-lg text-red-600"><TrendingDown size={20}/></div>
             <span className="text-xs font-bold text-gray-500 uppercase">Tổng chi phí nhân công</span>
           </div>
-          <h4 className="text-2xl font-black text-red-600">{totalLaborCost.toLocaleString()} đ</h4>
+          <h4 className="text-2xl font-black text-red-600">{(totalLaborCost || 0).toLocaleString()} đ</h4>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-2">
           <button 
@@ -195,7 +195,7 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
                         </div>
                       </td>
                       <td className="p-4">
-                        <p className="font-bold text-gray-900">{emp.salaryBase.toLocaleString()} đ</p>
+                        <p className="font-bold text-gray-900">{(emp.salaryBase || 0).toLocaleString()} đ</p>
                         <p className="text-[10px] text-gray-400">/{emp.salaryType === 'MONTHLY' ? 'Tháng' : emp.salaryType === 'DAILY' ? 'Ngày' : 'Giờ'}</p>
                       </td>
                       <td className="p-4">
@@ -241,7 +241,7 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
                     <p className="text-sm font-bold text-gray-900">{employees.find(e => e.id === cost.employeeId)?.name || 'Nhân viên ẩn'}</p>
                     <p className="text-[10px] text-gray-500">{cost.date} • {cost.type}</p>
                   </div>
-                  <p className="font-bold text-red-600">-{cost.amount.toLocaleString()} đ</p>
+                  <p className="font-bold text-red-600">-{(cost.amount || 0).toLocaleString()} đ</p>
                 </div>
               ))}
               {laborCosts.length === 0 && <p className="text-center text-gray-400 text-sm italic py-4">Chưa có chi phí ghi nhận</p>}

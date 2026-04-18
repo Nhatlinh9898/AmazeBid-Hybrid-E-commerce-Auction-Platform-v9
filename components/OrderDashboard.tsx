@@ -209,7 +209,7 @@ const OrderDashboard: React.FC<OrderDashboardProps> = ({
           <div className="mb-8">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2 border-b pb-2 border-gray-200 text-gray-800">
               <span className="bg-[#febd69] text-black w-6 h-6 rounded-full flex items-center justify-center text-xs">S</span>
-              Đơn bán hàng (Doanh thu tạm giữ: ${mySales.reduce((sum, p) => p.status !== OrderStatus.COMPLETED ? sum + p.price : sum, 0).toFixed(2)})
+              Đơn bán hàng (Doanh thu tạm giữ: ${(mySales.reduce((sum, p) => p.status !== OrderStatus.COMPLETED ? sum + (p.price || 0) : sum, 0)).toFixed(2)})
             </h3>
             
             {mySales.length === 0 ? (
@@ -223,7 +223,7 @@ const OrderDashboard: React.FC<OrderDashboardProps> = ({
                       <div className="flex-1 w-full">
                         <div className="flex justify-between mb-1">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <span className="font-bold text-green-600">+${item.price}</span>
+                          <span className="font-bold text-green-600">+${(item.price || 0).toLocaleString()}</span>
                         </div>
                         <div className="text-xs text-gray-500 mb-2">Thanh toán qua: {item.payoutMethod || 'Bank Transfer'}</div>
                         <div className="flex items-center gap-2">
@@ -282,7 +282,7 @@ const OrderDashboard: React.FC<OrderDashboardProps> = ({
                                     <h1>Chi tiết đơn hàng: ${item.title}</h1>
                                     <div class="details">
                                       <p>ID: ${item.id}</p>
-                                      <p>Giá: ${item.price}</p>
+                                      <p>Giá: ${(item.price || 0).toLocaleString()}</p>
                                       <p>Trạng thái: ${item.status}</p>
                                     </div>
                                   </body>
@@ -326,7 +326,7 @@ const OrderDashboard: React.FC<OrderDashboardProps> = ({
                       <div className="flex-1 w-full">
                         <div className="flex justify-between mb-1">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <span className="font-bold text-red-600">-${item.price}</span>
+                          <span className="font-bold text-red-600">-${(item.price || 0).toLocaleString()}</span>
                         </div>
                         <div className="text-xs text-gray-500 mb-2">Hệ thống đang giữ tiền bảo đảm</div>
                         <div className="flex items-center gap-2">
@@ -445,7 +445,7 @@ const OrderDashboard: React.FC<OrderDashboardProps> = ({
                         <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 flex items-center gap-1">
                           <MapPin size={10}/> {event.location}
                         </span>
-                        <span className="text-[10px] text-gray-400">{new Date(event.timestamp).toLocaleString('vi-VN')}</span>
+                        <span className="text-[10px] text-gray-400">{event.timestamp ? new Date(event.timestamp).toLocaleString('vi-VN') : 'N/A'}</span>
                       </div>
                     </div>
                   </div>

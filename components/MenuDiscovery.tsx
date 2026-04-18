@@ -289,7 +289,7 @@ export const MenuDiscovery: React.FC<MenuDiscoveryProps> = ({ onSelectStore }) =
                       {item.name}
                     </h3>
                     <span className="font-black text-blue-600 whitespace-nowrap ml-2">
-                      {item.price.toLocaleString()}đ
+                      {(item.price || 0).toLocaleString()}đ
                     </span>
                   </div>
                   

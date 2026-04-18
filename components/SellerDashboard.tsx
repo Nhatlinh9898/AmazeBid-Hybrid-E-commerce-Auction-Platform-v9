@@ -14,6 +14,8 @@ import { equityService } from '../src/services/EquityService';
 import { localAnalyzeProfit } from '../src/services/inventoryService';
 import { useAuth } from '../context/useAuth';
 import { storeService } from '../services/StoreService';
+import { configService } from '../services/ConfigService';
+import { GlobalConfig } from '../types';
 
 interface SellerDashboardProps {
   isOpen: boolean;
@@ -28,8 +30,14 @@ type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'aler
 const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId, onRefreshProducts }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [globalConfig, setGlobalConfig] = useState<GlobalConfig>(() => configService.getConfig());
   const [selectedProductForCombo, setSelectedProductForCombo] = useState<Product | null>(null);
   const [selectedProductForProfit, setSelectedProductForProfit] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const unsub = configService.subscribe(setGlobalConfig);
+    return () => unsub();
+  }, []);
   const [now] = useState(() => Date.now());
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -125,13 +133,21 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         percentage: (categoryStats[cat].revenue / (totalRevenue || 1)) * 100
     })).sort((a, b) => b.revenue - a.revenue);
 
-    // 5. Tính toán Thuế (Giả định)
-    const platformFeeRate = 0.05; // Phí sàn 5%
-    const platformFee = totalRevenue * platformFeeRate;
+    // 5. Tính toán Thuế (Sử dụng ConfigService)
+    const platformFee = totalRevenue * globalConfig.platformFeeRate;
     const taxableIncome = totalRevenue - platformFee;
-    const vatTax = taxableIncome * 0.08; // VAT 8% (giả định)
-    const personalIncomeTax = taxableIncome * 0.015; // Thuế TNCN 1.5% (giả định cho hộ kinh doanh)
-    const netIncome = taxableIncome - vatTax - personalIncomeTax;
+    
+    // VAT calculation needs to handle per-product vatRate if available
+    let totalVat = 0;
+    soldOrders.forEach(order => {
+       const rate = order.vatRate !== undefined ? order.vatRate : globalConfig.defaultVatRate;
+       // We use the rate correctly to extract VAT from Gross Price
+       const vatAmount = (order.price / (1 + (order.specialTaxRate || 0) + rate)) * rate;
+       totalVat += vatAmount;
+    });
+
+    const personalIncomeTax = taxableIncome * globalConfig.personalIncomeTaxRate;
+    const netIncome = taxableIncome - totalVat - personalIncomeTax;
 
     // 6. Analytics Data (Mocked for charts)
     const salesData = [
@@ -233,7 +249,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         tax: {
             platformFee,
             taxableIncome,
-            vatTax,
+            vatTax: totalVat,
             personalIncomeTax,
             netIncome: netIncome - totalLaborCost // Subtract labor costs
         },
@@ -247,7 +263,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         soldOrders: groupedOrders,
         totalLaborCost
     };
-  }, [products, currentUserId, now, startDate, endDate]);
+  }, [products, currentUserId, now, startDate, endDate, globalConfig]);
 
   if (!isOpen) return null;
 
@@ -399,7 +415,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500 font-medium">Tổng thu nhập</p>
-                                <h3 className="text-2xl font-black text-gray-900">${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                                <h3 className="text-2xl font-black text-gray-900">${(stats.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                             </div>
                         </div>
 
@@ -427,7 +443,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                             </div>
                             <div className="relative z-10">
                                 <p className="text-sm text-gray-500 font-medium">Hoa hồng tiếp thị</p>
-                                <h3 className="text-2xl font-black text-purple-700">${stats.affiliateRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                                <h3 className="text-2xl font-black text-purple-700">${(stats.affiliateRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                             </div>
                         </div>
 
@@ -806,6 +822,77 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                         </div>
                     </div>
 
+                    {/* Tax Configurations (Dynamic settings) */}
+                    <div className="bg-white rounded-3xl p-6 border border-indigo-100 shadow-sm no-print">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-3 bg-indigo-600 rounded-2xl text-white">
+                                <TrendingUp size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-gray-900">Thông số Thuế & Phí Hệ thống</h3>
+                                <p className="text-sm text-gray-500">
+                                    {user?.role === 'ADMIN' 
+                                        ? "Cập nhật các tỷ lệ phần trăm khi có sự thay đổi từ chính sách Nhà Nước" 
+                                        : "Chỉ quản trị viên cấp cao (ADMIN) mới có quyền thay đổi các thông số này"}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Thuế VAT mặc định (%)</label>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        className={`w-full px-4 py-2 bg-gray-50 rounded-xl font-black text-blue-600 outline-none focus:ring-2 focus:ring-blue-500 ${user?.role !== 'ADMIN' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        value={globalConfig.defaultVatRate * 100}
+                                        onChange={(e) => user?.role === 'ADMIN' && configService.updateConfig({ defaultVatRate: Number(e.target.value) / 100 })}
+                                        readOnly={user?.role !== 'ADMIN'}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Phí nền tảng AmazeBid (%)</label>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        className={`w-full px-4 py-2 bg-gray-50 rounded-xl font-black text-indigo-600 outline-none focus:ring-2 focus:ring-blue-500 ${user?.role !== 'ADMIN' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        value={globalConfig.platformFeeRate * 100}
+                                        onChange={(e) => user?.role === 'ADMIN' && configService.updateConfig({ platformFeeRate: Number(e.target.value) / 100 })}
+                                        readOnly={user?.role !== 'ADMIN'}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Thuế TNCN / Hộ KD (%)</label>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        className={`w-full px-4 py-2 bg-gray-50 rounded-xl font-black text-orange-600 outline-none focus:ring-2 focus:ring-blue-500 ${user?.role !== 'ADMIN' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        value={globalConfig.personalIncomeTaxRate * 100}
+                                        onChange={(e) => user?.role === 'ADMIN' && configService.updateConfig({ personalIncomeTaxRate: Number(e.target.value) / 100 })}
+                                        readOnly={user?.role !== 'ADMIN'}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Tiền tệ mặc định</label>
+                                <select 
+                                    className={`w-full px-4 py-2 bg-gray-50 rounded-xl font-black text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 appearance-none ${user?.role !== 'ADMIN' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    value={globalConfig.currencySymbol}
+                                    onChange={(e) => user?.role === 'ADMIN' && configService.updateConfig({ currencySymbol: e.target.value })}
+                                    disabled={user?.role !== 'ADMIN'}
+                                >
+                                    <option value="đ">VND (đ)</option>
+                                    <option value="$">USD ($)</option>
+                                    <option value="€">EUR (€)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     {stats.isIframe && (
                         <div className="bg-orange-50 border border-orange-200 text-orange-800 p-3 rounded-xl text-xs flex items-center gap-2 no-print">
                             <AlertTriangle size={14} className="shrink-0" />
@@ -840,19 +927,19 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                             <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100">
                                 <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Doanh thu gộp</p>
-                                <p className="text-2xl font-black text-blue-900">{stats.totalRevenue.toLocaleString()} đ</p>
+                                <p className="text-2xl font-black text-blue-900">{(stats.totalRevenue || 0).toLocaleString()} đ</p>
                             </div>
                             <div className="p-5 rounded-2xl bg-indigo-50 border border-indigo-100">
                                 <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Phí sàn (5%)</p>
-                                <p className="text-2xl font-black text-indigo-900">-{stats.tax.platformFee.toLocaleString()} đ</p>
+                                <p className="text-2xl font-black text-indigo-900">-{(stats.tax?.platformFee || 0).toLocaleString()} đ</p>
                             </div>
                             <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100">
                                 <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Dự tính Thuế (2.5%)</p>
-                                <p className="text-2xl font-black text-amber-900">{Math.round(stats.tax.vatTax + stats.tax.personalIncomeTax).toLocaleString()} đ</p>
+                                <p className="text-2xl font-black text-amber-900">{Math.round((stats.tax?.vatTax || 0) + (stats.tax?.personalIncomeTax || 0)).toLocaleString()} đ</p>
                             </div>
                             <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100">
                                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Lợi nhuận ròng</p>
-                                <p className="text-2xl font-black text-emerald-900">{stats.tax.netIncome.toLocaleString()} đ</p>
+                                <p className="text-2xl font-black text-emerald-900">{(stats.tax?.netIncome || 0).toLocaleString()} đ</p>
                             </div>
                         </div>
 
@@ -880,17 +967,17 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                                     <td className="p-3 font-bold text-gray-900">{order.title}</td>
                                                     <td className="p-3"><span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">THU NHẬP</span></td>
                                                     <td className="p-3 text-right font-black text-green-600">
-                                                        +{((order.isAffiliate ? (order.price * (order.commissionRate || 0)/100) : order.price)).toLocaleString()} đ
+                                                        +{((order.isAffiliate ? ((order.price || 0) * (order.commissionRate || 0)/100) : (order.price || 0))).toLocaleString()} đ
                                                     </td>
                                                 </tr>
                                             ))}
                                             {/* Invoices as expenses */}
                                             {stats.myInvoices.map((inv: any) => (
                                                 <tr key={inv.id} className="hover:bg-gray-50">
-                                                    <td className="p-3 font-medium text-gray-600">{new Date(inv.date).toLocaleDateString()}</td>
+                                                    <td className="p-3 font-medium text-gray-600">{inv.date ? new Date(inv.date).toLocaleDateString() : 'N/A'}</td>
                                                     <td className="p-3 font-bold text-gray-900">Chi phí nhập hàng: {inv.supplier}</td>
                                                     <td className="p-3"><span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">CHI PHÍ</span></td>
-                                                    <td className="p-3 text-right font-black text-red-600">-{inv.amount.toLocaleString()} đ</td>
+                                                    <td className="p-3 text-right font-black text-red-600">-{(inv.totalAmount || inv.amount || 0).toLocaleString()} đ</td>
                                                 </tr>
                                             ))}
                                             {/* Labor costs as expenses */}
@@ -899,14 +986,14 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                                     <td className="p-3 font-medium text-gray-600 italic">Tổng kết kỳ</td>
                                                     <td className="p-3 font-bold text-gray-900">Chi phí nhân công & vận hành</td>
                                                     <td className="p-3"><span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">CHI PHÍ</span></td>
-                                                    <td className="p-3 text-right font-black text-red-600">-{stats.totalLaborCost.toLocaleString()} đ</td>
+                                                    <td className="p-3 text-right font-black text-red-600">-{(stats.totalLaborCost || 0).toLocaleString()} đ</td>
                                                 </tr>
                                             )}
                                         </tbody>
                                         <tfoot className="bg-gray-900 text-white font-black">
                                             <tr>
                                                 <td colSpan={3} className="p-4 text-right uppercase tracking-widest text-xs">Lợi nhuận ròng cuối kỳ</td>
-                                                <td className="p-4 text-right text-lg">{stats.tax.netIncome.toLocaleString()} đ</td>
+                                                <td className="p-4 text-right text-lg">{(stats.tax?.netIncome || 0).toLocaleString()} đ</td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -924,10 +1011,10 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                             <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Tháng {item.month}/{item.year}</p>
                                             <div className="flex justify-between items-end">
                                                 <div>
-                                                    <p className="text-lg font-black text-gray-900">{item.revenue.toLocaleString()} đ</p>
+                                                    <p className="text-lg font-black text-gray-900">{(item.revenue || 0).toLocaleString()} đ</p>
                                                     <p className="text-[10px] text-gray-500">{item.count} đơn hàng</p>
                                                 </div>
-                                                <p className="text-xs font-bold text-orange-600">Thuế: {Math.round(item.revenue * 0.025).toLocaleString()} đ</p>
+                                                <p className="text-xs font-bold text-orange-600">Thuế: {Math.round((item.revenue || 0) * 0.025).toLocaleString()} đ</p>
                                             </div>
                                         </div>
                                     ))}
@@ -948,8 +1035,8 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                                 <tr key={`${item.year}-${item.month}`}>
                                                     <td className="py-2">Tháng {item.month}/{item.year}</td>
                                                     <td className="py-2">{item.count}</td>
-                                                    <td className="py-2 text-right font-bold">{item.revenue.toLocaleString()} đ</td>
-                                                    <td className="py-2 text-right text-orange-600">-{Math.round(item.revenue * 0.025).toLocaleString()} đ</td>
+                                                    <td className="py-2 text-right font-bold">{(item.revenue || 0).toLocaleString()} đ</td>
+                                                    <td className="py-2 text-right text-orange-600">-{Math.round((item.revenue || 0) * 0.025).toLocaleString()} đ</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -966,10 +1053,10 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                     {stats.quarterlyStats.map((item: any) => (
                                         <div key={`${item.year}-Q${item.quarter}`} className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/30">
                                             <p className="text-[10px] font-black text-indigo-400 uppercase mb-1">Quý {item.quarter}/{item.year}</p>
-                                            <p className="text-lg font-black text-indigo-900">{item.revenue.toLocaleString()} đ</p>
+                                            <p className="text-lg font-black text-indigo-900">{(item.revenue || 0).toLocaleString()} đ</p>
                                             <div className="flex justify-between items-center mt-2 pt-2 border-t border-indigo-100">
                                                 <span className="text-[10px] font-bold text-indigo-600">{item.count} đơn</span>
-                                                <span className="text-[10px] font-black text-orange-600">-{Math.round(item.revenue * 0.025).toLocaleString()} đ</span>
+                                                <span className="text-[10px] font-black text-orange-600">-{Math.round((item.revenue || 0) * 0.025).toLocaleString()} đ</span>
                                             </div>
                                         </div>
                                     ))}
@@ -1220,13 +1307,13 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
           <div>
             <h2 className="text-lg font-bold border-b border-gray-300 mb-3 pb-1">Tóm tắt tài chính</h2>
             <div className="space-y-1 text-sm">
-              <div className="flex justify-between"><span>Tổng doanh thu:</span><span className="font-bold">${stats.totalRevenue.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span>Phí nền tảng (5%):</span><span className="font-bold">-${stats.tax.platformFee.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span>Thu nhập chịu thuế:</span><span className="font-bold">${stats.tax.taxableIncome.toFixed(2)}</span></div>
-              <div className="flex justify-between text-red-600"><span>Chi phí nhân công:</span><span className="font-bold">-${stats.totalLaborCost.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span>Tổng doanh thu:</span><span className="font-bold">${(stats.totalRevenue || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>Phí nền tảng (5%):</span><span className="font-bold">-${(stats.tax?.platformFee || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>Thu nhập chịu thuế:</span><span className="font-bold">${(stats.tax?.taxableIncome || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between text-red-600"><span>Chi phí nhân công:</span><span className="font-bold">-${(stats.totalLaborCost || 0).toLocaleString()}</span></div>
               <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
                 <span className="font-bold">Thu nhập ròng (Net):</span>
-                <span className="font-black text-lg text-green-700">${stats.tax.netIncome.toFixed(2)}</span>
+                <span className="font-black text-lg text-green-700">${(stats.tax?.netIncome || 0).toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -1249,7 +1336,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                   <td className="py-2 font-mono text-xs">{order.id}</td>
                   <td className="py-2">{order.title}</td>
                   <td className="py-2">{order.category}</td>
-                  <td className="py-2 text-right font-bold">${order.price.toFixed(2)}</td>
+                  <td className="py-2 text-right font-bold">${(order.price || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -1273,7 +1360,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                   <td className="py-2 font-mono text-xs">{inv.id}</td>
                   <td className="py-2">{inv.invoiceDate}</td>
                   <td className="py-2">NCC ID: {inv.supplierId}</td>
-                  <td className="py-2 text-right font-bold">${inv.totalAmount.toFixed(2)}</td>
+                  <td className="py-2 text-right font-bold">${(inv.totalAmount || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

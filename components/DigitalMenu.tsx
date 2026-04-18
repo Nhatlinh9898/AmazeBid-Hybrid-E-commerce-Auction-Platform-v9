@@ -145,7 +145,7 @@ export const DigitalMenu: React.FC<DigitalMenuProps> = ({ storeId, onClose, onAd
                           <div>
                             <div className="flex justify-between items-start mb-1">
                               <h3 className="font-bold text-lg group-hover:text-[#5A5A40] transition-colors">{item.name}</h3>
-                              <span className="font-serif italic font-bold text-[#5A5A40]">{item.price.toLocaleString()}đ</span>
+                              <span className="font-serif italic font-bold text-[#5A5A40]">{(item.price || 0).toLocaleString()}đ</span>
                             </div>
                             <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{item.description}</p>
                           </div>

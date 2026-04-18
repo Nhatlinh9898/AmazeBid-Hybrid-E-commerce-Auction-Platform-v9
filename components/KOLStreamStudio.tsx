@@ -29,6 +29,7 @@ const KOLStreamStudio: React.FC<KOLStreamStudioProps> = ({ isOpen, onClose, onPo
 
   // Saved Assets State
   const [savedAssets, setSavedAssets] = useState<SavedAsset[]>(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return [];
     try {
       const saved = localStorage.getItem('kol_assets');
       return saved ? JSON.parse(saved) : [];
@@ -230,23 +231,25 @@ const KOLStreamStudio: React.FC<KOLStreamStudioProps> = ({ isOpen, onClose, onPo
       
       // Fetch knowledge base items
       let knowledgeContext = '';
-      try {
-        const savedKb = localStorage.getItem('ai_knowledge_base');
-        if (savedKb) {
-          const kbItems: KnowledgeItem[] = JSON.parse(savedKb);
-          const relevantItems = kbItems.filter(item => 
-            (item.type === 'TEXT' || item.type === 'SPEC' || item.type === 'INSTRUCTION') && 
-            selectedProducts.some(p => 
-              item.title.toLowerCase().includes(p.title.toLowerCase()) || 
-              item.tags.some(t => p.title.toLowerCase().includes(t.toLowerCase()))
-            )
-          );
-          if (relevantItems.length > 0) {
-            knowledgeContext = relevantItems.map(item => `[${item.type} - ${item.title}]: ${item.content}`).join('\n\n');
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const savedKb = localStorage.getItem('ai_knowledge_base');
+          if (savedKb) {
+            const kbItems: KnowledgeItem[] = JSON.parse(savedKb);
+            const relevantItems = kbItems.filter(item => 
+              (item.type === 'TEXT' || item.type === 'SPEC' || item.type === 'INSTRUCTION') && 
+              selectedProducts.some(p => 
+                item.title.toLowerCase().includes(p.title.toLowerCase()) || 
+                item.tags.some(t => p.title.toLowerCase().includes(t.toLowerCase()))
+              )
+            );
+            if (relevantItems.length > 0) {
+              knowledgeContext = relevantItems.map(item => `[${item.type} - ${item.title}]: ${item.content}`).join('\n\n');
+            }
           }
+        } catch (e) {
+          console.error("Failed to load knowledge base", e);
         }
-      } catch (e) {
-        console.error("Failed to load knowledge base", e);
       }
 
       const newScript = await generateStreamScript(productNames, `${kolStyle}, Setting: ${stageStyle}`, knowledgeContext);

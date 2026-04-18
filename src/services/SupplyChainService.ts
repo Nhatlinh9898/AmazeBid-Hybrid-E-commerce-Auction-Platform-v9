@@ -12,6 +12,8 @@ class SupplyChainService {
   }
 
   private loadFromStorage() {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+
     const savedSuppliers = localStorage.getItem('amazebid_suppliers');
     const savedMaterials = localStorage.getItem('amazebid_materials');
     const savedInvoices = localStorage.getItem('amazebid_invoices');
@@ -39,9 +41,11 @@ class SupplyChainService {
   }
 
   private saveToStorage() {
-    localStorage.setItem('amazebid_suppliers', JSON.stringify(this.suppliers));
-    localStorage.setItem('amazebid_materials', JSON.stringify(this.materials));
-    localStorage.setItem('amazebid_invoices', JSON.stringify(this.invoices));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('amazebid_suppliers', JSON.stringify(this.suppliers));
+      localStorage.setItem('amazebid_materials', JSON.stringify(this.materials));
+      localStorage.setItem('amazebid_invoices', JSON.stringify(this.invoices));
+    }
     this.notify();
   }
 

@@ -143,7 +143,7 @@ const UserManagement: React.FC = () => {
             </div>
             <span className="text-xs font-bold text-gray-500 uppercase">Tổng doanh thu bán hàng</span>
           </div>
-          <p className="text-2xl font-black text-gray-800">${totalSalesRevenue.toLocaleString()}</p>
+          <p className="text-2xl font-black text-gray-800">${(totalSalesRevenue || 0).toLocaleString()}</p>
         </div>
 
         <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
@@ -153,7 +153,7 @@ const UserManagement: React.FC = () => {
             </div>
             <span className="text-xs font-bold text-gray-500 uppercase">Tổng doanh thu Affiliate</span>
           </div>
-          <p className="text-2xl font-black text-gray-800">${totalAffiliateRevenue.toLocaleString()}</p>
+          <p className="text-2xl font-black text-gray-800">${(totalAffiliateRevenue || 0).toLocaleString()}</p>
         </div>
 
         <div className="bg-green-50 p-4 rounded-xl border border-green-100">
@@ -163,7 +163,7 @@ const UserManagement: React.FC = () => {
             </div>
             <span className="text-xs font-bold text-gray-500 uppercase">Tổng lợi nhuận người dùng</span>
           </div>
-          <p className="text-2xl font-black text-gray-800">${totalProfit.toLocaleString()}</p>
+          <p className="text-2xl font-black text-gray-800">${(totalProfit || 0).toLocaleString()}</p>
         </div>
       </div>
 

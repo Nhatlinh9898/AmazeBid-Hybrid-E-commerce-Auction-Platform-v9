@@ -4,6 +4,7 @@ import { PhysicalStore, StoreMenuItem, RawMaterial, ProductRecipe, ProductIngred
 import { storeService } from '../services/StoreService';
 import { supplyChainService } from '../src/services/SupplyChainService';
 import { api } from '../services/api';
+import { PricingService } from '../services/pricingService';
 
 interface StoreManagementProps {
   ownerId: string;
@@ -30,6 +31,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
     category: string;
     image: string;
     isAvailable: boolean;
+    vatRate: number;
+    specialTaxRate: number;
     recipe: ProductRecipe;
   }>({
     name: '',
@@ -38,6 +41,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
     category: '',
     image: '',
     isAvailable: true,
+    vatRate: 0.08, // Default 8% VAT
+    specialTaxRate: 0,
     recipe: {
       ingredients: [],
       laborCostEstimate: 0,
@@ -143,6 +148,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
         sellerId: ownerId,
         storeId: selectedStore.id,
         menuItemId: item.id,
+        vatRate: item.vatRate,
+        specialTaxRate: item.specialTaxRate,
         stock: 999, // Food items are usually produced on demand
         rating: 4.5,
         reviewCount: 0
@@ -219,6 +226,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
       category: '',
       image: `https://picsum.photos/seed/${Date.now()}/400/300`,
       isAvailable: true,
+      vatRate: 0.08,
+      specialTaxRate: 0,
       recipe: {
         ingredients: [],
         laborCostEstimate: 0,
@@ -242,6 +251,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
       category: item.category || '',
       image: item.image,
       isAvailable: item.isAvailable,
+      vatRate: item.vatRate || 0.08,
+      specialTaxRate: item.specialTaxRate || 0,
       recipe: item.recipe || {
         ingredients: [],
         laborCostEstimate: 0,
@@ -399,7 +410,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                       </div>
                       <p className="text-xs text-gray-500 line-clamp-1 mb-2">{item.description || 'Không có mô tả'}</p>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-black text-blue-600">{item.price.toLocaleString()} đ</span>
+                        <span className="text-sm font-black text-blue-600">{(item.price || 0).toLocaleString()} đ</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.isAvailable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {item.isAvailable ? 'Sẵn sàng' : 'Hết hàng'}
                         </span>
@@ -490,13 +501,35 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Giá (VND)</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Giá bán (VND)</label>
                     <input 
                       type="number" 
-                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold"
                       value={itemForm.price}
                       onChange={e => setItemForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Thuế VAT (%)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={itemForm.vatRate * 100}
+                        onChange={e => setItemForm(prev => ({ ...prev, vatRate: parseFloat(e.target.value) / 100 || 0 }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Thuế TT Đặc biệt (%)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={itemForm.specialTaxRate * 100}
+                        onChange={e => setItemForm(prev => ({ ...prev, specialTaxRate: parseFloat(e.target.value) / 100 || 0 }))}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Mô tả</label>
@@ -559,7 +592,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                                 <div className="flex items-center justify-between">
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[10px] font-bold text-gray-900 truncate">{ing.materialName}</p>
-                                    <p className="text-[9px] text-gray-500">{(ing.costPerUnit * ing.quantity * (1 + ing.wastagePercentage/100)).toLocaleString()} đ</p>
+                                    <p className="text-[9px] text-gray-500">{((ing.costPerUnit || 0) * (ing.quantity || 0) * (1 + (ing.wastagePercentage || 0)/100)).toLocaleString()} đ</p>
                                   </div>
                                   <button onClick={() => removeIngredient(idx)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={12}/></button>
                                 </div>
@@ -601,7 +634,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                           >
                             <option value="">+ Thêm nguyên liệu từ kho</option>
                             {availableMaterials.filter(m => !itemForm.recipe.ingredients.find(ing => ing.materialId === m.id)).map(m => (
-                              <option key={m.id} value={m.id}>{m.name} ({m.costPrice.toLocaleString()} / {m.unit})</option>
+                              <option key={m.id} value={m.id}>{m.name} ({(m.costPrice || 0).toLocaleString()} / {m.unit})</option>
                             ))}
                           </select>
                         </div>
@@ -651,36 +684,63 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                         <div className="bg-indigo-600 rounded-xl p-4 text-white space-y-2">
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Tổng chi phí mẻ</span>
-                            <span className="text-sm font-black">{itemForm.recipe.totalCost.toLocaleString()} đ</span>
+                            <span className="text-sm font-black">{(itemForm.recipe.totalCost || 0).toLocaleString()} đ</span>
                           </div>
                           <div className="flex justify-between items-center pt-2 border-t border-white/10">
                             <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Giá vốn / Suất (COGS)</span>
-                            <span className="text-lg font-black text-yellow-300">{itemForm.recipe.costPerPortion.toLocaleString()} đ</span>
+                            <span className="text-lg font-black text-yellow-300">{(itemForm.recipe.costPerPortion || 0).toLocaleString()} đ</span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Lợi nhuận / Suất</span>
                             <span className={`text-xs font-black ${itemForm.price - itemForm.recipe.costPerPortion > 0 ? 'text-green-300' : 'text-red-300'}`}>
-                              {(itemForm.price - itemForm.recipe.costPerPortion).toLocaleString()} đ ({itemForm.price > 0 ? Math.round(((itemForm.price - itemForm.recipe.costPerPortion) / itemForm.price) * 100) : 0}%)
+                              {(itemForm.price - itemForm.recipe.costPerPortion || 0).toLocaleString()} đ ({itemForm.price > 0 ? Math.round(((itemForm.price - itemForm.recipe.costPerPortion) / itemForm.price) * 100) : 0}%)
                             </span>
                           </div>
                         </div>
 
-                        <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-                          <p className="text-[10px] text-amber-800 font-bold flex items-center gap-1 mb-2">
-                            <Scale size={12}/> Chiến lược giá gợi ý (Margin 40%):
-                          </p>
-                          <div className="flex justify-between items-center">
-                            <span className="text-lg font-black text-amber-900">
-                              {Math.ceil((itemForm.recipe.costPerPortion / 0.6) / 1000) * 1000} đ
-                            </span>
-                            <button 
-                              onClick={() => setItemForm(prev => ({ ...prev, price: Math.ceil((prev.recipe.costPerPortion / 0.6) / 1000) * 1000 }))}
-                              className="text-[10px] bg-amber-600 text-white px-2 py-1 rounded-lg font-bold hover:bg-amber-700"
-                            >
-                              Áp dụng
-                            </button>
-                          </div>
-                        </div>
+                        {(() => {
+                          const plan = PricingService.calculatePlan(
+                            itemForm.recipe.costPerPortion,
+                            100, // Dummy stock for calculation
+                            0.40, // 40% markup
+                            itemForm.vatRate,
+                            itemForm.specialTaxRate
+                          );
+                          return (
+                            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                              <p className="text-[10px] text-amber-800 font-bold flex items-center gap-1 mb-2">
+                                <Scale size={12}/> Chiến lược giá gợi ý (Margin 40% + Thuế):
+                              </p>
+                              <div className="space-y-1 mb-3">
+                                <div className="flex justify-between text-[9px] text-amber-700">
+                                  <span>Giá gốc + Lợi nhuận:</span>
+                                  <span>{((itemForm.recipe.costPerPortion || 0) * 1.4).toLocaleString()} đ</span>
+                                </div>
+                                {plan.specialTaxAmountPerUnit > 0 && (
+                                  <div className="flex justify-between text-[9px] text-amber-700">
+                                    <span>Thuế TT Đặc biệt ({itemForm.specialTaxRate * 100}%):</span>
+                                    <span>{(plan.specialTaxAmountPerUnit || 0).toLocaleString()} đ</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between text-[9px] text-amber-700">
+                                  <span>Thuế VAT ({itemForm.vatRate * 100}%):</span>
+                                  <span>{(plan.vatAmountPerUnit || 0).toLocaleString()} đ</span>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center border-t border-amber-200 pt-2">
+                                <span className="text-lg font-black text-amber-900">
+                                  {Math.ceil(plan.sellingPrice / 1000) * 1000} đ
+                                </span>
+                                <button 
+                                  onClick={() => setItemForm(prev => ({ ...prev, price: Math.ceil(plan.sellingPrice / 1000) * 1000 }))}
+                                  className="text-[10px] bg-amber-600 text-white px-2 py-1 rounded-lg font-bold hover:bg-amber-700"
+                                >
+                                  Áp dụng
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

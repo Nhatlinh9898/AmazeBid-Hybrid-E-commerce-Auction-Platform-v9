@@ -319,6 +319,8 @@ export interface Product {
   // Store Integration
   storeId?: string;
   menuItemId?: string;
+  specialTaxRate?: number; // New: Special consumption tax rate (e.g. 10% for luxury)
+  vatRate?: number; // New: VAT rate (default 8% or 10%)
   // AI Order Classification
   aiPriority?: 'URGENT' | 'NORMAL' | 'LOW';
   aiTags?: string[];
@@ -405,6 +407,8 @@ export interface StoreMenuItem {
   image: string;
   category: string;
   isAvailable: boolean;
+  vatRate?: number; // New: VAT rate
+  specialTaxRate?: number; // New: Special tax rate
   recipe?: ProductRecipe; // New: Recipe for cost calculation
 }
 
@@ -576,6 +580,25 @@ export interface Shareholder {
   exitDate?: string;
   exitValue?: number;
   exitNote?: string;
+}
+
+export interface GlobalConfig {
+  platformFeeRate: number;
+  defaultVatRate: number;
+  personalIncomeTaxRate: number;
+  currencySymbol: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  name?: string; // For administrative purposes
+  subject: string;
+  to: string;
+  type: 'PURCHASE' | 'AUCTION_WIN' | 'KYC' | 'PAYMENT_CONFIRMATION' | 'SHIPPING' | 'SYSTEM';
+  isRead: boolean;
+  timestamp: string;
+  htmlContent: string;
+  lastModified?: string;
 }
 
 export interface ProfitDistribution {

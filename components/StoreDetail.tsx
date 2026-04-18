@@ -120,7 +120,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-gray-900">Tổng thanh toán:</span>
-                  <span className="text-xl font-black text-blue-600">{lastOrder?.total.toLocaleString()} đ</span>
+                  <span className="text-xl font-black text-blue-600">{(lastOrder?.total || 0).toLocaleString()} đ</span>
                 </div>
               </div>
             </div>
@@ -164,7 +164,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
               <div key={idx} className="flex justify-between text-xs">
                 <span className="w-1/2">{item.item.name}</span>
                 <span className="w-1/6 text-center">{item.quantity}</span>
-                <span className="w-1/3 text-right">{(item.item.price * item.quantity).toLocaleString()}</span>
+                <span className="w-1/3 text-right">{((item.item.price || 0) * (item.quantity || 0)).toLocaleString()}</span>
               </div>
             ))}
           </div>
@@ -172,7 +172,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
           <div className="border-t-2 border-black border-dashed pt-4 space-y-1">
             <div className="flex justify-between font-bold">
               <span>TỔNG CỘNG:</span>
-              <span>{lastOrder?.total.toLocaleString()} đ</span>
+              <span>{(lastOrder?.total || 0).toLocaleString()} đ</span>
             </div>
             <div className="flex justify-between text-xs">
               <span>Hình thức:</span>
@@ -282,7 +282,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
                               <p className="text-xs text-gray-500 line-clamp-2 mt-1">{item.description}</p>
                             </div>
                             <div className="flex items-center justify-between mt-2">
-                              <span className="font-black text-blue-600">{item.price.toLocaleString()} đ</span>
+                              <span className="font-black text-blue-600">{(item.price || 0).toLocaleString()} đ</span>
                               <button 
                                 onClick={() => addToCart(item)}
                                 className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
@@ -386,7 +386,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
                     <div key={item.item.id} className="flex items-center justify-between">
                       <div className="flex-1 min-w-0 pr-4">
                         <h4 className="text-sm font-bold text-gray-800 truncate">{item.item.name}</h4>
-                        <p className="text-xs text-gray-400">{item.item.price.toLocaleString()} đ</p>
+                        <p className="text-xs text-gray-400">{(item.item.price || 0).toLocaleString()} đ</p>
                       </div>
                       <div className="flex items-center gap-3 bg-gray-50 px-3 py-1 rounded-full">
                         <button onClick={() => removeFromCart(item.item.id)} className="text-gray-400 hover:text-red-500">
@@ -403,7 +403,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
                   <div className="pt-4 border-t border-gray-100">
                     <div className="flex justify-between items-center mb-6">
                       <span className="text-gray-500 font-bold">Tổng cộng</span>
-                      <span className="text-2xl font-black text-blue-600">{totalAmount.toLocaleString()} đ</span>
+                      <span className="text-2xl font-black text-blue-600">{(totalAmount || 0).toLocaleString()} đ</span>
                     </div>
 
                     {!showPayment ? (

@@ -115,7 +115,7 @@ const BidModal: React.FC<BidModalProps> = ({ product, onClose, onSubmitBid }) =>
             <div className="bg-gray-50 rounded-xl p-5 mb-6 flex justify-between items-center border border-gray-200">
                 <div>
                     <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Giá hiện tại</p>
-                    <p className="text-3xl font-black text-[#b12704]">${currentBid.toLocaleString()}</p>
+                    <p className="text-3xl font-black text-[#b12704]">${(currentBid || 0).toLocaleString()}</p>
                 </div>
                 <div className="text-right">
                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Người dẫn đầu</p>
@@ -150,7 +150,7 @@ const BidModal: React.FC<BidModalProps> = ({ product, onClose, onSubmitBid }) =>
                                 <Sparkles size={14} className="text-purple-500" />
                                 <span className="text-xs font-medium text-purple-700">Dự báo giá kết thúc:</span>
                             </div>
-                            <span className="text-sm font-bold text-purple-900">${prediction.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-purple-900">${(prediction || 0).toLocaleString()}</span>
                         </div>
                         <p className="text-[10px] text-purple-500 mt-1">Dựa trên lịch sử đấu giá và xu hướng thị trường.</p>
                     </div>
@@ -193,7 +193,7 @@ const BidModal: React.FC<BidModalProps> = ({ product, onClose, onSubmitBid }) =>
                     </div>
                 )}
                 <p className="text-xs text-gray-500 mb-4">
-                    Bước giá tối thiểu: <strong>${stepPrice}</strong>. Bạn phải đặt ít nhất <strong>${minNextBid.toLocaleString()}</strong>.
+                    Bước giá tối thiểu: <strong>${stepPrice}</strong>. Bạn phải đặt ít nhất <strong>${(minNextBid || 0).toLocaleString()}</strong>.
                 </p>
                 <button 
                     type="submit"
@@ -226,10 +226,10 @@ const BidModal: React.FC<BidModalProps> = ({ product, onClose, onSubmitBid }) =>
                                         {bid.userName === 'Bạn' ? <span className="text-blue-600 font-bold">Bạn</span> : bid.userName}
                                     </td>
                                     <td className={`p-3 text-right font-bold ${index === 0 ? "text-[#b12704]" : "text-gray-600"}`}>
-                                        ${bid.amount.toLocaleString()}
+                                        ${(bid.amount || 0).toLocaleString()}
                                     </td>
                                     <td className="p-3 text-right text-gray-400 text-xs">
-                                        {new Date(bid.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                        {bid.timestamp ? new Date(bid.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}
                                     </td>
                                 </tr>
                             ))}

@@ -18,6 +18,8 @@ class EquityService {
   }
 
   private loadFromStorage() {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+
     const savedEmployees = localStorage.getItem('amazebid_employees');
     const savedLaborCosts = localStorage.getItem('amazebid_labor_costs');
     const savedShareholders = localStorage.getItem('amazebid_shareholders');
@@ -30,10 +32,12 @@ class EquityService {
   }
 
   private saveToStorage() {
-    localStorage.setItem('amazebid_employees', JSON.stringify(this.employees));
-    localStorage.setItem('amazebid_labor_costs', JSON.stringify(this.laborCosts));
-    localStorage.setItem('amazebid_shareholders', JSON.stringify(this.shareholders));
-    localStorage.setItem('amazebid_distributions', JSON.stringify(this.distributions));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('amazebid_employees', JSON.stringify(this.employees));
+      localStorage.setItem('amazebid_labor_costs', JSON.stringify(this.laborCosts));
+      localStorage.setItem('amazebid_shareholders', JSON.stringify(this.shareholders));
+      localStorage.setItem('amazebid_distributions', JSON.stringify(this.distributions));
+    }
     this.notify();
   }
 

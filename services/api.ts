@@ -14,7 +14,7 @@ interface BackendResponse<T> {
 
 // Hàm helper để gọi API
 async function fetchClient<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('auth_token');
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),

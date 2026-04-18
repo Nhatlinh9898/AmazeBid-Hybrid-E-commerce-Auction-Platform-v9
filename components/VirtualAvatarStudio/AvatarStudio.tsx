@@ -359,6 +359,7 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
   const [showBridgeGuide, setShowBridgeGuide] = useState(false);
   
   const [kolAssets, setKolAssets] = useState<any[]>(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return [];
     try {
       const saved = localStorage.getItem('kol_assets');
       const parsed = saved ? JSON.parse(saved) : [];
@@ -370,6 +371,7 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
   });
 
   const [savedStyles, setSavedStyles] = useState<any[]>(() => {
+    if (typeof window === 'undefined' || !window.localStorage) return [];
     try {
       const saved = localStorage.getItem('avatar_saved_styles');
       return saved ? JSON.parse(saved) : [];

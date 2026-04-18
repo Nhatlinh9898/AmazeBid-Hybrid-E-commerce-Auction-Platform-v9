@@ -466,7 +466,7 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
                         <img src={item.image} alt={item.name} className="w-16 h-16 rounded-xl object-cover" />
                         <div className="flex-1">
                           <h4 className="text-sm font-bold text-gray-900">{item.name}</h4>
-                          <p className="text-xs text-gray-500 font-black text-blue-600">{item.price.toLocaleString()} đ</p>
+                          <p className="text-xs text-gray-500 font-black text-blue-600">{(item.price || 0).toLocaleString()} đ</p>
                         </div>
                         <button 
                           onClick={() => removeMenuItem(item.id)}

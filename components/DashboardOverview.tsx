@@ -122,7 +122,7 @@ const DashboardOverview: React.FC = () => {
               <div>
                 <p className="text-sm text-slate-500 mb-1">Tổng doanh thu (Escrow)</p>
                 <p className="text-4xl font-black text-slate-900">
-                  {stats.totalRevenue.toLocaleString()} <span className="text-lg font-normal text-slate-400">VND</span>
+                  {(stats.totalRevenue || 0).toLocaleString()} <span className="text-lg font-normal text-slate-400">VND</span>
                 </p>
               </div>
               <div className="text-right">
@@ -165,7 +165,7 @@ const DashboardOverview: React.FC = () => {
                 <div>
                   <p className="text-sm font-bold text-slate-800">{log.action}</p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {new Date(log.timestamp).toLocaleTimeString()} - IP: {log.ip}
+                    {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'N/A'} - IP: {log.ip}
                   </p>
                 </div>
               </div>

@@ -124,7 +124,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase">Giá trị kho</p>
               <p className="text-lg font-bold text-gray-900">
-                ${products.reduce((sum, p) => sum + (p.price * (p.stock || 1)), 0).toLocaleString()}
+                ${(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 1)), 0)).toLocaleString()}
               </p>
             </div>
           </div>
@@ -194,7 +194,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
               <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-4 md:pt-0">
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-gray-400 uppercase">Giá bán</p>
-                  <p className="text-lg font-bold text-[#b12704]">${product.price.toLocaleString()}</p>
+                  <p className="text-lg font-bold text-[#b12704]">${(product.price || 0).toLocaleString()}</p>
                 </div>
                 
                 <div className="flex items-center gap-2">

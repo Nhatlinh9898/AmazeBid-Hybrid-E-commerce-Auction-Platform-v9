@@ -183,7 +183,7 @@ const UserWalletModal: React.FC<UserWalletModalProps> = ({ isOpen, onClose }) =>
                     <Wallet size={120} />
                   </div>
                   <p className="text-indigo-100 text-xs uppercase font-black tracking-widest mb-2">Số dư khả dụng</p>
-                  <p className="text-4xl font-black mb-4 tracking-tighter">${wallet?.balance?.toLocaleString() || '0.00'}</p>
+                  <p className="text-4xl font-black mb-4 tracking-tighter">${(wallet?.balance || 0).toLocaleString()} </p>
                   <div className="flex items-center gap-2 text-[10px] bg-white/20 w-fit px-3 py-1.5 rounded-full backdrop-blur-md font-bold uppercase tracking-wider">
                     <CheckCircle2 size={12} /> Sẵn sàng rút về ngân hàng
                   </div>
@@ -197,7 +197,7 @@ const UserWalletModal: React.FC<UserWalletModalProps> = ({ isOpen, onClose }) =>
                       </div>
                       <p className="text-xs text-gray-400 uppercase font-black tracking-widest">Đang lưu ký (Escrow)</p>
                     </div>
-                    <p className="text-3xl font-black text-gray-900 tracking-tighter">${wallet?.pendingBalance?.toLocaleString() || '0.00'}</p>
+                    <p className="text-3xl font-black text-gray-900 tracking-tighter">${(wallet?.pendingBalance || 0).toLocaleString()}</p>
                   </div>
                   <div className="mt-4 flex items-center gap-2 text-[10px] text-orange-600 font-bold bg-orange-50 px-3 py-1.5 rounded-full w-fit">
                     <Clock size={12} /> Đang chờ xác nhận từ người mua
@@ -385,7 +385,7 @@ const UserWalletModal: React.FC<UserWalletModalProps> = ({ isOpen, onClose }) =>
                         <div>
                           <p className="text-sm font-black text-gray-900">{tx.description}</p>
                           <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
-                            {new Date(tx.timestamp).toLocaleString('vi-VN')}
+                            {tx.timestamp ? new Date(tx.timestamp).toLocaleString('vi-VN') : 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -395,7 +395,7 @@ const UserWalletModal: React.FC<UserWalletModalProps> = ({ isOpen, onClose }) =>
                           tx.type === 'WITHDRAWAL' ? 'text-red-600' : 
                           'text-indigo-600'
                         }`}>
-                          {tx.type === 'DEPOSIT' ? '+' : '-'}${tx.amount.toLocaleString()}
+                          {tx.type === 'DEPOSIT' ? '+' : '-'}${(tx.amount || 0).toLocaleString()}
                         </p>
                         <span className="text-[9px] font-black uppercase text-gray-300 tracking-widest">{tx.status}</span>
                       </div>
@@ -434,11 +434,11 @@ const UserWalletModal: React.FC<UserWalletModalProps> = ({ isOpen, onClose }) =>
                           <p className="text-sm font-black text-gray-900">{item.productName}</p>
                           <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Mã đơn: {item.orderId}</p>
                         </div>
-                        <p className="text-lg font-black text-indigo-600">${item.amount.toLocaleString()}</p>
+                        <p className="text-lg font-black text-indigo-600">${(item.amount || 0).toLocaleString()}</p>
                       </div>
                       <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                         <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold">
-                          <Clock size={12} /> Dự kiến giải ngân: {new Date(item.expectedReleaseDate).toLocaleDateString('vi-VN')}
+                          <Clock size={12} /> Dự kiến giải ngân: {item.expectedReleaseDate ? new Date(item.expectedReleaseDate).toLocaleDateString('vi-VN') : 'N/A'}
                         </div>
                         <span className="bg-orange-100 text-orange-700 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                           {item.status}

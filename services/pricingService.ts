@@ -1,5 +1,6 @@
 import { Product } from '../types';
 import { localAnalyzeProfit } from '../src/services/inventoryService';
+import { configService } from './ConfigService';
 
 export interface PricingPlan {
   sellingPrice: number;
@@ -7,39 +8,63 @@ export interface PricingPlan {
   flashSalePrice: number;
   estimatedProfit: number;
   systemFeePerUnit: number;
+  vatAmountPerUnit: number;
+  specialTaxAmountPerUnit: number;
+  netProfitPerUnit: number;
 }
 
 export class PricingService {
-  private static DEFAULT_MARKUP = 0.25; // 25% markup
-  private static SYSTEM_FEE_RATE = 0.05; // 5% of profit
+  private static DEFAULT_MARKUP = 0.40; // 40% markup as default
 
   /**
-   * Calculates a pricing plan based on cost price and stock.
+   * Calculates a pricing plan based on cost price and stock, including taxes.
    */
-  static calculatePlan(costPrice: number, totalStock: number, markup: number = this.DEFAULT_MARKUP): PricingPlan {
-    const sellingPrice = costPrice * (1 + markup);
+  static calculatePlan(
+    costPrice: number, 
+    totalStock: number, 
+    markup: number = this.DEFAULT_MARKUP,
+    customVat?: number,
+    customSpecialTax?: number
+  ): PricingPlan {
+    const config = configService.getConfig();
+    const vatRate = customVat !== undefined ? customVat : config.defaultVatRate;
+    const specialTaxRate = customSpecialTax || 0;
     
-    // Total investment = costPrice * totalStock
-    // How many units at sellingPrice to recover investment?
+    // Price before tax = cost * (1 + markup)
+    const basePrice = costPrice * (1 + markup);
+    
+    // Special Tax (Thuế tiêu thụ đặc biệt) applied on base price
+    const specialTaxAmount = basePrice * specialTaxRate;
+    
+    // VAT applied on (Base Price + Special Tax)
+    const vatAmount = (basePrice + specialTaxAmount) * vatRate;
+    
+    // Final Selling Price to user
+    const sellingPrice = basePrice + specialTaxAmount + vatAmount;
+    
+    // Platform fee on profit
+    const profitBeforePlatform = basePrice - costPrice;
+    const systemFeePerUnit = profitBeforePlatform * config.platformFeeRate;
+    
+    const netProfitPerUnit = profitBeforePlatform - systemFeePerUnit;
+    
+    // Break even analysis
     const breakEvenQuantity = Math.ceil((costPrice * totalStock) / sellingPrice);
     
-    // Profit per unit = sellingPrice - costPrice
-    const profitPerUnit = sellingPrice - costPrice;
-    const systemFeePerUnit = profitPerUnit * this.SYSTEM_FEE_RATE;
+    const flashSalePrice = costPrice * 1.1 + specialTaxAmount + vatAmount; 
     
-    // Remaining units for campaigns (Flash Sale/Live)
-    // We can sell these at a lower price since we've recovered the cost
-    const flashSalePrice = costPrice * 1.1; // 10% profit for flash sales
-    
-    const estimatedProfit = (breakEvenQuantity * (profitPerUnit - systemFeePerUnit)) + 
-                            ((totalStock - breakEvenQuantity) * (flashSalePrice - costPrice));
+    const estimatedProfit = (breakEvenQuantity * netProfitPerUnit) + 
+                            ((totalStock - breakEvenQuantity) * (flashSalePrice - costPrice - specialTaxAmount - vatAmount - (flashSalePrice - costPrice - specialTaxAmount - vatAmount) * config.platformFeeRate));
 
     return {
       sellingPrice: Number(sellingPrice.toFixed(2)),
       breakEvenQuantity,
       flashSalePrice: Number(flashSalePrice.toFixed(2)),
       estimatedProfit: Number(estimatedProfit.toFixed(2)),
-      systemFeePerUnit: Number(systemFeePerUnit.toFixed(2))
+      systemFeePerUnit: Number(systemFeePerUnit.toFixed(2)),
+      vatAmountPerUnit: Number(vatAmount.toFixed(2)),
+      specialTaxAmountPerUnit: Number(specialTaxAmount.toFixed(2)),
+      netProfitPerUnit: Number(netProfitPerUnit.toFixed(2))
     };
   }
 

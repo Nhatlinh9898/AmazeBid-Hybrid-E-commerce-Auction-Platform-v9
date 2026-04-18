@@ -21,6 +21,12 @@ interface Schema {
   orders: Order[];
   security_logs: any[];
   blocked_ips: string[];
+  globalConfig: {
+    platformFeeRate: number;
+    defaultVatRate: number;
+    personalIncomeTaxRate: number;
+    currencySymbol: string;
+  };
 }
 
 class Database {
@@ -88,6 +94,16 @@ class Database {
           data.blocked_ips = [];
         }
 
+        // Migration: Ensure globalConfig exists
+        if (!data.globalConfig) {
+          data.globalConfig = {
+            platformFeeRate: 0.05,
+            defaultVatRate: 0.08,
+            personalIncomeTaxRate: 0.015,
+            currencySymbol: 'đ'
+          };
+        }
+
         // Migration: Ensure users have gamification fields and tokenVersion and wallet
         data.users = data.users.map((u: any) => ({
           points: 0,
@@ -131,7 +147,13 @@ class Database {
       },
       orders: [],
       security_logs: [],
-      blocked_ips: []
+      blocked_ips: [],
+      globalConfig: {
+        platformFeeRate: 0.05,
+        defaultVatRate: 0.08,
+        personalIncomeTaxRate: 0.015,
+        currencySymbol: 'đ'
+      }
     };
     this.save(defaultData);
     return defaultData;
