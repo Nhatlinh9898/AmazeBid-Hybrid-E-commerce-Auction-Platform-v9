@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, CreditCard, ShieldCheck, MapPin, Eye, EyeOff, Edit2, Plus, LogOut, Lock, X, Share2, Copy, Check, Facebook, Instagram, Chrome, Users, Link, Save, Trash2, AlertTriangle, Phone, FileText, ShoppingBag, Gavel, Calendar, Video, Sparkles, Camera, RefreshCw } from 'lucide-react';
+import { User, CreditCard, ShieldCheck, MapPin, Eye, EyeOff, Edit2, Plus, LogOut, Lock, X, Share2, Copy, Check, Facebook, Instagram, Chrome, Users, Link, Save, Trash2, AlertTriangle, Phone, FileText, ShoppingBag, Gavel, Calendar, Video, Sparkles, Camera, RefreshCw, Zap, TrendingUp, Info, Clock, Landmark, Wallet, CreditCard as CreditCardIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
-import { PaymentMethod, SocialAccount, Product, ContentPost, ItemType } from '../types';
+import { PaymentMethod, SocialAccount, Product, ContentPost, ItemType, AISubscriptionTier } from '../types';
 import KYCModal from './KYCModal';
+import UserWalletModal from './UserWalletModal';
 
 interface UserProfileProps {
   isOpen: boolean;
@@ -14,13 +15,50 @@ interface UserProfileProps {
 
 const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts = [], myPosts = [] }) => {
   const { user, logout, updateProfile, resetToken, setup2FA, confirm2FA, toggle2FA } = useAuth();
-  const [activeTab, setActiveTab] = useState<'INFO' | 'PAYMENT' | 'SECURITY' | 'SOCIAL' | 'POSTS' | 'LOYALTY'>('INFO');
+  const [activeTab, setActiveTab] = useState<'INFO' | 'PAYMENT' | 'SECURITY' | 'SOCIAL' | 'POSTS' | 'LOYALTY' | 'AI_BILLING'>('INFO');
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
   const [friendCodeInput, setFriendCodeInput] = useState('');
   const [tasks, setTasks] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [isKYCModalOpen, setIsKYCModalOpen] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [showCheckoutUI, setShowCheckoutUI] = useState<AISubscriptionTier | null>(null);
+
+  const handleSubscribeAIPro = async () => {
+    if (!user) return;
+    setIsSubscribing(true);
+    try {
+      const response = await fetch('/api/ai/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ userId: user.id, tier: AISubscriptionTier.PRO })
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+          // Success!
+          alert('Cảm ơn bạn! Đăng ký gói AI Pro thành công.');
+          window.location.reload(); // Quick refresh to update state
+      } else {
+          throw new Error(data.data?.message || 'Có lỗi xảy ra');
+      }
+    } catch (error: any) {
+      if (error.message.includes('Số dư ví không đủ')) {
+          if (confirm('Số dư ví AmazeBid không đủ. Bạn có muốn nạp thêm tiền ngay bây giờ?')) {
+              setIsWalletModalOpen(true);
+          }
+      } else {
+          alert(error.message);
+      }
+    } finally {
+      setIsSubscribing(false);
+      setShowCheckoutUI(null);
+    }
+  };
   const [isSettingUp2FA, setIsSettingUp2FA] = useState(false);
   const [twoFactorSetupData, setTwoFactorSetupData] = useState<{ secret: string, qrCode: string } | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -298,6 +336,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                     <Lock size={16} /> Bảo mật & Riêng tư
                 </button>
                 <button 
+                    onClick={() => setActiveTab('AI_BILLING')}
+                    className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-3 ${activeTab === 'AI_BILLING' ? 'bg-[#131921] text-white' : 'hover:bg-gray-200 text-gray-600'}`}
+                >
+                    <Zap size={16} /> AI & Gói Dịch Vụ
+                </button>
+                <button 
                     onClick={() => setActiveTab('LOYALTY')}
                     className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-3 ${activeTab === 'LOYALTY' ? 'bg-[#131921] text-white' : 'hover:bg-gray-200 text-gray-600'}`}
                 >
@@ -316,6 +360,237 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto p-8 pt-12 relative custom-scrollbar">
             
+            {/* TAB: AI_BILLING */}
+            {activeTab === 'AI_BILLING' && (
+                <div className="space-y-6 animate-in slide-in-from-right-4">
+                    <div className="flex justify-between items-center mb-6 pr-12">
+                        <h2 className="text-2xl font-bold">AI & Gói Dịch Vụ (Google AI)</h2>
+                        <div className="flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold">
+                            <Sparkles size={14} /> Gemini 1.5 Pro Enabled
+                        </div>
+                    </div>
+
+                    {/* Subscription Status */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-6 rounded-2xl bg-gradient-to-br from-[#1a1c1e] to-[#2d2f31] text-white shadow-xl relative overflow-hidden group">
+                           <div className="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/40 transition-all"></div>
+                           <p className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-2">Gói hiện tại</p>
+                           <h3 className="text-3xl font-bold mb-1">
+                              {user.aiSubscription?.tier === AISubscriptionTier.PRO ? 'AmazeBid AI Pro' : 
+                               user.aiSubscription?.tier === AISubscriptionTier.BYOK ? 'Bring Your Own Key' : 'Standard Free'}
+                           </h3>
+                           <p className="text-sm opacity-70 mb-4">
+                              {user.aiSubscription?.tier === AISubscriptionTier.PRO ? 'Mở khóa toàn bộ quyền năng AI' : 'Giới hạn 10 câu hỏi/ngày'}
+                           </p>
+                           <div className="flex items-center justify-between mt-auto border-t border-white/10 pt-4">
+                               <div className="text-xs">
+                                   <p className="opacity-50">Ngày hết hạn</p>
+                                   <p className="font-bold">{user.aiSubscription?.expiryDate ? new Date(user.aiSubscription.expiryDate).toLocaleDateString() : 'N/A'}</p>
+                               </div>
+                               <button 
+                                 onClick={() => setShowCheckoutUI(AISubscriptionTier.PRO)}
+                                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-bold transition-all"
+                               >
+                                   {user.aiSubscription?.tier === AISubscriptionTier.PRO ? 'Gia hạn gói' : 'Nâng cấp ngay'}
+                               </button>
+                           </div>
+                        </div>
+
+                        {/* Checkout Overlay Modal-like UI */}
+                        {showCheckoutUI === AISubscriptionTier.PRO && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                                <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div>
+                                            <h3 className="text-2xl font-black text-gray-900">Nâng cấp AI Pro</h3>
+                                            <p className="text-gray-500 text-sm">Trải nghiệm full quyền năng AI AmazeBid</p>
+                                        </div>
+                                        <button onClick={() => setShowCheckoutUI(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+
+                                    <div className="bg-indigo-50 p-4 rounded-2xl mb-6 border border-indigo-100">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-sm font-bold text-gray-700">Giá gói (30 ngày)</span>
+                                            <span className="text-xl font-black text-indigo-600 underline decoration-indigo-200">500,000đ</span>
+                                        </div>
+                                        <p className="text-[10px] text-indigo-400">Tương đương $20 USD. Áp dụng giá ưu đãi nội bộ.</p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2">Phương thức thuận tiện</p>
+                                        
+                                        <button 
+                                            onClick={handleSubscribeAIPro}
+                                            disabled={isSubscribing}
+                                            className="w-full p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-600 text-white flex items-center justify-between hover:bg-indigo-700 transition-all group"
+                                        >
+                                            <div className="flex items-center gap-3 text-left">
+                                                <Wallet />
+                                                <div>
+                                                    <p className="font-bold">Ví AmazeBid (Escrow)</p>
+                                                    <p className="text-[10px] opacity-70">Số dư hiện tại: {(user.wallet?.balance || 0).toLocaleString()}đ</p>
+                                                </div>
+                                            </div>
+                                            {isSubscribing ? <Loader2 className="animate-spin" /> : <Check size={20} />}
+                                        </button>
+
+                                        <button 
+                                            onClick={() => {
+                                                setShowCheckoutUI(null);
+                                                setActiveTab('PAYMENT');
+                                            }}
+                                            className="w-full p-4 rounded-2xl border border-gray-200 bg-white flex items-center justify-between hover:border-indigo-600 transition-all group"
+                                        >
+                                            <div className="flex items-center gap-3 text-left text-gray-600">
+                                                <CreditCardIcon />
+                                                <div>
+                                                    <p className="font-bold text-gray-900">Thẻ Quốc Tế (Stripe)</p>
+                                                    <p className="text-[10px]">Visa, Mastercard, Apple Pay...</p>
+                                                </div>
+                                            </div>
+                                            <Share2 size={16} className="text-gray-400 group-hover:text-indigo-600" />
+                                        </button>
+                                    </div>
+
+                                    <div className="mt-8 flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                        <ShieldCheck className="text-green-500 shrink-0" size={16} />
+                                        <p className="text-[10px] text-gray-500 leading-relaxed">
+                                            Giao dịch được bảo mật bởi hệ thống Escrow và Stripe. Bạn có thể hủy gia hạn bất kỳ lúc nào trong cài đặt.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-sm flex flex-col">
+                           <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
+                               <TrendingUp size={14}/> Thống kê sử dụng AI
+                           </p>
+                           <div className="space-y-4 flex-1">
+                               <div>
+                                   <div className="flex justify-between text-xs mb-1">
+                                       <span className="font-bold text-gray-600">Tokens đã dùng</span>
+                                       <span className="text-gray-400">{(user.aiUsage?.totalTokens || 0).toLocaleString()} / 5,000,000</span>
+                                   </div>
+                                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                       <div 
+                                         className="h-full bg-indigo-500 rounded-full" 
+                                         style={{ width: `${Math.min(((user.aiUsage?.totalTokens || 0) / 5000000) * 100, 100)}%` }}
+                                       ></div>
+                                   </div>
+                               </div>
+                               <div>
+                                   <div className="flex justify-between text-xs mb-1">
+                                       <span className="font-bold text-gray-600">Số yêu cầu</span>
+                                       <span className="text-gray-400">{user.aiUsage?.totalRequests || 0} yêu cầu</span>
+                                   </div>
+                               </div>
+                           </div>
+                           <div className="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100 flex items-start gap-2">
+                               <Info size={14} className="text-indigo-600 mt-0.5 shrink-0" />
+                               <p className="text-[10px] text-indigo-800 leading-relaxed">
+                                   Gói **Pro ($20/tháng)** giúp bạn dự tính chi phí chính xác hơn và không bị giới hạn tốc độ xử lý khi livestream hoặc tạo nội dung hàng loạt.
+                               </p>
+                           </div>
+                        </div>
+                    </div>
+
+                    {/* All Plans */}
+                    <div>
+                        <h3 className="font-bold text-lg mb-4">Các gói dịch vụ đề xuất</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {[
+                                { 
+                                    tier: AISubscriptionTier.FREE, 
+                                    name: 'Standard', 
+                                    price: 'Miễn phí', 
+                                    features: ['10 yêu cầu/ngày', 'Gemini 1.5 Flash', 'Hỗ trợ cơ bản'],
+                                    color: 'border-gray-200'
+                                },
+                                { 
+                                    tier: AISubscriptionTier.PRO, 
+                                    name: 'AI Pro', 
+                                    price: '500,000đ/tháng', 
+                                    features: ['Không giới hạn', 'Gemini 1.5 Pro', 'Xử lý video AI', 'Ưu tiên Livestream'],
+                                    cta: user.aiSubscription?.tier === AISubscriptionTier.PRO ? 'Đang sử dụng' : 'Chọn Pro',
+                                    action: () => setShowCheckoutUI(AISubscriptionTier.PRO),
+                                    color: 'border-indigo-500 bg-indigo-50/30 ring-2 ring-indigo-500/20 shadow-lg'
+                                },
+                                { 
+                                    tier: AISubscriptionTier.BYOK, 
+                                    name: 'Enterprise', 
+                                    price: 'Theo API', 
+                                    features: ['Sử dụng Key riêng', 'Tự quản lý Quota', 'Full Access API', 'Export Logs'],
+                                    cta: 'Config Key',
+                                    color: 'border-gray-200'
+                                }
+                            ].map(plan => (
+                                <div key={plan.tier} className={`p-5 rounded-2xl border transition-all hover:scale-[1.02] ${plan.color}`}>
+                                    <h4 className="font-bold text-lg">{plan.name}</h4>
+                                    <p className="text-indigo-600 font-black text-xl mb-4">{plan.price}</p>
+                                    <ul className="space-y-2 mb-6">
+                                        {plan.features.map((f, i) => (
+                                            <li key={i} className="text-xs text-gray-500 flex items-center gap-2">
+                                                <Check size={12} className="text-green-500" /> {f}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {plan.cta && (
+                                        <button 
+                                            onClick={plan.action}
+                                            disabled={plan.tier === user.aiSubscription?.tier}
+                                            className="w-full py-2 bg-[#131921] text-white rounded-lg text-sm font-bold hover:bg-black transition-colors disabled:bg-green-600 disabled:cursor-default"
+                                        >
+                                            {plan.cta}
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Usage History */}
+                    <div className="border-t border-gray-100 pt-6">
+                        <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                            <Clock size={18}/> Lịch sử sử dụng & Chi phí dự tính
+                        </h3>
+                        <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-100 border-b">
+                                    <tr>
+                                        <th className="px-4 py-3 font-bold text-xs uppercase text-gray-500">Ngày</th>
+                                        <th className="px-4 py-3 font-bold text-xs uppercase text-gray-500">Loại tác vụ</th>
+                                        <th className="px-4 py-3 font-bold text-xs uppercase text-gray-500">Tokens</th>
+                                        <th className="px-4 py-3 font-bold text-xs uppercase text-gray-500">Chi phí (Dự tính)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {(user.aiUsage?.usageHistory || [
+                                        { date: '2026-04-22 14:30', tokens: 1540, type: 'Bài viết AI', cost: 0.05 },
+                                        { date: '2026-04-22 15:45', tokens: 4200, type: 'Phân tích Video', cost: 0.12 },
+                                        { date: '2026-04-23 09:10', tokens: 800, type: 'Gợi ý Livestream', cost: 0.02 }
+                                    ]).map((h, i) => (
+                                        <tr key={i} className="hover:bg-white transition-colors">
+                                            <td className="px-4 py-3 text-xs text-gray-400">{h.date}</td>
+                                            <td className="px-4 py-3 font-medium">{h.type}</td>
+                                            <td className="px-4 py-3 text-xs font-mono">{h.tokens.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-xs font-bold text-indigo-600">
+                                                {user.aiSubscription?.tier === AISubscriptionTier.PRO ? '$0 (Incl. Pro)' : `$${h.cost?.toFixed(2)}`}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-4 italic">
+                            * Chi phí trên được dự tính dựa trên bảng giá tiêu chuẩn của Google AI Studio. Gói Pro $20 giúp bạn không cần lo lắng về biến động chi phí này.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* TAB: LOYALTY */}
             {activeTab === 'LOYALTY' && (
                 <div className="space-y-6 animate-in slide-in-from-right-4">
@@ -578,7 +853,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
                                             <div className="bg-gray-100 p-2 rounded-lg">
-                                                {pm.type === 'BANK' ? <LandmarkIcon /> : <CreditCard />}
+                                                {pm.type === 'BANK' ? <Landmark /> : <CreditCard />}
                                             </div>
                                             <div>
                                                 <p className="font-bold text-gray-900">{pm.providerName}</p>
@@ -886,12 +1161,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
         </div>
       </div>
       <KYCModal isOpen={isKYCModalOpen} onClose={() => setIsKYCModalOpen(false)} user={user} />
+      <UserWalletModal 
+          isOpen={isWalletModalOpen} 
+          onClose={() => setIsWalletModalOpen(false)} 
+      />
     </div>
   );
 };
-
-const LandmarkIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
-)
 
 export default UserProfile;

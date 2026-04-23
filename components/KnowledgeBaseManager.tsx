@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Image as ImageIcon, FileText, Trash2, Search, Tag, Database, Upload, Video, Settings, BookOpen, Info, ShieldCheck, Link2, Monitor, Globe } from 'lucide-react';
+import { X, Plus, Image as ImageIcon, FileText, Trash2, Search, Tag, Database, Upload, Video, Settings, BookOpen, Info, ShieldCheck, Monitor, Globe } from 'lucide-react';
 import { KnowledgeItem, User } from '../types';
 import { db, auth } from '../firebase';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocFromServer } from 'firebase/firestore';
@@ -37,13 +37,12 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.email === 'Nhatlinhckm2016@gmail.com';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check Local Bridge connectivity
   useEffect(() => {
     const checkBridge = async () => {
       try {
-        const response = await fetch(BRIDGE_URL, { method: 'HEAD', mode: 'no-cors' });
+        await fetch(BRIDGE_URL, { method: 'HEAD', mode: 'no-cors' });
         setIsBridgeOnline(true);
-      } catch (e) {
+      } catch {
         setIsBridgeOnline(false);
       }
     };
@@ -53,7 +52,8 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
   }, []);
 
   // Sync Local Workspace files
-  const syncLocalWorkspace = async () => {
+  // Sync Local Workspace files
+  const syncLocalWorkspace = React.useCallback(async () => {
     if (!isBridgeOnline) return;
     setIsSyncing(true);
     try {
@@ -65,18 +65,18 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
           files: data.files
         });
       }
-    } catch (e) {
-      console.error("Local sync failed", e);
+    } catch {
+      console.error("Local sync failed");
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [isBridgeOnline]);
 
   useEffect(() => {
     if (isBridgeOnline && isOpen) {
       syncLocalWorkspace();
     }
-  }, [isBridgeOnline, isOpen]);
+  }, [isBridgeOnline, isOpen, syncLocalWorkspace]);
 
   const handleSetupWorkspace = async () => {
     if (!basePathInput) return;
@@ -91,7 +91,7 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
         setShowWorkspaceSetup(false);
         syncLocalWorkspace();
       }
-    } catch (e) {
+    } catch {
       alert("Lỗi kết nối Local Bridge");
     }
   };
@@ -141,7 +141,7 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
     });
 
     return () => unsubscribe();
-  }, [currentUser, db, auth]);
+  }, [currentUser]);
 
   // Real-time sync with Firestore
   useEffect(() => {
@@ -183,7 +183,7 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
       unsubscribeAuth();
       if (unsubscribeSnapshot) unsubscribeSnapshot();
     };
-  }, [isOpen, currentUser, db, auth]);
+  }, [isOpen, currentUser]);
 
   if (!isOpen) return null;
 

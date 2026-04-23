@@ -705,9 +705,100 @@ router.post('/admin/config', async (req, res) => {
 });
 
 // AI Billing for Users
+router.post('/ai/subscribe', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return sendError(res, 'Không có token xác nhận', 'ai_subscribe_error');
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = SecurityService.verifyToken(token);
+        if (!decoded) return sendError(res, 'Phiên đăng nhập hết hạn', 'ai_subscribe_error');
+
+        const userId = decoded.id; // Use ID from token, not body
+        const { tier } = req.body;
+        
+        const users = db.get('users');
+        const userIndex = users.findIndex(u => u.id === userId);
+        
+        if (userIndex === -1) throw new Error('Người dùng không tồn tại');
+        const user = users[userIndex];
+
+        // Constants - Could be moved to globalConfig later
+        const PRO_MONTHLY_FEE = 500000; // ~ $20 USD in VND
+        
+        if (tier !== 'PRO') throw new Error('Hệ thống hiện chỉ hỗ trợ đăng ký gói PRO');
+
+        if (!user.wallet || user.wallet.balance < PRO_MONTHLY_FEE) {
+            throw new Error(`Số dư ví không đủ. Cần ít nhất ${PRO_MONTHLY_FEE.toLocaleString()} VND để đăng ký gói AI Pro.`);
+        }
+
+        // Calculate expiry (30 days from now)
+        const now = new Date();
+        const expiry = new Date();
+        expiry.setDate(now.getDate() + 30);
+
+        // Deduct from wallet
+        user.wallet.balance -= PRO_MONTHLY_FEE;
+        if (!user.wallet.transactions) user.wallet.transactions = [];
+        user.wallet.transactions.unshift({
+            id: `sub_${Date.now()}`,
+            type: 'WITHDRAWAL', 
+            amount: PRO_MONTHLY_FEE,
+            status: 'COMPLETED',
+            timestamp: now.toISOString(),
+            description: `Đăng ký gói AI Pro (30 ngày) - AmazeBid AI Suite`
+        });
+
+        // Set Subscription data
+        user.aiSubscription = {
+            tier: 'PRO',
+            startDate: now.toISOString(),
+            expiryDate: expiry.toISOString(),
+            autoRenew: true,
+            priceMonth: PRO_MONTHLY_FEE
+        };
+
+        // Add revenue to system
+        const sysWallet = db.get('systemWallet');
+        sysWallet.balance += PRO_MONTHLY_FEE;
+        sysWallet.totalRevenue += PRO_MONTHLY_FEE;
+        if (!sysWallet.transactions) sysWallet.transactions = [];
+        sysWallet.transactions.unshift({
+            id: `sys_sub_${Date.now()}`,
+            type: 'REVENUE',
+            amount: PRO_MONTHLY_FEE,
+            status: 'COMPLETED',
+            timestamp: now.toISOString(),
+            description: `Doanh thu đăng ký AI Pro từ user ${userId}`
+        });
+
+        await db.update('users', (prev) => {
+            prev[userIndex] = user;
+            return [...prev];
+        });
+        await db.update('systemWallet', () => sysWallet);
+
+        sendSuccess(res, { user, message: 'Đăng ký gói AI Pro thành công!' }, 'ai_subscribe_success');
+    } catch (error: any) {
+        sendError(res, error.message, 'ai_subscribe_error');
+    }
+});
+
 router.post('/ai/charge', async (req, res) => {
     try {
-      const { userId, modelType, task } = req.body;
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+          return sendError(res, 'Không có token xác nhận', 'ai_charge_error');
+      }
+
+      const token = authHeader.split(' ')[1];
+      const decoded = SecurityService.verifyToken(token);
+      if (!decoded) return sendError(res, 'Phiên đăng nhập hết hạn', 'ai_charge_error');
+
+      const userId = decoded.id; // ISO identity: Use ID from token
+      const { modelType, task } = req.body;
       const config = db.get('globalConfig');
       const users = db.get('users');
       const userIndex = users.findIndex(u => u.id === userId);
@@ -716,15 +807,27 @@ router.post('/ai/charge', async (req, res) => {
       
       const user = users[userIndex];
       
-      // Admins are not charged for AI usage
-      if (user.role === 'ADMIN') {
-          return sendSuccess(res, { charged: 0, balance: user.wallet?.balance || 0 }, 'ai_charge_admin');
+      // 1. Subscription Check (Isolation & Privilege)
+      const isPro = user.aiSubscription?.tier === 'PRO' && new Date(user.aiSubscription.expiryDate) > new Date();
+      
+      // Admins and Pro users are not charged for AI usage (within policy)
+      if (user.role === 'ADMIN' || isPro) {
+          // Track usage even if not charged
+          if (!user.aiUsage) user.aiUsage = { totalTokens: 0, totalRequests: 0, estimatedCost: 0, history: [] };
+          user.aiUsage.totalRequests++;
+          
+          await db.update('users', (prev) => {
+              prev[userIndex] = user;
+              return [...prev];
+          });
+          
+          return sendSuccess(res, { charged: 0, balance: user.wallet?.balance || 0, isPro }, 'ai_charge_exempt');
       }
   
       const fee = modelType === 'PRO' ? (config.proAIFee || 500) : (config.flashAIFee || 100);
       
       if (!user.wallet || user.wallet.balance < fee) {
-          throw new Error('Số dư ví không đủ để sử dụng tính năng AI này. Vui lòng nạp thêm tiền.');
+          throw new Error('Số dư ví không đủ để sử dụng tính năng AI này. Vui lòng nạp thêm tiền hoặc nâng cấp gói Pro.');
       }
   
       // Deduct from user
@@ -736,14 +839,18 @@ router.post('/ai/charge', async (req, res) => {
           amount: fee,
           status: 'COMPLETED',
           timestamp: new Date().toISOString(),
-          description: `Phí xử lý AI (${modelType}) - Tác vụ: ${task || 'N/A'}`
+          description: `Phí xử lý AI (${modelType || 'FLASH'}) - Tác vụ: ${task || 'N/A'}`
       });
+
+      // Update usage stats for tracking/admin view
+      if (!user.aiUsage) user.aiUsage = { totalTokens: 0, totalRequests: 0, estimatedCost: 0, history: [] };
+      user.aiUsage.totalRequests++;
+      user.aiUsage.estimatedCost += fee;
   
       // Add to system wallet
       const sysWallet = db.get('systemWallet');
       sysWallet.balance += fee;
       sysWallet.totalRevenue += fee;
-      sysWallet.totalFeesCollected = (sysWallet.totalFeesCollected || 0) + fee;
       
       if (!sysWallet.transactions) sysWallet.transactions = [];
       sysWallet.transactions.unshift({

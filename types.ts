@@ -136,6 +136,36 @@ export interface User {
   reputation: number; // 0-100
   dailyTasks: Task[];
   vouchers: Voucher[];
+  // AI Subscription & Usage
+  aiSubscription?: AISubscription;
+  aiUsage?: AIUsageStats;
+}
+
+export enum AISubscriptionTier {
+  FREE = 'FREE',
+  PRO = 'PRO',
+  BYOK = 'BYOK' // Bring Your Own Key
+}
+
+export interface AISubscription {
+  tier: AISubscriptionTier;
+  startDate: string;
+  expiryDate?: string;
+  autoRenew: boolean;
+  priceMonth: number;
+}
+
+export interface AIUsageStats {
+  totalTokens: number;
+  totalRequests: number;
+  remainingCredits?: number; // For Free/Pro tiers
+  lastRequestDate: string;
+  usageHistory: {
+    date: string;
+    tokens: number;
+    type: string;
+    cost?: number;
+  }[];
 }
 
 // --- New Social Types ---

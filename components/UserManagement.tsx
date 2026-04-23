@@ -13,6 +13,14 @@ interface UserStat {
   status: 'ACTIVE' | 'BANNED';
   createdAt: string;
   role: 'USER' | 'SELLER' | 'ADMIN';
+  aiSubscription?: {
+    tier: string;
+    expiryDate: string;
+  };
+  aiUsage?: {
+    totalRequests: number;
+    estimatedCost: number;
+  };
 }
 
 const UserManagement: React.FC = () => {
@@ -207,6 +215,8 @@ const UserManagement: React.FC = () => {
           <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
               <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Người dùng</th>
+              <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Gói AI</th>
+              <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Sử dụng AI</th>
               <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Doanh thu</th>
               <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Trạng thái</th>
               <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Hành động</th>
@@ -242,6 +252,22 @@ const UserManagement: React.FC = () => {
                           </span>
                         </div>
                       </div>
+                    </div>
+                  </td>
+                  <td className="p-4 text-center">
+                    {user.aiSubscription?.tier === 'PRO' ? (
+                       <div className="flex flex-col items-center">
+                         <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-[10px] font-black border border-indigo-200 shadow-sm">AI PRO</span>
+                         <span className="text-[9px] text-gray-400 mt-0.5 italic">Hết hạn: {new Date(user.aiSubscription.expiryDate).toLocaleDateString()}</span>
+                       </div>
+                    ) : (
+                       <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] border border-gray-200">STANDARD</span>
+                    )}
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="flex flex-col items-end">
+                      <p className="text-xs font-bold text-gray-700">{user.aiUsage?.totalRequests || 0} reqs</p>
+                      <p className="text-[9px] text-gray-400">Tốn phí: {user.aiUsage?.estimatedCost?.toLocaleString() || 0}đ</p>
                     </div>
                   </td>
                   <td className="p-4 text-right">
