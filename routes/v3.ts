@@ -679,11 +679,93 @@ router.delete('/admin/blocked-ips/:ip', async (req, res) => {
     await db.update('blocked_ips', (ips) => ips.filter(i => i !== ip));
     
     SecurityService.logEvent(db, null, 'UNBLOCK_IP', { unblockedIp: ip }, getClientIp(req));
-    sendSuccess(res, { ip }, 'unblock_ip');
+    sendSuccess(res, { ids: [ip] }, 'unblock_ip');
   } catch (error: any) {
     sendError(res, error.message, 'unblock_ip');
   }
 });
+
+router.get('/admin/config', (req, res) => {
+  try {
+    const config = db.get('globalConfig');
+    sendSuccess(res, config, 'get_config');
+  } catch (error: any) {
+    sendError(res, error.message, 'get_config');
+  }
+});
+
+router.post('/admin/config', async (req, res) => {
+  try {
+    const config = req.body;
+    await db.update('globalConfig', () => config);
+    sendSuccess(res, config, 'update_config');
+  } catch (error: any) {
+    sendError(res, error.message, 'update_config');
+  }
+});
+
+// AI Billing for Users
+router.post('/ai/charge', async (req, res) => {
+    try {
+      const { userId, modelType, task } = req.body;
+      const config = db.get('globalConfig');
+      const users = db.get('users');
+      const userIndex = users.findIndex(u => u.id === userId);
+      
+      if (userIndex === -1) throw new Error('Người dùng không tồn tại');
+      
+      const user = users[userIndex];
+      
+      // Admins are not charged for AI usage
+      if (user.role === 'ADMIN') {
+          return sendSuccess(res, { charged: 0, balance: user.wallet?.balance || 0 }, 'ai_charge_admin');
+      }
+  
+      const fee = modelType === 'PRO' ? (config.proAIFee || 500) : (config.flashAIFee || 100);
+      
+      if (!user.wallet || user.wallet.balance < fee) {
+          throw new Error('Số dư ví không đủ để sử dụng tính năng AI này. Vui lòng nạp thêm tiền.');
+      }
+  
+      // Deduct from user
+      user.wallet.balance -= fee;
+      if (!user.wallet.transactions) user.wallet.transactions = [];
+      user.wallet.transactions.unshift({
+          id: `ai_${Date.now()}`,
+          type: 'AI_FEE',
+          amount: fee,
+          status: 'COMPLETED',
+          timestamp: new Date().toISOString(),
+          description: `Phí xử lý AI (${modelType}) - Tác vụ: ${task || 'N/A'}`
+      });
+  
+      // Add to system wallet
+      const sysWallet = db.get('systemWallet');
+      sysWallet.balance += fee;
+      sysWallet.totalRevenue += fee;
+      sysWallet.totalFeesCollected = (sysWallet.totalFeesCollected || 0) + fee;
+      
+      if (!sysWallet.transactions) sysWallet.transactions = [];
+      sysWallet.transactions.unshift({
+          id: `ai_sys_${Date.now()}`,
+          type: 'AI_REVENUE',
+          amount: fee,
+          status: 'COMPLETED',
+          timestamp: new Date().toISOString(),
+          description: `Thu phí AI từ user ${userId} (${modelType})`
+      });
+  
+      await db.update('users', (prev) => {
+          prev[userIndex] = user;
+          return [...prev];
+      });
+      await db.update('systemWallet', () => sysWallet);
+  
+      sendSuccess(res, { charged: fee, balance: user.wallet.balance }, 'ai_charge_success');
+    } catch (error: any) {
+      sendError(res, error.message, 'ai_charge_error');
+    }
+  });
 
 router.post('/admin/verify-product', async (req, res) => {
   try {

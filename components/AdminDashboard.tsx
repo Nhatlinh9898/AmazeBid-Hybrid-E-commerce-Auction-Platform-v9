@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowDownCircle, ShieldCheck, History, X, AlertCircle, Users, Wallet, LayoutDashboard, ShieldAlert, Loader2 } from 'lucide-react';
+import { ArrowDownCircle, ShieldCheck, History, X, AlertCircle, Users, Wallet, LayoutDashboard, ShieldAlert, Loader2, Settings } from 'lucide-react';
 import { api } from '../services/api';
 import UserManagement from './UserManagement';
 import AdminVerification from './AdminVerification';
 import SecurityLogs from './SecurityLogs';
 import DashboardOverview from './DashboardOverview';
 import SecuritySettings from './SecuritySettings';
+import SystemConfig from './SystemConfig';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'WALLET' | 'USERS' | 'VERIFICATION' | 'SECURITY' | 'SETTINGS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'WALLET' | 'USERS' | 'VERIFICATION' | 'SECURITY' | 'SETTINGS' | 'SYSTEM_CONFIG'>('OVERVIEW');
   const [wallet, setWallet] = useState<any>(null);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [loading, setLoading] = useState(true);
@@ -199,6 +200,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
               <ShieldCheck size={20} />
               Cài đặt Bảo mật
             </button>
+            <button 
+              onClick={() => setActiveTab('SYSTEM_CONFIG')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                activeTab === 'SYSTEM_CONFIG' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20 font-bold' 
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Settings size={20} />
+              Cấu hình Hệ thống
+            </button>
           </nav>
 
           <div className="mt-auto pt-6 border-t border-white/10">
@@ -222,7 +234,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
                activeTab === 'USERS' ? 'Thống kê & Quản lý Người dùng' : 
                activeTab === 'VERIFICATION' ? 'Kiểm duyệt Tài sản' :
                activeTab === 'SECURITY' ? 'Nhật ký Bảo mật' :
-               'Cài đặt Bảo mật'}
+               activeTab === 'SETTINGS' ? 'Cài đặt Bảo mật' :
+               'Cấu hình Thuế & AI'}
             </h1>
             <button onClick={onClose} className="hover:bg-gray-100 p-2 rounded-full text-gray-500 transition-colors">
               <X size={24} />
@@ -461,8 +474,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
               <AdminVerification />
             ) : activeTab === 'SECURITY' ? (
               <SecurityLogs />
-            ) : (
+            ) : activeTab === 'SETTINGS' ? (
               <SecuritySettings />
+            ) : (
+              <SystemConfig />
             )}
           </div>
         </div>

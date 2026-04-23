@@ -1,68 +1,98 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: knowledge_base
-    // Document ID: itemId
-    // Fields:
-    //   - id: string (required)
-    //   - type: string (required, enum: TEXT, IMAGE, VIDEO, SPEC, INSTRUCTION)
-    //   - title: string (required, size < 200)
-    //   - content: string (required, size < 100000)
-    //   - tags: list (optional, size < 20)
-    //   - createdAt: string (required, ISO 8601)
-    //   - createdBy: string (optional, UID)
-    //   - isPublic: bool (optional)
-    //
+    // Primitives & Helpers
     // ===============================================================
 
-    // Helper Functions
-    function isAuthenticated() {
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN' || 
-         request.auth.token.email == "Nhatlinhckm2016@gmail.com");
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
     }
 
-    function isOwner(data) {
-      return isAuthenticated() && data.createdBy == request.auth.uid;
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email.matches('(?i)Nhatlinhckm2016@gmail.com') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // ===============================================================
+    // Knowledge Base Entities
+    // ===============================================================
 
     function isValidKnowledgeItem(data) {
-      return data.keys().hasAll(['id', 'type', 'title', 'content', 'createdAt']) &&
+      // Allow flexible size to avoid breaking on minor schema changes, but ensure core fields
+      return data.keys().hasAll(['type', 'title', 'content', 'createdAt', 'createdBy', 'creatorName', 'tags']) &&
              data.type in ['TEXT', 'IMAGE', 'VIDEO', 'SPEC', 'INSTRUCTION'] &&
-             data.title is string && data.title.size() < 200 &&
-             data.content is string && data.content.size() < 100000 &&
-             (data.tags == null || (data.tags is list && data.tags.size() < 20));
+             data.title is string && data.title.size() <= 256 &&
+             data.content is string && data.content.size() <= 1000000 &&
+             data.createdAt is string &&
+             data.createdBy == request.auth.uid &&
+             data.creatorName is string &&
+             data.tags is list && data.tags.size() <= 100;
     }
 
     match /knowledge_base/{itemId} {
-      // Everyone authenticated can read
-      allow read: if isAuthenticated();
-      
-      // Users can create their own items
-      allow create: if isAuthenticated() && 
-                      isValidKnowledgeItem(request.resource.data) &&
-                      (request.resource.data.createdBy == request.auth.uid || isAdmin());
-      
-      // Owners and Admins can update/delete
-      allow update: if isAuthenticated() && 
-                      isValidKnowledgeItem(request.resource.data) &&
-                      (isOwner(resource.data) || isAdmin());
-                      
-      allow delete: if isAuthenticated() && (isOwner(resource.data) || isAdmin());
+      // allow read is shorthand for get + list
+      allow read: if isSignedIn();
+
+      allow create: if isVerified() && 
+                      isValidKnowledgeItem(incoming()) &&
+                      incoming().createdBy == request.auth.uid;
+
+      allow update: if isVerified() && 
+                      isValidKnowledgeItem(incoming()) &&
+                      (existing().createdBy == request.auth.uid || isAdmin()) &&
+                      incoming().createdBy == existing().createdBy &&
+                      incoming().createdAt == existing().createdAt &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['type', 'title', 'content', 'tags', 'creatorName', 'isPublic']);
+
+      allow delete: if isVerified() && (existing().createdBy == request.auth.uid || isAdmin());
     }
 
+    // ===============================================================
+    // User Profiles
+    // ===============================================================
+
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if request.auth.uid == userId || isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isVerified() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // ===============================================================
+    // Connectivity & Admin Helpers
+    // ===============================================================
+
+    match /test/connection {
+      allow read: if isSignedIn();
+    }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed via console
     }
   }
 }

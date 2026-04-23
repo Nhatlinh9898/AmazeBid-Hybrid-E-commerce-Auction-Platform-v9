@@ -75,7 +75,7 @@ export interface AffiliateAccount {
 
 export interface WalletTransaction {
   id: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'ESCROW_RELEASE' | 'FEE' | 'PURCHASE';
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'ESCROW_RELEASE' | 'FEE' | 'PURCHASE' | 'AI_FEE' | 'AI_REVENUE';
   amount: number;
   status: 'PENDING' | 'COMPLETED' | 'FAILED';
   timestamp: string;
@@ -450,6 +450,11 @@ export interface KnowledgeItem {
   content: string; // For images/videos this is the URL, for text/specs it's the content
   tags: string[];
   createdAt: string;
+  createdBy: string;
+  creatorName: string;
+  isLocalReference?: boolean;
+  localPath?: string;
+  isPublic?: boolean;
 }
 
 // --- Supply Chain Management ---

@@ -4,6 +4,7 @@ import { X, PenTool, Image as ImageIcon, Video, Share2, Sparkles, LayoutTemplate
 import { generateSEOContent, generateProductImage, generateProductVideo, generateKeywordSuggestions, generateProductTags } from '../services/geminiService';
 import { ContentPost, Product, KnowledgeItem } from '../types';
 import { KnowledgeBaseManager } from './KnowledgeBaseManager';
+import { useAuth } from '../context/useAuth';
 
 interface ContentStudioModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface ContentStudioModalProps {
 }
 
 const ContentStudioModal: React.FC<ContentStudioModalProps> = ({ isOpen, onClose, myProducts, onSavePost }) => {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [productName, setProductName] = useState('');
   const [description, setDescription] = useState('');

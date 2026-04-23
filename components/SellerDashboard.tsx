@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart, ChevronLeft, ChevronRight, Calendar, Cpu } from 'lucide-react';
 import { SmartComboGenerator } from './SmartComboGenerator';
 import { StoreManagement } from './StoreManagement';
 import { SupplyChainManagement } from './SupplyChainManagement';
@@ -133,9 +133,23 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         percentage: (categoryStats[cat].revenue / (totalRevenue || 1)) * 100
     })).sort((a, b) => b.revenue - a.revenue);
 
+    const totalAiSpending = (user?.wallet?.transactions || [])
+        .filter((tx: any) => tx.type === 'AI_FEE')
+        .reduce((sum: number, tx: any) => sum + tx.amount, 0);
+
+    // 9. Supply Chain Data (moved up)
+    const allInvoices = supplyChainService.getInvoicesByOwner(currentUserId);
+    const myInvoices = allInvoices.filter((inv: any) => {
+        const d = new Date(inv.date);
+        return d >= startObj && d <= endObj;
+    });
+    const myLaborCosts = equityService.getLaborCostsByOwner(currentUserId);
+    const totalLaborCost = myLaborCosts.reduce((sum, c) => sum + c.amount, 0);
+
     // 5. Tính toán Thuế (Sử dụng ConfigService)
     const platformFee = totalRevenue * globalConfig.platformFeeRate;
-    const taxableIncome = totalRevenue - platformFee;
+    const totalSupplyCost = myInvoices.reduce((sum: number, inv: any) => sum + (inv.totalAmount || inv.amount || 0), 0);
+    const taxableIncome = Math.max(0, totalRevenue - platformFee - totalSupplyCost - totalLaborCost - totalAiSpending);
     
     // VAT calculation needs to handle per-product vatRate if available
     let totalVat = 0;
@@ -185,15 +199,6 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         );
     });
 
-    // 9. Supply Chain Data (for Tax Report)
-    const allInvoices = supplyChainService.getInvoicesByOwner(currentUserId);
-    const myInvoices = allInvoices.filter((inv: any) => {
-        const d = new Date(inv.date);
-        return d >= startObj && d <= endObj;
-    });
-    const myLaborCosts = equityService.getLaborCostsByOwner(currentUserId);
-    const totalLaborCost = myLaborCosts.reduce((sum, c) => sum + c.amount, 0);
-
     // 10. Grouping sold orders by Month/Quarter for Tax Report
     const groupedOrders = soldOrders.map((order, idx) => {
         // Fallback to a mock date if soldDate is missing for existing data
@@ -241,6 +246,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         totalRevenue,
         affiliateRevenue,
         physicalRevenue,
+        totalAiSpending,
         categoryList,
         recentOrders: groupedOrders.sort((a, b) => b.soldDate.localeCompare(a.soldDate)).slice(0, 10),
         monthlyStats: Object.values(monthlyStats).sort((a, b) => b.year - a.year || b.month - a.month),
@@ -263,7 +269,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         soldOrders: groupedOrders,
         totalLaborCost
     };
-  }, [products, currentUserId, now, startDate, endDate, globalConfig]);
+  }, [products, currentUserId, now, startDate, endDate, globalConfig, user]);
 
   if (!isOpen) return null;
 
@@ -404,7 +410,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
             {activeTab === 'overview' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                     {/* 1. Overview Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         {/* Total Income */}
                         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
                             <div className="flex justify-between items-start mb-2">
@@ -415,7 +421,22 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500 font-medium">Tổng thu nhập</p>
-                                <h3 className="text-2xl font-black text-gray-900">${(stats.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                                <h3 className="text-2xl font-black text-gray-900">${(Number(stats.totalRevenue) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                            </div>
+                        </div>
+
+                        {/* AI Investing Card */}
+                        <div className="bg-white p-5 rounded-xl border border-indigo-200 shadow-sm flex flex-col justify-between bg-gradient-to-br from-white to-indigo-50/30">
+                            <div className="flex justify-between items-start mb-2">
+                                <div className="bg-indigo-100 p-2 rounded-lg text-indigo-700 shadow-sm">
+                                    <Cpu size={20} />
+                                </div>
+                                <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full uppercase tracking-widest leading-none flex items-center">Amaze AI</span>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500 font-medium">Chi phí AI</p>
+                                <h3 className="text-2xl font-black text-indigo-900">{(stats.totalAiSpending || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</h3>
+                                <p className="text-[10px] text-indigo-400 mt-1 font-bold italic">Tối ưu hoá SEO & Hình ảnh</p>
                             </div>
                         </div>
 
@@ -443,7 +464,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                             </div>
                             <div className="relative z-10">
                                 <p className="text-sm text-gray-500 font-medium">Hoa hồng tiếp thị</p>
-                                <h3 className="text-2xl font-black text-purple-700">${(stats.affiliateRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                                <h3 className="text-2xl font-black text-purple-700">${(Number(stats.affiliateRevenue) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                             </div>
                         </div>
 
@@ -927,19 +948,19 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                             <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100">
                                 <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Doanh thu gộp</p>
-                                <p className="text-2xl font-black text-blue-900">{(stats.totalRevenue || 0).toLocaleString()} đ</p>
+                                <p className="text-2xl font-black text-blue-900">{(Number(stats.totalRevenue) || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</p>
                             </div>
                             <div className="p-5 rounded-2xl bg-indigo-50 border border-indigo-100">
-                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Phí sàn (5%)</p>
-                                <p className="text-2xl font-black text-indigo-900">-{(stats.tax?.platformFee || 0).toLocaleString()} đ</p>
+                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Phí sàn ({(globalConfig.platformFeeRate * 100).toFixed(1)}%)</p>
+                                <p className="text-2xl font-black text-indigo-900">-{(Number(stats.tax?.platformFee) || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</p>
                             </div>
                             <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100">
-                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Dự tính Thuế (2.5%)</p>
-                                <p className="text-2xl font-black text-amber-900">{Math.round((stats.tax?.vatTax || 0) + (stats.tax?.personalIncomeTax || 0)).toLocaleString()} đ</p>
+                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Dự tính Thuế ({(globalConfig.personalIncomeTaxRate * 100 + globalConfig.defaultVatRate * 100).toFixed(1)}%)</p>
+                                <p className="text-2xl font-black text-amber-900">{Math.round((Number(stats.tax?.vatTax) || 0) + (Number(stats.tax?.personalIncomeTax) || 0)).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</p>
                             </div>
                             <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100">
                                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Lợi nhuận ròng</p>
-                                <p className="text-2xl font-black text-emerald-900">{(stats.tax?.netIncome || 0).toLocaleString()} đ</p>
+                                <p className="text-2xl font-black text-emerald-900">{(Number(stats.tax?.netIncome) || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</p>
                             </div>
                         </div>
 
@@ -967,7 +988,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                                     <td className="p-3 font-bold text-gray-900">{order.title}</td>
                                                     <td className="p-3"><span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">THU NHẬP</span></td>
                                                     <td className="p-3 text-right font-black text-green-600">
-                                                        +{((order.isAffiliate ? ((order.price || 0) * (order.commissionRate || 0)/100) : (order.price || 0))).toLocaleString()} đ
+                                                        +{(Number(order.isAffiliate ? ((order.price || 0) * (order.commissionRate || 0)/100) : (order.price || 0))).toLocaleString('vi-VN')} {globalConfig.currencySymbol}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -977,7 +998,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                                     <td className="p-3 font-medium text-gray-600">{inv.date ? new Date(inv.date).toLocaleDateString() : 'N/A'}</td>
                                                     <td className="p-3 font-bold text-gray-900">Chi phí nhập hàng: {inv.supplier}</td>
                                                     <td className="p-3"><span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">CHI PHÍ</span></td>
-                                                    <td className="p-3 text-right font-black text-red-600">-{(inv.totalAmount || inv.amount || 0).toLocaleString()} đ</td>
+                                                    <td className="p-3 text-right font-black text-red-600">-{Number(inv.totalAmount || inv.amount || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</td>
                                                 </tr>
                                             ))}
                                             {/* Labor costs as expenses */}
@@ -986,14 +1007,23 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                                     <td className="p-3 font-medium text-gray-600 italic">Tổng kết kỳ</td>
                                                     <td className="p-3 font-bold text-gray-900">Chi phí nhân công & vận hành</td>
                                                     <td className="p-3"><span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">CHI PHÍ</span></td>
-                                                    <td className="p-3 text-right font-black text-red-600">-{(stats.totalLaborCost || 0).toLocaleString()} đ</td>
+                                                    <td className="p-3 text-right font-black text-red-600">-{Number(stats.totalLaborCost || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</td>
+                                                </tr>
+                                            )}
+                                            {/* AI Spending as expenses */}
+                                            {(stats.totalAiSpending || 0) > 0 && (
+                                                <tr>
+                                                    <td className="p-3 font-medium text-gray-600 italic">Tổng kết kỳ</td>
+                                                    <td className="p-3 font-bold text-gray-900">Chi phí dịch vụ AI (Amaze AI)</td>
+                                                    <td className="p-3"><span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">CHI PHÍ AI</span></td>
+                                                    <td className="p-3 text-right font-black text-indigo-600">-{Number(stats.totalAiSpending || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</td>
                                                 </tr>
                                             )}
                                         </tbody>
                                         <tfoot className="bg-gray-900 text-white font-black">
                                             <tr>
                                                 <td colSpan={3} className="p-4 text-right uppercase tracking-widest text-xs">Lợi nhuận ròng cuối kỳ</td>
-                                                <td className="p-4 text-right text-lg">{(stats.tax?.netIncome || 0).toLocaleString()} đ</td>
+                                                <td className="p-4 text-right text-lg">{(Number(stats.tax?.netIncome) || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -1011,10 +1041,10 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                             <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Tháng {item.month}/{item.year}</p>
                                             <div className="flex justify-between items-end">
                                                 <div>
-                                                    <p className="text-lg font-black text-gray-900">{(item.revenue || 0).toLocaleString()} đ</p>
+                                                    <p className="text-lg font-black text-gray-900">{(Number(item.revenue) || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</p>
                                                     <p className="text-[10px] text-gray-500">{item.count} đơn hàng</p>
                                                 </div>
-                                                <p className="text-xs font-bold text-orange-600">Thuế: {Math.round((item.revenue || 0) * 0.025).toLocaleString()} đ</p>
+                                                <p className="text-xs font-bold text-orange-600">Thuế: {Math.round((item.revenue || 0) * globalConfig.platformFeeRate).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -1035,8 +1065,8 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                                 <tr key={`${item.year}-${item.month}`}>
                                                     <td className="py-2">Tháng {item.month}/{item.year}</td>
                                                     <td className="py-2">{item.count}</td>
-                                                    <td className="py-2 text-right font-bold">{(item.revenue || 0).toLocaleString()} đ</td>
-                                                    <td className="py-2 text-right text-orange-600">-{Math.round((item.revenue || 0) * 0.025).toLocaleString()} đ</td>
+                                                    <td className="py-2 text-right font-bold">{(item.revenue || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</td>
+                                                    <td className="py-2 text-right text-orange-600">-{Math.round((item.revenue || 0) * globalConfig.platformFeeRate).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -1053,10 +1083,10 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                     {stats.quarterlyStats.map((item: any) => (
                                         <div key={`${item.year}-Q${item.quarter}`} className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/30">
                                             <p className="text-[10px] font-black text-indigo-400 uppercase mb-1">Quý {item.quarter}/{item.year}</p>
-                                            <p className="text-lg font-black text-indigo-900">{(item.revenue || 0).toLocaleString()} đ</p>
+                                            <p className="text-lg font-black text-indigo-900">{(Number(item.revenue) || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</p>
                                             <div className="flex justify-between items-center mt-2 pt-2 border-t border-indigo-100">
                                                 <span className="text-[10px] font-bold text-indigo-600">{item.count} đơn</span>
-                                                <span className="text-[10px] font-black text-orange-600">-{Math.round((item.revenue || 0) * 0.025).toLocaleString()} đ</span>
+                                                <span className="text-[10px] font-black text-orange-600">-{Math.round((Number(item.revenue) || 0) * (globalConfig.platformFeeRate + globalConfig.personalIncomeTaxRate)).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -1311,6 +1341,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
               <div className="flex justify-between"><span>Phí nền tảng (5%):</span><span className="font-bold">-${(stats.tax?.platformFee || 0).toFixed(2)}</span></div>
               <div className="flex justify-between"><span>Thu nhập chịu thuế:</span><span className="font-bold">${(stats.tax?.taxableIncome || 0).toFixed(2)}</span></div>
               <div className="flex justify-between text-red-600"><span>Chi phí nhân công:</span><span className="font-bold">-${(stats.totalLaborCost || 0).toLocaleString()}</span></div>
+              <div className="flex justify-between text-indigo-600"><span>Chi phí AI:</span><span className="font-bold">-{Number(stats.totalAiSpending || 0).toLocaleString('vi-VN')} {globalConfig.currencySymbol}</span></div>
               <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
                 <span className="font-bold">Thu nhập ròng (Net):</span>
                 <span className="font-black text-lg text-green-700">${(stats.tax?.netIncome || 0).toFixed(2)}</span>

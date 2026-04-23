@@ -26,6 +26,9 @@ interface Schema {
     defaultVatRate: number;
     personalIncomeTaxRate: number;
     currencySymbol: string;
+    defaultModelType: 'FLASH' | 'PRO';
+    flashAIFee: number;
+    proAIFee: number;
   };
 }
 
@@ -100,8 +103,14 @@ class Database {
             platformFeeRate: 0.05,
             defaultVatRate: 0.08,
             personalIncomeTaxRate: 0.015,
-            currencySymbol: 'đ'
+            currencySymbol: 'đ',
+            defaultModelType: 'FLASH',
+            flashAIFee: 100,
+            proAIFee: 500
           };
+        } else {
+            if (data.globalConfig.flashAIFee === undefined) data.globalConfig.flashAIFee = 100;
+            if (data.globalConfig.proAIFee === undefined) data.globalConfig.proAIFee = 500;
         }
 
         // Migration: Ensure users have gamification fields and tokenVersion and wallet
@@ -152,7 +161,10 @@ class Database {
         platformFeeRate: 0.05,
         defaultVatRate: 0.08,
         personalIncomeTaxRate: 0.015,
-        currencySymbol: 'đ'
+        currencySymbol: 'đ',
+        defaultModelType: 'FLASH',
+        flashAIFee: 100,
+        proAIFee: 500
       }
     };
     this.save(defaultData);

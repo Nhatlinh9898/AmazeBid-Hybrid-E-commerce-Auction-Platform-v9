@@ -144,6 +144,8 @@ export const api = {
     getBlockedIps: () => fetchClient<{ ips: string[] }>('/admin/blocked-ips'),
     blockIp: (ip: string) => fetchClient<void>('/admin/blocked-ips', { method: 'POST', body: JSON.stringify({ ip }) }),
     unblockIp: (ip: string) => fetchClient<void>(`/admin/blocked-ips/${ip}`, { method: 'DELETE' }),
+    getConfig: () => fetchClient<any>('/admin/config'),
+    updateConfig: (config: any) => fetchClient<any>('/admin/config', { method: 'POST', body: JSON.stringify(config) }),
   },
 
   wallet: {
@@ -184,13 +186,36 @@ export const api = {
       style?: string,
       tools?: any[]
     }) => {
+      // 1. Charge for AI Usage first
+      try {
+        const userJson = localStorage.getItem('auth_user');
+        if (userJson) {
+          const user = JSON.parse(userJson);
+          if (user.role !== 'ADMIN') {
+            await fetchClient('/ai/charge', {
+              method: 'POST',
+              body: JSON.stringify({ 
+                userId: user.id, 
+                modelType: data.modelType || 'FLASH', 
+                task: data.task || 'GENERAL_GENERATION' 
+              })
+            });
+          }
+        }
+      } catch (error: any) {
+        throw new Error(`AI Billing Error: ${error.message}`, { cause: error });
+      }
+
       const { GoogleGenAI } = await import('@google/genai');
       const { AICanonicalizer } = await import('./aiCanonicalizer');
       const { getGeminiApiKey } = await import('./aiConfig');
       const ai = new GoogleGenAI({ apiKey: getGeminiApiKey() });
       
+      const config = await api.admin.getConfig().catch(() => ({ defaultModelType: 'FLASH' }));
+      const effectiveModelType = data.modelType || config.defaultModelType || 'FLASH';
+
       const cloudSystemPrompt = AICanonicalizer.getCloudSystemPrompt();
-      const modelName = data.modelType === 'PRO' ? 'gemini-3.1-pro-preview' : 'gemini-3-flash-preview';
+      const modelName = effectiveModelType === 'PRO' ? 'gemini-3.1-pro-preview' : 'gemini-3-flash-preview';
       
       const response = await ai.models.generateContent({
         model: modelName,

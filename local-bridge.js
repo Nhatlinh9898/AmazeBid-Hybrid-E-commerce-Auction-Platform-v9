@@ -9,6 +9,7 @@ const path = require('path');
 // CONFIGURATION
 // ==========================================
 const PORT = 3001; // Port for this local bridge server
+let workspacePath = null; // To be set via API
 const OBS_URL = 'ws://127.0.0.1:4455'; // Default OBS WebSocket port (v5)
 const OBS_PASSWORD = 'your_obs_password_here'; // Set this in OBS WebSocket settings
 
@@ -40,30 +41,89 @@ connectOBS();
 // ==========================================
 // HELPER: SEND OSC TO VSEEFACE
 // ==========================================
-// Simple OSC message builder for VMC protocol (Virtual Motion Capture)
-// VSeeFace uses VMC protocol over OSC to control blendshapes (expressions)
+// ... (omitted sendVSeeFaceExpression for brevity) ...
 function sendVSeeFaceExpression(expressionName, value) {
     // VMC Protocol format for blendshapes: /VMC/Ext/Blend/Val <string:name> <float:value>
     // Note: Building raw OSC buffers in JS requires a library like 'osc' or 'osc-min' for production.
     // For this bridge example, we log the intent. In a real app, you'd use the 'osc' npm package.
     console.log(`[OSC -> VSeeFace] Setting expression '${expressionName}' to ${value}`);
-    
-    // Example of how it would look with the 'osc' package:
-    /*
-    const msg = {
-        address: "/VMC/Ext/Blend/Val",
-        args: [
-            { type: "s", value: expressionName }, // e.g., "Joy", "Angry", "Sorrow", "Fun"
-            { type: "f", value: value }           // 0.0 to 1.0
-        ]
-    };
-    udpPort.send(msg, VSEEFACE_IP, VSEEFACE_PORT);
-    */
 }
 
 // ==========================================
 // API ENDPOINTS (Called by AmazeAvatar Web)
 // ==========================================
+
+// 0. Workspace Management
+app.post('/api/setup-workspace', (req, res) => {
+    const { basePath } = req.body;
+    if (!basePath) return res.status(400).json({ error: 'basePath is required' });
+
+    try {
+        // Create specialized folders to match Knowledge Base categories
+        const folders = ['images', 'videos', 'articles', 'specs', 'instructions', 'backups'];
+        if (!fs.existsSync(basePath)) {
+            fs.mkdirSync(basePath, { recursive: true });
+        }
+
+        folders.forEach(f => {
+            const fPath = path.join(basePath, f);
+            if (!fs.existsSync(fPath)) {
+                fs.mkdirSync(fPath);
+                console.log(`[WS] Created folder: ${fPath}`);
+            }
+        });
+
+        workspacePath = basePath;
+        res.json({ success: true, workspace: workspacePath, folders });
+    } catch (error) {
+        console.error('[WS] Setup failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/browse-workspace', (req, res) => {
+    if (!workspacePath) return res.status(400).json({ error: 'Workspace not set. Call /api/setup-workspace first.' });
+
+    try {
+        const foldersMap = {
+            'images': 'IMAGE',
+            'videos': 'VIDEO',
+            'articles': 'TEXT',
+            'specs': 'SPEC',
+            'instructions': 'INSTRUCTION'
+        };
+        
+        const results = [];
+
+        Object.keys(foldersMap).forEach(folder => {
+            const dir = path.join(workspacePath, folder);
+            const itemType = foldersMap[folder];
+            
+            if (fs.existsSync(dir)) {
+                const files = fs.readdirSync(dir);
+                files.forEach(file => {
+                    const fullPath = path.join(dir, file);
+                    const stats = fs.statSync(fullPath);
+                    if (stats.isFile()) {
+                        results.push({
+                            name: file,
+                            path: fullPath,
+                            category: folder, // folder name
+                            type: itemType,   // KnowledgeItem type
+                            size: stats.size,
+                            modifiedAt: stats.mtime
+                        });
+                    }
+                });
+            }
+        });
+
+        res.json({ success: true, files: results, workspace: workspacePath });
+    } catch (error) {
+        console.error('[WS] Browse failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // 1. Handle Avatar Actions (from avatarSkillService.ts)
 app.post('/api/action', async (req, res) => {
@@ -137,6 +197,39 @@ app.post('/api/play-audio', (req, res) => {
     setTimeout(() => {
         res.json({ success: true, message: 'Audio playback finished' });
     }, 3000);
+});
+
+// 3. Handle Local File Serving (Knowledge Base Reference)
+app.get('/api/file', (req, res) => {
+    const filePath = req.query.path;
+    if (!filePath) {
+        return res.status(400).send('Path is required');
+    }
+
+    try {
+        if (fs.existsSync(filePath)) {
+            const ext = path.extname(filePath).toLowerCase();
+            const mimeMap = {
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.gif': 'image/gif',
+                '.mp4': 'video/mp4',
+                '.webm': 'video/webm',
+                '.txt': 'text/plain',
+                '.pdf': 'application/pdf'
+            };
+            
+            res.setHeader('Content-Type', mimeMap[ext] || 'application/octet-stream');
+            fs.createReadStream(filePath).pipe(res);
+        } else {
+            console.error(`[FILE] File not found: ${filePath}`);
+            res.status(404).send('File not found');
+        }
+    } catch (error) {
+        console.error(`[FILE] Error serving file:`, error);
+        res.status(500).send('Error serving file');
+    }
 });
 
 // ==========================================

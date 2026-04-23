@@ -59,7 +59,6 @@ export const getShoppingAdvice = async (query: string, products: Product[], styl
   try {
     const result = await api.ai.generate({
       prompt,
-      modelType: 'FLASH',
       style
     });
     return result.content;
@@ -78,7 +77,6 @@ export const analyzeImageForSearch = async (base64Data: string, mimeType: string
         { inlineData: { data: base64Data, mimeType } },
         { text: prompt }
       ] as any,
-      modelType: 'FLASH',
       style: 'PROFESSIONAL'
     });
     return result.content.trim();
@@ -94,7 +92,6 @@ export const generateKeywordSuggestions = async (productName: string, descriptio
   try {
     const result = await api.ai.generate({
       prompt,
-      modelType: 'FLASH'
     });
 
     // Local Compute Core trả về content là text đã được rewrite, 
@@ -112,7 +109,6 @@ export const generateProductTags = async (productName: string, description: stri
   try {
     const result = await api.ai.generate({
       prompt,
-      modelType: 'FLASH',
       task: 'TAGGING'
     });
 
