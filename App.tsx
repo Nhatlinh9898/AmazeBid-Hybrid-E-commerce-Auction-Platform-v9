@@ -492,12 +492,28 @@ const InnerApp: React.FC = () => {
   const handleOrderStatusUpdate = async (productId: string, newStatus: OrderStatus, shippingInfo?: any) => {
     try {
       await api.products.updateStatus(productId, newStatus, shippingInfo);
+      
+      const product = products.find(p => p.id === productId);
+      
       setProducts(prev => prev.map(p => {
           if (p.id === productId) {
             return { ...p, status: newStatus, shippingInfo: shippingInfo || p.shippingInfo };
           }
           return p;
       }));
+
+      // Trigger Email Notifications
+      if (user && product) {
+        if (newStatus === OrderStatus.SHIPPED) {
+          emailService.sendShippingUpdateNotification(user, product, shippingInfo);
+        } else if (newStatus === OrderStatus.DELIVERED) {
+          emailService.sendDeliveryNotification(user, product);
+        } else if (newStatus === OrderStatus.COMPLETED) {
+          // Notify seller about escrow release
+          const sellerEmail = `seller_${product.sellerId}@example.com`; // Mock or get from actual user data
+          emailService.sendEscrowReleaseNotification(sellerEmail, product.id, product.price);
+        }
+      }
     } catch (error) {
       console.error('Failed to update product status:', error);
       showNotification('Lỗi cập nhật trạng thái đơn hàng');

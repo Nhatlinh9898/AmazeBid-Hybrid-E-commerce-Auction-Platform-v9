@@ -7,6 +7,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { api } from '../services/api';
 import { useAuth } from '../context/useAuth';
+import { emailService } from '../services/EmailService';
 
 interface UserWalletModalProps {
   isOpen: boolean;
@@ -93,6 +94,10 @@ const UserWalletModal: React.FC<UserWalletModalProps> = ({ isOpen, onClose }) =>
     try {
       await api.wallet.withdraw(user.id, parseFloat(withdrawAmount));
       setSuccess(`Đã tạo lệnh rút $${withdrawAmount} về tài khoản ngân hàng`);
+      
+      // Notify user via email
+      emailService.sendWalletTransferNotification(user, parseFloat(withdrawAmount), 'WITHDRAWAL');
+      
       setWithdrawAmount('');
       fetchWallet();
     } catch (err: any) {
