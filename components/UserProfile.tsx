@@ -59,6 +59,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
       setShowCheckoutUI(null);
     }
   };
+
   const [isSettingUp2FA, setIsSettingUp2FA] = useState(false);
   const [twoFactorSetupData, setTwoFactorSetupData] = useState<{ secret: string, qrCode: string } | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -548,6 +549,99 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                                     )}
                                 </div>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Trust & Analysis Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                        <div className="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-2xl border border-indigo-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                                    <ShieldCheck size={20} />
+                                </div>
+                                <h3 className="font-bold text-gray-900">Tại sao nên tin dùng?</h3>
+                            </div>
+                            <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+                                <p>
+                                    <strong className="text-indigo-700">Công nghệ Google Gemini:</strong> Toàn bộ hạ tầng AI của AmazeBid được xây dựng trên nền tảng **Google AI Studio**, sử dụng các mô hình ngôn ngữ lớn mạnh mẽ nhất hiện nay như Gemini 1.5 Pro.
+                                </p>
+                                <ul className="space-y-2 list-disc pl-4 italic opacity-80">
+                                    <li>Độ trễ thấp, phản hồi gần như tức thì.</li>
+                                    <li>Khả năng hiểu ngữ cảnh tiếng Việt sâu sắc.</li>
+                                    <li>Bảo mật dữ liệu chuẩn doanh nghiệp (Enterprise Grade).</li>
+                                </ul>
+                                <p className="pt-2 border-t border-indigo-100">
+                                    Bằng việc đăng ký gói dịch vụ, bạn không chỉ mua "công cụ", mà bạn đang đầu tư vào một **trợ lý thông minh** có khả năng tự học hỏi theo phong cách kinh doanh của riêng bạn.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <TrendingUp size={20} className="text-green-600" /> Phân tích lợi ích kinh tế
+                            </h3>
+                            <div className="space-y-4 text-sm">
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <p className="font-bold text-gray-700 mb-1">Gói Standard (Flash)</p>
+                                    <p className="text-gray-500 text-xs">
+                                        Phù hợp người dùng mới hoặc seller quy mô nhỏ. Bạn trả phí theo từng lượt dùng (Pay-as-you-go). Ưu điểm là linh hoạt nhưng sẽ tốn kém nếu dùng nhiều.
+                                    </p>
+                                </div>
+                                <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                                    <p className="font-bold text-indigo-700 mb-1 underline decoration-indigo-200">Gói AI Pro (Upgrade)</p>
+                                    <p className="text-gray-600 text-xs">
+                                        Dành cho chuyên nghiệp & livestreamer. Với **500,000đ**, bạn tiết kiệm tới **70%** so với việc trả phí lẻ nếu thực hiện trên 50 tác vụ phức tạp/tháng. 
+                                    </p>
+                                    <div className="mt-2 flex items-center gap-2 text-[10px] text-indigo-500 font-bold">
+                                        <Check size={12}/> Xử lý video dung lượng lớn không tốn thêm phí.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* FAQ & Data Policy */}
+                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 mt-6 sm:mt-8">
+                        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <ShieldCheck size={20} className="text-indigo-600" /> FAQ & Chính sách dữ liệu
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="font-bold text-gray-800 flex items-center gap-2">
+                                        <Check size={14} className="text-green-500"/> Có phải dịch vụ chính thức từ Google?
+                                    </p>
+                                    <p className="text-gray-600 mt-1 pl-6">
+                                        AmazeBid là đối tác sử dụng hạ tầng **Google AI Studio**. Toàn bộ sức mạnh xử lý ngôn ngữ và hình ảnh đến từ mô hình **Gemini** chính gốc của Google, đảm bảo tính chuẩn xác và tin cậy cao nhất.
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-800 flex items-center gap-2">
+                                        <Check size={14} className="text-green-500"/> Có bao gồm 2TB lưu trữ Cloud không?
+                                    </p>
+                                    <p className="text-gray-600 mt-1 pl-6">
+                                        Gói AI Pro tập trung vào khả năng **xử lý AI thông minh**. Hiện tại gói này **không bao gồm** dung lượng lưu trữ Google One (2TB). Tuy nhiên, mọi dữ liệu nội dung bạn tạo ra (livestream, bài viết) sẽ được AmazeBid lưu trữ an toàn trọn đời.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="font-bold text-gray-800 flex items-center gap-2">
+                                        <Clock size={14} className="text-orange-500"/> Data sẽ thế nào nếu ngừng sử dụng?
+                                    </p>
+                                    <p className="text-gray-600 mt-1 pl-6">
+                                        Nếu bạn ngừng gia hạ, bạn vẫn có quyền **xem và tải xuống** toàn bộ dữ liệu cũ. Chúng tôi cam kết **không xóa data** của người dùng kể cả khi gói Pro hết hạn. 
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-800 flex items-center gap-2">
+                                        <ShieldCheck size={14} className="text-blue-500"/> Tính riêng tư của dữ liệu?
+                                    </p>
+                                    <p className="text-gray-600 mt-1 pl-6">
+                                        Dữ liệu của bạn được tách biệt và mã hóa. Google Gemini sử dụng dữ liệu của bạn để phản hồi và **không dùng để train model** công cộng, đảm bảo bí mật kinh doanh.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1168,5 +1262,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
     </div>
   );
 };
+
+const LandmarkIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
+)
 
 export default UserProfile;
