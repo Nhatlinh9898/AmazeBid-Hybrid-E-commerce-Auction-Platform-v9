@@ -5,9 +5,7 @@ import admin from 'firebase-admin';
 import { MOCK_PRODUCTS, MOCK_STREAMS, MOCK_ALL_USERS, MOCK_FEED_POSTS, MOCK_REVIEWS, MOCK_DISCOUNT_CODES, MOCK_SHIPPING_OPTIONS } from './data';
 import { Product, LiveStream, User, FeedPost, Review, DiscountCode, ShippingOption, SystemWallet, Order } from './types';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_FILE = path.join(__dirname, 'db.json');
+const DB_FILE = path.join(process.cwd(), 'db.json');
 
 interface Schema {
   products: Product[];
@@ -29,6 +27,12 @@ interface Schema {
     defaultModelType: 'FLASH' | 'PRO';
     flashAIFee: number;
     proAIFee: number;
+    domainName?: string;
+    stripePublicKey?: string;
+    stripeSecretKey?: string;
+    vnpayTmnCode?: string;
+    vnpayHashSecret?: string;
+    deployStatus?: 'IDEAL' | 'DEPLOYING' | 'ACTIVE';
   };
 }
 
@@ -106,11 +110,23 @@ class Database {
             currencySymbol: 'đ',
             defaultModelType: 'FLASH',
             flashAIFee: 100,
-            proAIFee: 500
+            proAIFee: 500,
+            domainName: '',
+            stripePublicKey: '',
+            stripeSecretKey: '',
+            vnpayTmnCode: '',
+            vnpayHashSecret: '',
+            deployStatus: 'IDEAL'
           };
         } else {
             if (data.globalConfig.flashAIFee === undefined) data.globalConfig.flashAIFee = 100;
             if (data.globalConfig.proAIFee === undefined) data.globalConfig.proAIFee = 500;
+            if (data.globalConfig.domainName === undefined) data.globalConfig.domainName = '';
+            if (data.globalConfig.stripePublicKey === undefined) data.globalConfig.stripePublicKey = '';
+            if (data.globalConfig.stripeSecretKey === undefined) data.globalConfig.stripeSecretKey = '';
+            if (data.globalConfig.vnpayTmnCode === undefined) data.globalConfig.vnpayTmnCode = '';
+            if (data.globalConfig.vnpayHashSecret === undefined) data.globalConfig.vnpayHashSecret = '';
+            if (data.globalConfig.deployStatus === undefined) data.globalConfig.deployStatus = 'IDEAL';
         }
 
         // Migration: Ensure users have gamification fields and tokenVersion and wallet
@@ -164,7 +180,13 @@ class Database {
         currencySymbol: 'đ',
         defaultModelType: 'FLASH',
         flashAIFee: 100,
-        proAIFee: 500
+        proAIFee: 500,
+        domainName: '',
+        stripePublicKey: '',
+        stripeSecretKey: '',
+        vnpayTmnCode: '',
+        vnpayHashSecret: '',
+        deployStatus: 'IDEAL'
       }
     };
     this.save(defaultData);

@@ -25,13 +25,26 @@ async function startServer() {
   // API Health Check
   app.get('/api/health', (req, res) => {
     console.log('[Server] Health check requested');
-    console.log('[Server] GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY);
-    console.log('[Server] API_KEY present:', !!process.env.API_KEY);
-    res.json({ 
-      status: 'ok_v3', 
-      gemini_key: !!process.env.GEMINI_API_KEY,
-      api_key: !!process.env.API_KEY
-    });
+    try {
+      res.json({ 
+        status: 'ok_v3', 
+        gemini_key: !!process.env.GEMINI_API_KEY,
+        api_key: !!process.env.API_KEY,
+        db_ready: !!db
+      });
+    } catch (err) {
+      console.error('[Server] Health check failed:', err);
+      res.status(500).json({ status: 'error', message: 'Internal Server Error during health check' });
+    }
+  });
+
+  // Handle errors in v3Router
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error('[Server] Global Error Handler:', err);
+    if (req.path.startsWith('/api')) {
+      return res.status(500).json({ status: 'error', message: err.message || 'Internal Server Error' });
+    }
+    next(err);
   });
 
   // API Routes

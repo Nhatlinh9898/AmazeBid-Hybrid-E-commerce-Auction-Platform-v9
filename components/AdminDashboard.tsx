@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowDownCircle, ShieldCheck, History, X, AlertCircle, Users, Wallet, LayoutDashboard, ShieldAlert, Loader2, Settings } from 'lucide-react';
+import { ArrowDownCircle, ShieldCheck, History, X, AlertCircle, Users, Wallet, LayoutDashboard, ShieldAlert, Loader2, Settings, TrendingUp } from 'lucide-react';
 import { api } from '../services/api';
 import UserManagement from './UserManagement';
 import AdminVerification from './AdminVerification';
@@ -8,6 +8,8 @@ import DashboardOverview from './DashboardOverview';
 import SecuritySettings from './SecuritySettings';
 import SystemConfig from './SystemConfig';
 
+import AdminEconomicsDashboard from './AdminEconomicsDashboard';
+
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,7 +17,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'WALLET' | 'USERS' | 'VERIFICATION' | 'SECURITY' | 'SETTINGS' | 'SYSTEM_CONFIG'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ECONOMICS' | 'WALLET' | 'USERS' | 'VERIFICATION' | 'SECURITY' | 'SETTINGS' | 'SYSTEM_CONFIG'>('OVERVIEW');
   const [wallet, setWallet] = useState<any>(null);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [loading, setLoading] = useState(true);
@@ -146,6 +148,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
               Tổng quan Hệ thống
             </button>
             <button 
+              onClick={() => setActiveTab('ECONOMICS')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                activeTab === 'ECONOMICS' 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20 font-bold' 
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <TrendingUp size={20} />
+              Kinh tế & AI
+            </button>
+            <button 
               onClick={() => setActiveTab('WALLET')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                 activeTab === 'WALLET' 
@@ -230,6 +243,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
           <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center shrink-0">
             <h1 className="text-xl font-bold text-gray-800">
               {activeTab === 'OVERVIEW' ? 'Bảng điều khiển Quản trị' :
+               activeTab === 'ECONOMICS' ? 'Kinh tế & Hiệu suất AI' :
                activeTab === 'WALLET' ? 'Tổng quan Ví Sàn' : 
                activeTab === 'USERS' ? 'Thống kê & Quản lý Người dùng' : 
                activeTab === 'VERIFICATION' ? 'Kiểm duyệt Tài sản' :
@@ -246,6 +260,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'OVERVIEW' ? (
               <DashboardOverview />
+            ) : activeTab === 'ECONOMICS' ? (
+              <AdminEconomicsDashboard />
             ) : activeTab === 'WALLET' ? (
               !wallet ? (
                 <div className="flex flex-col items-center justify-center h-64 text-center">

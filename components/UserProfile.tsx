@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, CreditCard, ShieldCheck, MapPin, Eye, EyeOff, Edit2, Plus, LogOut, Lock, X, Share2, Copy, Check, Facebook, Instagram, Chrome, Users, Link, Save, Trash2, AlertTriangle, Phone, FileText, ShoppingBag, Gavel, Calendar, Video, Sparkles, Camera, RefreshCw, Zap, TrendingUp, Info, Clock, Landmark, Wallet, CreditCard as CreditCardIcon, Loader2 } from 'lucide-react';
+import { User, CreditCard, ShieldCheck, MapPin, Eye, EyeOff, Edit2, Plus, LogOut, Lock, X, Share2, Copy, Check, Facebook, Instagram, Chrome, Users, Link, Save, Trash2, AlertTriangle, Phone, FileText, ShoppingBag, Gavel, Calendar, Video, Sparkles, Camera, RefreshCw, Zap, TrendingUp, Info, Clock, Landmark, Wallet, CreditCard as CreditCardIcon, Loader2, Monitor } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import { PaymentMethod, SocialAccount, Product, ContentPost, ItemType, AISubscriptionTier } from '../types';
 import KYCModal from './KYCModal';
 import UserWalletModal from './UserWalletModal';
+import SystemRequirements from './SystemRequirements';
 
 interface UserProfileProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface UserProfileProps {
 
 const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts = [], myPosts = [] }) => {
   const { user, logout, updateProfile, resetToken, setup2FA, confirm2FA, toggle2FA } = useAuth();
-  const [activeTab, setActiveTab] = useState<'INFO' | 'PAYMENT' | 'SECURITY' | 'SOCIAL' | 'POSTS' | 'LOYALTY' | 'AI_BILLING'>('INFO');
+  const [activeTab, setActiveTab] = useState<'INFO' | 'PAYMENT' | 'SECURITY' | 'SOCIAL' | 'POSTS' | 'LOYALTY' | 'AI_BILLING' | 'SYSTEM_REQ'>('INFO');
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
   const [friendCodeInput, setFriendCodeInput] = useState('');
@@ -267,7 +268,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95">
+      <div className="relative bg-white w-full max-w-7xl h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95">
         
         {/* Global Close Button */}
         <button 
@@ -347,6 +348,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                     className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-3 ${activeTab === 'LOYALTY' ? 'bg-[#131921] text-white' : 'hover:bg-gray-200 text-gray-600'}`}
                 >
                     <Sparkles size={16} /> Loyalty & Phần thưởng
+                </button>
+
+                <button 
+                    onClick={() => setActiveTab('SYSTEM_REQ')}
+                    className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-3 ${activeTab === 'SYSTEM_REQ' ? 'bg-[#131921] text-white' : 'hover:bg-gray-200 text-gray-600'}`}
+                >
+                    <Monitor size={16} /> Cấu hình & Vận hành
                 </button>
             </nav>
 
@@ -733,6 +741,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                             ))}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'SYSTEM_REQ' && (
+                <div className="animate-in slide-in-from-right-4 -m-8 h-[calc(100%+64px)]">
+                    <SystemRequirements />
                 </div>
             )}
 
@@ -1185,36 +1199,60 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                                     </button>
                                 </div>
                                 
-                                <div className="flex flex-col md:flex-row gap-6 items-center">
-                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100">
-                                        <img src={twoFactorSetupData.qrCode} alt="2FA QR Code" className="w-40 h-40" />
-                                    </div>
-                                    <div className="flex-1 space-y-3">
-                                        <p className="text-sm text-blue-800">
-                                            1. Quét mã QR bằng ứng dụng Authenticator (Google Authenticator, Authy, v.v.)
-                                        </p>
-                                        <p className="text-sm text-blue-800">
-                                            2. Hoặc nhập mã thủ công: <code className="bg-blue-100 px-2 py-1 rounded font-bold text-blue-900">{twoFactorSetupData.secret}</code>
-                                        </p>
-                                        <div className="pt-2">
-                                            <label className="block text-xs font-bold text-blue-700 uppercase mb-1">Nhập mã 6 số để xác nhận</label>
-                                            <input 
-                                                type="text"
-                                                maxLength={6}
-                                                placeholder="000000"
-                                                className="w-full p-3 border border-blue-200 rounded-lg font-mono text-center text-xl tracking-widest focus:border-blue-500 outline-none"
-                                                value={twoFactorCode}
-                                                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
-                                            />
-                                            {twoFactorError && <p className="text-xs text-red-500 mt-1 font-medium">{twoFactorError}</p>}
+                                <div className="flex flex-col xl:flex-row gap-10 items-start">
+                                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-blue-100 flex-shrink-0 mx-auto md:mx-0 ring-4 ring-blue-50/50">
+                                        <div className="w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center bg-white overflow-hidden rounded-2xl border border-gray-100 shadow-inner">
+                                            <img src={twoFactorSetupData.qrCode} alt="2FA QR Code" className="w-full h-full object-contain p-2" />
                                         </div>
-                                        <button 
-                                            onClick={handleConfirm2FA}
-                                            disabled={twoFactorCode.length !== 6}
-                                            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                                        >
-                                            Xác nhận & Kích hoạt
-                                        </button>
+                                        <div className="mt-4 text-center">
+                                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Mã QR Bảo mật</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 space-y-8 w-full">
+                                        <div className="space-y-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">1</div>
+                                                <p className="text-sm text-blue-800">
+                                                    Quét mã QR bằng ứng dụng Authenticator (Google Authenticator, Authy, v.v.)
+                                                </p>
+                                            </div>
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">2</div>
+                                                <p className="text-sm text-blue-800">
+                                                    Hoặc nhập mã thủ công: <code className="bg-blue-100 px-3 py-1.5 rounded-lg font-black text-blue-900 border border-blue-200 ml-1">{twoFactorSetupData.secret}</code>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="pt-4 border-t border-blue-100">
+                                            <label className="block text-xs font-black text-blue-700 uppercase tracking-widest mb-3 px-1">Xác nhận bằng mã 6 số</label>
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <input 
+                                                    type="text"
+                                                    maxLength={6}
+                                                    placeholder="000 000"
+                                                    className="flex-1 p-4 border-2 border-blue-100 rounded-2xl font-mono text-center text-2xl font-black tracking-[0.5em] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                                                    value={twoFactorCode}
+                                                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                                                />
+                                                <button 
+                                                    onClick={handleConfirm2FA}
+                                                    disabled={twoFactorCode.length !== 6}
+                                                    className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-blue-700 transition-all disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed shadow-xl shadow-blue-900/20 flex items-center justify-center gap-2"
+                                                >
+                                                    Kích hoạt <Check size={20} />
+                                                </button>
+                                            </div>
+                                            {twoFactorError && (
+                                                <motion.p 
+                                                    initial={{ opacity: 0, x: -10 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    className="text-xs text-red-500 mt-3 font-bold flex items-center gap-1"
+                                                >
+                                                    <AlertTriangle size={14} /> {twoFactorError}
+                                                </motion.p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1262,9 +1300,5 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
     </div>
   );
 };
-
-const LandmarkIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
-)
 
 export default UserProfile;
