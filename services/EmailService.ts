@@ -84,24 +84,91 @@ class EmailService {
     };
   }
 
+  private getModernLayout(title: string, content: string, footerNote: string = "") {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          .email-wrapper { background-color: #f1f5f9; padding: 40px 20px; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+          .email-card { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+          .email-header { background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 32px; text-align: center; color: white; }
+          .email-body { padding: 32px; line-height: 1.6; color: #1e293b; }
+          .email-footer { padding: 24px; text-align: center; background-color: #f8fafc; color: #64748b; font-size: 13px; }
+          .btn { display: inline-block; padding: 12px 28px; background-color: #2563eb; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+          .recommendation-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-top: 24px; display: flex; align-items: center; gap: 16px; }
+          .recommendation-img { width: 60px; height: 60px; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
+          .price-tag { color: #2563eb; font-weight: bold; }
+          .social-icons { margin-top: 16px; opacity: 0.6; }
+        </style>
+      </head>
+      <body>
+        <div class="email-wrapper">
+          <div class="email-card">
+            <div class="email-header">
+              <h1 style="margin: 0; font-size: 24px; letter-spacing: 1px;">AmazeBid</h1>
+              <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">Hybrid E-commerce & Auction Platform</p>
+            </div>
+            <div class="email-body">
+              ${content}
+              
+              <div style="margin-top: 40px; border-top: 1px solid #f1f5f9; padding-top: 24px;">
+                <h3 style="font-size: 16px; color: #334155; margin-bottom: 16px;">Có thể bạn cũng quan tâm:</h3>
+                
+                <div class="recommendation-card">
+                  <div class="recommendation-img"><img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=100" style="width:100%; height:100%; object-fit:cover;"></div>
+                  <div>
+                    <div style="font-weight: 600; font-size: 14px;">Gói Bảo hiểm VIP AmazeSafe</div>
+                    <div class="price-tag">Chỉ từ 99.000đ/tháng</div>
+                  </div>
+                </div>
+
+                <div class="recommendation-card">
+                  <div class="recommendation-img"><img src="https://images.unsplash.com/photo-1544725121-be3b5d0c19cb?w=100" style="width:100%; height:100%; object-fit:cover;"></div>
+                  <div>
+                    <div style="font-weight: 600; font-size: 14px;">Dịch vụ Giám định Thật-Giả</div>
+                    <div class="price-tag">Miễn phí cho đơn từ 5.000.000đ</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="email-footer">
+              <p>${footerNote || "Bạn nhận được email này vì đã đăng ký tài khoản tại AmazeBid."}</p>
+              <div class="social-icons">
+                Facebook | Twitter | LinkedIn
+              </div>
+              <p style="margin-top: 16px;">&copy; 2024 AmazeBid Inc. 123 Innovation Drive, Silicon Valley.</p>
+              <p><a href="#" style="color: #64748b; text-decoration: underline;">Hủy đăng ký</a> | <a href="#" style="color: #64748b; text-decoration: underline;">Cài đặt thông báo</a></p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Specific Notification Methods
   sendKYCStatusNotification(user: any, status: 'APPROVED' | 'REJECTED' | 'PENDING') {
     const subject = status === 'APPROVED' ? 'Tài khoản của bạn đã được xác minh!' : 'Cập nhật trạng thái KYC';
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #2563eb;">Thông báo Xác minh Danh tính (KYC)</h2>
-        <p>Chào ${user.fullName},</p>
-        <p>Hệ thống AI của AmazeBid đã hoàn tất kiểm tra hồ sơ của bạn.</p>
-        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-          <strong>Trạng thái: </strong> 
-          <span style="color: ${status === 'APPROVED' ? '#10b981' : '#ef4444'}; font-weight: bold;">
-            ${status === 'APPROVED' ? 'ĐÃ PHÊ DUYỆT' : status === 'REJECTED' ? 'TỪ CHỐI' : 'ĐANG CHỜ'}
-          </span>
+    const content = `
+      <h2 style="color: #1e293b; margin-top: 0;">Thông báo Xác minh Danh tính (KYC)</h2>
+      <p>Chào <strong>${user.fullName}</strong>,</p>
+      <p>Hệ thống AI của AmazeBid đã hoàn tất kiểm tra hồ sơ của bạn.</p>
+      <div style="background: #f1f5f9; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center;">
+        <div style="font-size: 14px; color: #64748b; margin-bottom: 4px;">Trạng thái hiện tại:</div>
+        <div style="color: ${status === 'APPROVED' ? '#10b981' : '#ef4444'}; font-weight: 800; font-size: 20px;">
+          ${status === 'APPROVED' ? '● ĐÃ PHÊ DUYỆT' : status === 'REJECTED' ? '● TỪ CHỐI' : '● ĐANG CHỜ'}
         </div>
-        <p>${status === 'APPROVED' ? 'Bạn hiện đã có thể thực hiện các giao dịch giá trị cao và rút tiền về ngân hàng.' : 'Vui lòng kiểm tra lại thông tin và cung cấp giấy tờ chính xác hơn.'}</p>
-        <p style="font-size: 12px; color: #666; margin-top: 30px;">Đây là thông báo tự động từ hệ thống AmazeBid.</p>
+      </div>
+      <p>${status === 'APPROVED' ? 'Chúc mừng! Bạn hiện đã có thể thực hiện các giao dịch giá trị cao và tham gia các cuộc đấu giá VIP.' : 'Rất tiếc, thông tin bạn cung cấp chưa đủ rõ ràng. Vui lòng cập nhật hình ảnh CCCD mới.'}</p>
+      <div style="text-align: center;">
+        <a href="${window.location.origin}/profile" class="btn">Kiểm tra thông tin</a>
       </div>
     `;
+
+    const html = this.getModernLayout(subject, content);
 
     this.addTemplate({
       id: `kyc-${Date.now()}`,
@@ -118,19 +185,31 @@ class EmailService {
 
   sendAuctionWinNotification(user: any, product: any, amount: number) {
     const subject = `Chúc mừng! Bạn đã thắng đấu giá: ${product.title}`;
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #d97706;">Bạn đã thắng cuộc đấu giá!</h2>
-        <p>Chào ${user.fullName},</p>
-        <p>Chúc mừng bạn đã sở hữu sản phẩm <strong>${product.title}</strong>.</p>
-        <div style="background: #fffbeb; padding: 15px; border: 1px solid #fbbf24; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Giá thắng thầu:</strong> ${amount.toLocaleString()}đ</p>
-          <p style="margin: 5px 0 0 0;"><strong>Mã sản phẩm:</strong> ${product.id}</p>
+    const content = `
+      <h2 style="color: #1e293b; margin-top: 0;">🎉 Bạn đã thắng cuộc đấu giá!</h2>
+      <p>Chào <strong>${user.fullName}</strong>,</p>
+      <p>Bạn đã vượt qua các đối thủ khác để trở thành người sở hữu sản phẩm tuyệt vời này:</p>
+      
+      <div style="border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin: 24px 0;">
+        <div style="display: flex; gap: 16px;">
+          <div style="flex: 1;">
+            <div style="font-weight: 700; font-size: 18px;">${product.title}</div>
+            <div style="color: #64748b; font-size: 14px; margin-top: 4px;">Mã số thầu: #BID-${Math.floor(Math.random()*10000)}</div>
+          </div>
         </div>
-        <p>Vui lòng tiến hành thanh toán trong vòng 24h để hoàn tất giao dịch.</p>
-        <a href="#" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">Thanh toán ngay</a>
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between;">
+          <span style="color: #64748b;">Giá thắng thầu:</span>
+          <span style="font-weight: 800; color: #2563eb; font-size: 20px;">${amount.toLocaleString()}đ</span>
+        </div>
+      </div>
+
+      <p>Để đảm bảo quyền sở hữu, vui lòng hoàn tất thanh toán trong vòng <strong>24 giờ</strong> tới.</p>
+      <div style="text-align: center;">
+        <a href="${window.location.origin}/orders" class="btn">Thanh toán & Nhận hàng</a>
       </div>
     `;
+
+    const html = this.getModernLayout(subject, content);
 
     this.addTemplate({
       id: `bid-${Date.now()}`,
@@ -146,39 +225,42 @@ class EmailService {
   }
 
   sendPurchaseConfirmation(user: any, order: any) {
-    const subject = `Xác nhận đơn hàng #${order.id}`;
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #2563eb;">Xác nhận Mua hàng thành công</h2>
-        <p>Chào ${user.fullName},</p>
-        <p>Cảm ơn bạn đã mua sắm tại AmazeBid. Đơn hàng của bạn đang được xử lý.</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <thead>
-            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-              <th style="padding: 10px; text-align: left;">Sản phẩm</th>
-              <th style="padding: 10px; text-align: right;">Số lượng</th>
-              <th style="padding: 10px; text-align: right;">Giá</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${order.items.map((item: any) => `
-              <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px;">${item.title}</td>
-                <td style="padding: 10px; text-align: right;">x${item.quantity}</td>
-                <td style="padding: 10px; text-align: right;">${item.price.toLocaleString()}đ</td>
-              </tr>
-            `).join('')}
-          </tbody>
-          <tfoot>
+    const subject = `Xác nhận đơn hàng #${order.id} - Cảm ơn bạn đã mua hàng!`;
+    const content = `
+      <h2 style="color: #1e293b; margin-top: 0;">Xác nhận Mua hàng Thành công</h2>
+      <p>Chào <strong>${user.fullName}</strong>,</p>
+      <p>Cảm ơn bạn đã tin tưởng AmazeBid. Đơn hàng của bạn đang được người bán chuẩn bị.</p>
+      
+      <div style="background: #f8fafc; border-radius: 12px; padding: 24px; margin: 24px 0;">
+        <h3 style="margin-top: 0; font-size: 16px; color: #334155;">Chi tiết đơn hàng #${order.id}</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          ${order.items.map((item: any) => `
             <tr>
-              <td colspan="2" style="padding: 10px; text-align: right; font-weight: bold;">Tổng cộng:</td>
-              <td style="padding: 10px; text-align: right; font-weight: bold; color: #2563eb;">${order.totalAmount.toLocaleString()}đ</td>
+              <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+                <div style="font-weight: 600;">${item.title}</div>
+                <div style="font-size: 13px; color: #64748b;">Số lượng: ${item.quantity}</div>
+              </td>
+              <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600;">
+                ${item.price.toLocaleString()}đ
+              </td>
             </tr>
-          </tfoot>
+          `).join('')}
+          <tr>
+            <td style="padding: 16px 0 0 0; text-align: right;"><strong>Tổng thanh toán:</strong></td>
+            <td style="padding: 16px 0 0 0; text-align: right; font-size: 18px; color: #2563eb; font-weight: 800;">
+              ${order.totalAmount.toLocaleString()}đ
+            </td>
+          </tr>
         </table>
-        <p>Hệ thống đã nhận thanh toán và đang tạm giữ (Escrow) để đảm bảo quyền lợi của bạn.</p>
+      </div>
+
+      <p>Số tiền này hiện đang được <strong>AmazeBid Escrow</strong> tạm giữ an toàn cho đến khi bạn xác nhận đã nhận hàng.</p>
+      <div style="text-align: center;">
+        <a href="${window.location.origin}/orders" class="btn">Xem trạng thái vận chuyển</a>
       </div>
     `;
+
+    const html = this.getModernLayout(subject, content);
 
     this.addTemplate({
       id: `purchase-${Date.now()}`,
@@ -195,20 +277,24 @@ class EmailService {
 
   sendPaymentEscrowNotification(user: any, order: any) {
     const subject = `Bảo vệ thanh toán (Escrow) - Đơn hàng #${order.id}`;
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333; border-left: 4px solid #10b981;">
-        <h2 style="color: #059669;">Thanh toán tạm giữ an toàn</h2>
-        <p>Chào ${user.fullName},</p>
-        <p>Số tiền <strong>${order.totalAmount.toLocaleString()}đ</strong> cho đơn hàng #${order.id} đã được chuyển vào hệ thống tạm giữ của AmazeBid.</p>
-        <p><strong>Quy trình bảo mật:</strong></p>
-        <ol>
-          <li>Người bán chuẩn bị và giao hàng cho đơn vị vận chuyển.</li>
-          <li>Bạn nhận hàng và kiểm tra trong vòng 3 ngày.</li>
-          <li>Sau khi bạn xác nhận "Đã nhận hàng", tiền sẽ được giải ngân cho người bán.</li>
+    const content = `
+      <h2 style="color: #059669; margin-top: 0;">🛡️ Thanh toán của bạn đã được bảo vệ</h2>
+      <p>Chào <strong>${user.fullName}</strong>,</p>
+      <p>Số tiền <strong>${order.totalAmount.toLocaleString()}đ</strong> cho đơn hàng <strong>#${order.id}</strong> đã được chuyển vào hệ thống tạm giữ an toàn của AmazeBid.</p>
+      
+      <div style="background: #ecfdf5; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #d1fae5;">
+        <h3 style="margin-top: 0; font-size: 16px; color: #065f46;">Quy trình AmazeSafe Escrow:</h3>
+        <ol style="padding-left: 20px; color: #065f46;">
+          <li style="margin-bottom: 8px;">Người bán nhận thông báo và tiến hành giao hàng.</li>
+          <li style="margin-bottom: 8px;">Hệ thống theo dõi vận đơn thời gian thực.</li>
+          <li>Tiền chỉ được giải ngân cho người bán sau khi bạn xác nhận "Đã nhận hàng".</li>
         </ol>
-        <p>AmazeBid đảm bảo hoàn tiền 100% nếu sản phẩm không đúng mô tả.</p>
       </div>
+      
+      <p>AmazeBid cam kết bảo vệ quyền lợi người mua 100%. Nếu hàng không đúng mô tả, bạn có quyền yêu cầu hoàn tiền ngay lập tức.</p>
     `;
+
+    const html = this.getModernLayout(subject, content);
 
     this.addTemplate({
       id: `escrow-${Date.now()}`,
@@ -224,20 +310,26 @@ class EmailService {
   }
 
   sendSellerNotification(sellerEmail: string, order: any) {
-    const subject = `Bạn có đơn hàng mới! #${order.id}`;
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #2563eb;">Thông báo Bán hàng</h2>
-        <p>Xin chào đối tác bán hàng,</p>
-        <p>Chúc mừng! Khách hàng đã thanh toán và đặt mua sản phẩm của bạn.</p>
-        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border: 1px solid #bbf7d0; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Số tiền được tạm giữ:</strong> ${order.totalAmount.toLocaleString()}đ</p>
-          <p style="margin: 5px 0 0 0;"><strong>Mã đơn hàng:</strong> #${order.id}</p>
-        </div>
-        <p>Vui lòng đóng gói và gửi hàng sớm nhất có thể. Truy cập trang quản lý đơn hàng để cập nhật thông tin vận chuyển.</p>
-        <a href="#" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Quản lý đơn hàng</a>
+    const subject = `🔥 Đơn hàng mới! Khách hàng đã thanh toán đơn #${order.id}`;
+    const content = `
+      <h2 style="color: #2563eb; margin-top: 0;">Bạn có đơn hàng mới!</h2>
+      <p>Xin chào đối tác bán hàng,</p>
+      <p>Thật tuyệt vời! Một khách hàng vừa chốt đơn sản phẩm của bạn. Tiền hàng đã được hệ thống tạm giữ an toàn.</p>
+      
+      <div style="background: #eff6ff; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #dbeafe;">
+        <div style="font-size: 14px; color: #1e40af;">Số tiền sẽ nhận (tạm giữ):</div>
+        <div style="font-size: 28px; font-weight: 800; color: #1d4ed8; margin: 8px 0;">${order.totalAmount.toLocaleString()}đ</div>
+        <div style="font-size: 14px; color: #1e40af;">Mã đơn hàng: #${order.id}</div>
+      </div>
+
+      <p>Vui lòng đóng gói và gửi hàng trong vòng 48h để đảm bảo tỷ lệ phản hồi tốt. Sau khi gửi, hãy cập nhật Mã vận đơn ngay trong trang quản trị.</p>
+      
+      <div style="text-align: center;">
+        <a href="${window.location.origin}/admin/products" class="btn">Giao hàng ngay</a>
       </div>
     `;
+
+    const html = this.getModernLayout(subject, content, "Vui lòng hoàn tất đơn hàng đúng hạn để tránh bị phạt điểm uy tín.");
 
     this.addTemplate({
       id: `seller-${Date.now()}`,
@@ -253,20 +345,30 @@ class EmailService {
   }
 
   sendShippingUpdateNotification(user: any, product: any, trackingInfo: any) {
-    const subject = `Đơn hàng đang trên đường đến bạn - ${product.title}`;
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #2563eb;">Thông tin Vận chuyển</h2>
-        <p>Chào ${user.fullName},</p>
-        <p>Sản phẩm <strong>${product.title}</strong> đã được gửi đi.</p>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Đơn vị vận chuyển:</strong> ${trackingInfo.carrier}</p>
-          <p style="margin: 5px 0 0 0;"><strong>Mã vận đơn:</strong> ${trackingInfo.trackingNumber}</p>
-          <p style="margin: 5px 0 0 0;"><strong>Trạng thái:</strong> ${trackingInfo.status}</p>
+    const subject = `🚚 Đơn hàng đang đến bạn: ${product.title}`;
+    const content = `
+      <h2 style="color: #1e293b; margin-top: 0;">Đơn hàng đã được bàn giao cho vận chuyển</h2>
+      <p>Chào <strong>${user.fullName}</strong>,</p>
+      <p>Tin vui! Sản phẩm <strong>${product.title}</strong> của bạn đã bắt đầu hành trình đến địa chỉ nhận hàng.</p>
+      
+      <div style="border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; margin: 24px 0;">
+        <div style="background: #f8fafc; padding: 16px; border-bottom: 1px solid #e2e8f0;">
+          <div style="font-weight: 700;">Thông tin vận đơn</div>
         </div>
-        <p>Bạn có thể theo dõi hành trình đơn hàng trong phần "Đơn mua" của mình.</p>
+        <div style="padding: 20px;">
+          <p style="margin: 0 0 8px 0;"><strong>Đơn vị:</strong> ${trackingInfo.carrier}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Mã vận đơn:</strong> <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${trackingInfo.trackingNumber}</span></p>
+          <p style="margin: 0;"><strong>Dự kiến nhận:</strong> Trong 2-3 ngày tới</p>
+        </div>
+      </div>
+
+      <p>Hệ thống AI sẽ liên tục cập nhật vị trí đơn hàng cho bạn.</p>
+      <div style="text-align: center;">
+        <a href="${window.location.origin}/orders" class="btn">Theo dõi hành trình</a>
       </div>
     `;
+
+    const html = this.getModernLayout(subject, content);
 
     this.addTemplate({
       id: `ship-${Date.now()}`,
@@ -282,23 +384,30 @@ class EmailService {
   }
 
   sendWalletTransferNotification(user: any, amount: number, type: 'DEPOSIT' | 'WITHDRAWAL' | 'BONUS') {
-    const subject = `Giao dịch ví AmazeBid: ${type === 'DEPOSIT' ? '+' : '-'} ${amount.toLocaleString()}đ`;
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #2563eb;">Thông báo Biến động số dư</h2>
-        <p>Chào ${user.fullName},</p>
-        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 0; font-size: 18px;">
-            <strong>Số tiền:</strong> 
-            <span style="color: ${type === 'DEPOSIT' || type === 'BONUS' ? '#10b981' : '#ef4444'}; font-weight: bold;">
-              ${type === 'DEPOSIT' || type === 'BONUS' ? '+' : '-'} ${amount.toLocaleString()}đ
-            </span>
-          </p>
-          <p style="margin: 5px 0 0 0;"><strong>Nội dung:</strong> ${type === 'DEPOSIT' ? 'Nạp tiền vào ví' : type === 'WITHDRAWAL' ? 'Rút tiền về ngân hàng' : 'Thưởng hệ thống'}</p>
+    const isIncrease = type === 'DEPOSIT' || type === 'BONUS';
+    const subject = `Biến động số dư: ${isIncrease ? '+' : '-'} ${amount.toLocaleString()}đ`;
+    const content = `
+      <h2 style="color: #1e293b; margin-top: 0;">Thông báo Giao dịch Ví AmazeBid</h2>
+      <p>Chào <strong>${user.fullName}</strong>,</p>
+      <p>Ví của bạn vừa ghi nhận một giao dịch mới:</p>
+      
+      <div style="background: #f8fafc; border-radius: 16px; padding: 32px; text-align: center; margin: 24px 0;">
+        <div style="font-size: 14px; color: #64748b; margin-bottom: 8px;">Số tiền thay đổi:</div>
+        <div style="font-size: 32px; font-weight: 800; color: ${isIncrease ? '#10b981' : '#ef4444'};">
+          ${isIncrease ? '+' : '-'} ${amount.toLocaleString()}đ
         </div>
-        <p>Kiểm tra chi tiết trong phần "Ví của tôi" trên ứng dụng AmazeBid.</p>
+        <div style="margin-top: 16px; font-size: 14px; color: #334155;">
+          <strong>Nội dung:</strong> ${type === 'DEPOSIT' ? 'Nạp tiền vào ví' : type === 'WITHDRAWAL' ? 'Rút tiền tài khoản' : 'Thưởng hệ thống'}
+        </div>
+      </div>
+      
+      <p>Vui lòng kiểm tra lại lịch sử giao dịch nếu có bất kỳ thắc mắc nào.</p>
+      <div style="text-align: center;">
+        <a href="${window.location.origin}/wallet" class="btn">Quản lý Ví</a>
       </div>
     `;
+
+    const html = this.getModernLayout(subject, content);
 
     this.addTemplate({
       id: `wallet-${Date.now()}`,
@@ -314,16 +423,23 @@ class EmailService {
   }
 
   sendDeliveryNotification(user: any, product: any) {
-    const subject = `Đơn hàng đã được giao thành công - ${product.title}`;
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #10b981;">Giao hàng thành công!</h2>
-        <p>Chào ${user.fullName},</p>
-        <p>Đơn hàng chứa sản phẩm <strong>${product.title}</strong> của bạn đã được giao thành công.</p>
-        <p>Vui lòng kiểm tra sản phẩm và xác nhận "Đã nhận hàng" trong ứng dụng để hoàn tất giao dịch và giải ngân cho người bán.</p>
-        <p>Nếu có vấn đề gì, bạn có 3 ngày để gửi yêu cầu khiếu nại/hoàn tiền.</p>
+    const subject = `✅ Kiện hàng đã được giao: ${product.title}`;
+    const content = `
+      <h2 style="color: #10b981; margin-top: 0;">Giao hàng thành công!</h2>
+      <p>Chào <strong>${user.fullName}</strong>,</p>
+      <p>Sản phẩm <strong>${product.title}</strong> đã được shipper giao đến bạn thành công.</p>
+      
+      <div style="background: #f0fdf4; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #bbf7d0;">
+        <p style="margin: 0; color: #166534;"><strong>Lưu ý quan trọng:</strong></p>
+        <p style="margin: 8px 0 0 0; color: #166534; font-size: 14px;">Vui lòng kiểm tra sản phẩm thực tế. Nếu hài lòng, hãy nhấn "Xác nhận nhận hàng" để hoàn tất. Bạn có 3 ngày trước khi hệ thống tự động giải ngân.</p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${window.location.origin}/orders" class="btn">Xác nhận đã nhận hàng</a>
       </div>
     `;
+
+    const html = this.getModernLayout(subject, content);
 
     this.addTemplate({
       id: `delivery-${Date.now()}`,
@@ -339,18 +455,26 @@ class EmailService {
   }
 
   sendEscrowReleaseNotification(sellerEmail: string, orderId: string, amount: number) {
-    const subject = `Tiền đã được giải ngân! Đơn hàng #${orderId}`;
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #10b981;">Thông báo Giải ngân tiền hàng</h2>
-        <p>Xin chào đối tác bán hàng,</p>
-        <p>Khách hàng đã xác nhận nhận hàng cho đơn hàng #${orderId}.</p>
-        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border: 1px solid #bbf7d0; margin: 20px 0;">
-          <p style="margin: 0; font-size: 18px;"><strong>Số tiền đã được cộng vào ví:</strong> ${amount.toLocaleString()}đ</p>
+    const subject = `💰 Tiền đã về ví! Giải ngân đơn hàng #${orderId}`;
+    const content = `
+      <h2 style="color: #10b981; margin-top: 0;">Thông báo Giải ngân tiền hàng</h2>
+      <p>Xin chào đối tác bán hàng,</p>
+      <p>Chúc mừng! Khách hàng đã hài lòng và xác nhận nhận hàng cho đơn #${orderId}. Số tiền đã được chuyển từ hệ thống tạm giữ vào Ví khả dụng của bạn.</p>
+      
+      <div style="background: #f0fdf4; border-radius: 16px; padding: 32px; text-align: center; margin: 24px 0; border: 2px solid #bbf7d0;">
+        <div style="font-size: 14px; color: #166534; margin-bottom: 8px;">Số tiền đã giải ngân:</div>
+        <div style="font-size: 32px; font-weight: 800; color: #15803d;">
+          + ${amount.toLocaleString()}đ
         </div>
-        <p>Cảm ơn bạn đã đồng hành cùng AmazeBid. Chúc bạn buôn may bán đắt!</p>
+      </div>
+      
+      <p>Bạn có thể rút số tiền này về ngân hàng bất cứ lúc nào.</p>
+      <div style="text-align: center;">
+        <a href="${window.location.origin}/admin/wallet" class="btn">Kiểm tra Ví</a>
       </div>
     `;
+
+    const html = this.getModernLayout(subject, content);
 
     this.addTemplate({
       id: `release-${Date.now()}`,

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Settings, 
-  Percent, 
   Cpu, 
   DollarSign, 
   Save, 
@@ -14,7 +12,7 @@ import {
   Zap,
   Info,
   AlertTriangle,
-  Link
+  Link as LinkIcon
 } from 'lucide-react';
 import { api } from '../services/api';
 import { motion, AnimatePresence } from 'motion/react';
@@ -313,7 +311,7 @@ const SystemConfig: React.FC = () => {
               {/* Domain Input */}
               <div className="space-y-4">
                 <label className="inline-flex items-center gap-2 text-xs font-black text-indigo-400 uppercase tracking-widest mb-2">
-                  <Link size={14} /> Domain Name (Tên miền của bạn)
+                  <LinkIcon size={14} /> Domain Name (Tên miền của bạn)
                 </label>
                 <div className="relative">
                   <input 

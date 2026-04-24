@@ -6,6 +6,7 @@ import { SupplyChainManagement } from './SupplyChainManagement';
 import { LaborManagement } from './LaborManagement';
 import { EquityManagement } from './EquityManagement';
 import ProductManagement from './ProductManagement';
+import SellerOrderManagement from './SellerOrderManagement';
 import InventoryDashboard from '../src/components/InventoryDashboard';
 import PackagingSuggestionComponent from '../src/components/PackagingSuggestion';
 import { Product, OrderStatus, ItemType, PhysicalStore } from '../types';
@@ -25,7 +26,7 @@ interface SellerDashboardProps {
   onRefreshProducts?: () => void;
 }
 
-type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity';
+type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity' | 'orders';
 
 const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId, onRefreshProducts }) => {
   const { user } = useAuth();
@@ -313,6 +314,12 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                     <BarChart3 size={16} /> Tổng quan
                 </button>
                 <button 
+                    onClick={() => setActiveTab('orders')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'orders' ? 'border-amber-600 text-amber-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <ShoppingCart size={16} /> Quản lý đơn hàng
+                </button>
+                <button 
                     onClick={() => setActiveTab('analytics')}
                     className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'analytics' ? 'border-orange-500 text-orange-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
                 >
@@ -391,6 +398,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
 
         {/* Main Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+            {activeTab === 'orders' && <SellerOrderManagement products={products} currentUserId={currentUserId} globalConfig={globalConfig} />}
             {activeTab === 'inventory' && <InventoryDashboard products={products} onRefreshProducts={onRefreshProducts} />}
             {activeTab === 'product-mgmt' && <ProductManagement onUpdate={onRefreshProducts} />}
             {activeTab === 'store' && <StoreManagement ownerId={currentUserId} onRefreshProducts={onRefreshProducts} />}

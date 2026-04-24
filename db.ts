@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
 import { MOCK_PRODUCTS, MOCK_STREAMS, MOCK_ALL_USERS, MOCK_FEED_POSTS, MOCK_REVIEWS, MOCK_DISCOUNT_CODES, MOCK_SHIPPING_OPTIONS } from './data';
 import { Product, LiveStream, User, FeedPost, Review, DiscountCode, ShippingOption, SystemWallet, Order } from './types';
