@@ -195,8 +195,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input 
-                            type="email" 
-                            placeholder="Email"
+                            type="text" 
+                            placeholder="Email hoặc Tên đăng nhập (ID)"
                             className="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:border-[#febd69] outline-none"
                             value={formData.email}
                             onChange={e => setFormData({...formData, email: e.target.value})}

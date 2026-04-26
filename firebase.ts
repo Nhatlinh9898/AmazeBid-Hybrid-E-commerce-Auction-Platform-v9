@@ -1,5 +1,5 @@
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, GithubAuthProvider, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import firebaseConfig from './firebase-applet-config.json';
 
@@ -8,6 +8,8 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
+const githubProvider = new GithubAuthProvider();
 
 if (firebaseConfig.apiKey) {
   try {
@@ -21,5 +23,5 @@ if (firebaseConfig.apiKey) {
   console.warn('Firebase API Key is missing. Social login and Firestore will be disabled.');
 }
 
-export { app, auth, googleProvider, db };
+export { app, auth, googleProvider, facebookProvider, githubProvider, db };
 export default app;

@@ -1,7 +1,7 @@
 
 import React, { ReactNode } from 'react';
 import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { auth, googleProvider, facebookProvider, githubProvider } from '../firebase';
 import { User } from '../types';
 import { api } from '../services/api';
 import { AuthContext } from './AuthContext';
@@ -119,20 +119,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loginWithSocial = async (provider: 'google' | 'facebook' | 'github'): Promise<boolean> => {
     try {
-      if (provider === 'google' && auth) {
-        const result = await signInWithPopup(auth, googleProvider);
-        const idToken = await result.user.getIdToken();
-        const data = await api.auth.loginWithFirebase(idToken);
-        if (data.user) {
-          setUser(assignRole(data.user));
-          return true;
-        }
-      } else if (provider === 'google' && !auth) {
-        alert('Google Login is not configured. Please set up Firebase API keys in settings.');
+      if (!auth) {
+        alert(`${provider.charAt(0).toUpperCase() + provider.slice(1)} Login is not configured. Please set up Firebase API keys in settings.`);
         return false;
       }
-      // Fallback for other providers if not configured
-      return register(`${provider} User`, `${provider}@social.com`, '123456');
+
+      let authProvider;
+      switch (provider) {
+        case 'google': authProvider = googleProvider; break;
+        case 'facebook': authProvider = facebookProvider; break;
+        case 'github': authProvider = githubProvider; break;
+        default: authProvider = googleProvider;
+      }
+
+      const result = await signInWithPopup(auth, authProvider);
+      const idToken = await result.user.getIdToken();
+      const data = await api.auth.loginWithFirebase(idToken);
+      
+      if (data.user && data.token) {
+        localStorage.setItem('auth_token', data.token);
+        setUser(assignRole(data.user));
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('Social login error:', error);
       return false;

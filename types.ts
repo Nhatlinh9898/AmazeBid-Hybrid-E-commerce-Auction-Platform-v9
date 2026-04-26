@@ -448,9 +448,51 @@ export interface StoreMenuItem {
   recipe?: ProductRecipe; // New: Recipe for cost calculation
 }
 
+export enum StaffRole {
+  SUPER_ADMIN = 'SUPER_ADMIN', // Toàn quyền chuỗi
+  STORE_MANAGER = 'STORE_MANAGER', // Quản lý chi nhánh
+  CASHIER = 'CASHIER', // Thu ngân
+  BARISTA = 'BARISTA', // Pha chế
+  KITCHEN_CHEF = 'KITCHEN_CHEF', // Bếp trưởng
+  INVENTORY_MANAGER = 'INVENTORY_MANAGER', // Quản lý kho
+  SALES_EXECUTIVE = 'SALES_EXECUTIVE', // Nhân viên kinh doanh
+  MARKETING_SPECIALIST = 'MARKETING_SPECIALIST', // Nhân viên marketing
+  SECURITY_GUARD = 'SECURITY_GUARD', // Bảo vệ
+  DELIVERY_DRIVER = 'DELIVERY_DRIVER', // Giao hàng
+  MAINTENANCE_TECH = 'MAINTENANCE_TECH' // Kỹ thuật bảo trì
+}
+
+export enum StaffPermission {
+  MANAGE_PRODUCTS = 'MANAGE_PRODUCTS',
+  MANAGE_INVENTORY = 'MANAGE_INVENTORY',
+  CREATE_ORDER = 'CREATE_ORDER',
+  VIEW_REPORTS = 'VIEW_REPORTS',
+  MANAGE_STAFF = 'MANAGE_STAFF',
+  VOID_TRANSACTION = 'VOID_TRANSACTION',
+  MANAGE_FINANCE = 'MANAGE_FINANCE',
+  MANAGE_MARKETING = 'MANAGE_MARKETING',
+  VIEW_CUSTOMER_DATA = 'VIEW_CUSTOMER_DATA'
+}
+
+export interface StoreStaff {
+  id: string;
+  userId: string; // Tên đăng nhập
+  password?: string; // Mật khẩu đăng nhập (ẩn khi hiển thị danh sách)
+  name: string;
+  email: string;
+  role: StaffRole;
+  storeId: string; // ID của chi nhánh/cửa hàng
+  permissions: StaffPermission[];
+  status: 'ACTIVE' | 'INACTIVE';
+  joinDate: string;
+}
+
 export interface PhysicalStore {
   id: string;
   ownerId: string;
+  parentStoreId?: string; // Nếu là chi nhánh, trỏ về id của chuỗi chính
+  isBranch: boolean;
+  branchName?: string;
   name: string;
   description: string;
   address: string;
@@ -464,6 +506,7 @@ export interface PhysicalStore {
   menu: StoreMenuItem[];
   qrCode?: string;
   createdAt: string;
+  staffIds: string[]; // Danh sách ID nhân viên thuộc chi nhánh này
 }
 
 export interface ContentPost {
