@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { 
   Search, 
   Filter, 
@@ -14,10 +13,13 @@ import {
   FileText,
   Download,
   DollarSign,
-  ShieldCheck
+  ShieldCheck,
+  ShoppingBag,
+  Store
 } from 'lucide-react';
-import { Product, OrderStatus, GlobalConfig, User as UserType } from '../types';
+import { Product, OrderStatus, GlobalConfig, User as UserType, Order } from '../types';
 import { MOCK_ALL_USERS } from '../data';
+import { api } from '../services/api';
 
 interface SellerOrderManagementProps {
   products: Product[];
@@ -26,26 +28,70 @@ interface SellerOrderManagementProps {
 }
 
 const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products, currentUserId, globalConfig }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
-  const [selectedOrder, setSelectedOrder] = useState<Product | null>(null);
-  const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<OrderStatus | 'ALL'>('ALL');
+  const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
+  const [autoPrintEnabled, setAutoPrintEnabled] = React.useState(false);
+  const [realOrders, setRealOrders] = React.useState<Order[]>([]);
+  const [, setLoading] = React.useState(true);
 
-  // Filter sold products for this seller
-  const orders = products.filter(p => 
-    p.sellerId === currentUserId && 
-    p.status !== OrderStatus.AVAILABLE && 
-    p.status !== OrderStatus.PENDING_VERIFICATION
+  const fetchOrders = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.orders.getSellerOrders(currentUserId);
+      if (response && response.orders) {
+        setRealOrders(response.orders);
+      }
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUserId]);
+
+  React.useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  // Combine product-based orders (legacy) and real order objects
+  // Filter sold products for this seller (legacy/one-item orders)
+  const legacyOrders: Order[] = products
+    .filter(p => 
+      p.sellerId === currentUserId && 
+      p.status !== OrderStatus.AVAILABLE && 
+      p.status !== OrderStatus.PENDING_VERIFICATION
+    )
+    .map(p => ({
+      id: p.id,
+      userId: 'anonymous',
+      items: [{ ...p, quantity: 1 }],
+      totalAmount: p.price,
+      status: p.status,
+      createdAt: p.soldDate || new Date().toISOString(),
+    }));
+
+  // Deduplicate and combine (prioritize real orders if IDs match)
+  const allOrdersMap = new Map<string, Order>();
+  legacyOrders.forEach(o => allOrdersMap.set(o.id, o));
+  realOrders.forEach(o => allOrdersMap.set(o.id, o));
+
+  const allOrders = Array.from(allOrdersMap.values()).sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
-  const filteredOrders = orders.filter(o => {
-    const matchesSearch = o.title.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredOrders = allOrders.filter(o => {
+    const itemMatch = o.items.some(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = itemMatch || o.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || o.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   // Deterministically find a mock buyer based on order ID
-  const getBuyerForOrder = (orderId: string): UserType => {
+  const getBuyerForOrder = (orderId: string, userId?: string): UserType => {
+    if (userId && userId !== 'anonymous') {
+       const user = MOCK_ALL_USERS.find(u => u.id === userId);
+       if (user) return user;
+    }
     const index = orderId.length % (MOCK_ALL_USERS.length - 1); // Avoid picking admin
     const buyer = MOCK_ALL_USERS[index];
     // Add missing info for the demo if it's not in the mock
@@ -58,10 +104,9 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
     };
   };
 
-  const currentBuyer = selectedOrder ? getBuyerForOrder(selectedOrder.id) : null;
+  const currentBuyer = selectedOrder ? getBuyerForOrder(selectedOrder.id, selectedOrder.userId) : null;
 
   const getSellerInfo = (sellerId: string) => {
-    // Mimic fetching seller profile info
     return {
       shopName: `Store của ${sellerId.slice(0, 5).toUpperCase()}`,
       address: "Số 45, Đường Công Nghệ, Khu Công Viên Phần Mềm, TP. Thủ Đức",
@@ -80,16 +125,16 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
     }
   };
 
-  const handlePrint = useCallback((order: Product) => {
-    const buyer = getBuyerForOrder(order.id);
+  const handlePrint = React.useCallback((order: Order) => {
+    const buyer = getBuyerForOrder(order.id, order.userId);
     const seller = getSellerInfo(currentUserId);
-    const vatRate = order.vatRate !== undefined ? order.vatRate : globalConfig.defaultVatRate;
-    const shippingFee = 35000; // Mock 35k VNĐ shipping
+    const shippingFee = order.isPOS ? 0 : 35000;
     
-    // Reverse calculation: Price is Gross Price (includes VAT and Special Tax if applicable)
-    const subtotal = order.price;
+    const subtotal = order.items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
+    
+    // Average VAT for simplicity on print
+    const vatRate = globalConfig.defaultVatRate;
     const vatAmount = subtotal * vatRate;
-    const total = subtotal + vatAmount + shippingFee;
 
     const barcodeUrl = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${order.id.slice(0, 12).toUpperCase()}&scale=2&rotate=N&includetext`;
 
@@ -129,7 +174,7 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
           <body>
             <div class="header center">
               <div class="logo">AMAZEBID</div>
-              <div style="font-size: 8px; text-transform: uppercase; letter-spacing: 1px;">Hybrid Marketplace & Auction</div>
+              <div style="font-size: 8px; text-transform: uppercase; letter-spacing: 1px;">Hybrid Marketplace & AI POS</div>
             </div>
 
             <div class="seller-info center">
@@ -139,13 +184,14 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
             </div>
 
             <div class="info">
-              <div class="bold center" style="font-size: 12px; margin: 5px 0; border-top: 1px solid #eee; pt-2;">BIÊN LAI BÁN HÀNG</div>
-              <div class="center">Mã đơn: <span class="bold">#${order.id.slice(0,12).toUpperCase()}</span></div>
+              <div class="bold center" style="font-size: 12px; margin: 5px 0; border-top: 1px solid #eee; pt-2;">${order.isPOS ? 'HÓA ĐƠN BÁN LẺ (POS)' : 'BIÊN LAI BÁN HÀNG'}</div>
+              <div class="center">Mã đơn: <span class="bold">#${order.id.slice(0,12).toUpperCase()}</span> ${order.isPOS ? '<span class="bold">[OFFLINE]</span>' : ''}</div>
               <div class="center">Ngày in: ${new Date().toLocaleString('vi-VN')}</div>
             </div>
 
             <img src="${barcodeUrl}" class="barcode" alt="barcode"/>
 
+            ${!order.isPOS ? `
             <div class="border-top">
               <div class="bold uppercase" style="font-size: 9px; color: #444; margin-bottom: 3px;">Thông tin khách hàng</div>
               <div class="bold">${buyer.fullName}</div>
@@ -153,6 +199,7 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
               <div>Email: ${buyer.email}</div>
               <div style="font-style: italic;">Đ/c: ${buyer.address}</div>
             </div>
+            ` : ''}
 
             <div class="border-top">
               <div class="bold uppercase" style="font-size: 9px; color: #444; margin-bottom: 3px;">Chi tiết đơn hàng</div>
@@ -161,10 +208,12 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
                   <td>Tên sản phẩm</td>
                   <td class="price">Thành tiền</td>
                 </tr>
-                <tr>
-                  <td>${order.title}<br/><small style="color: #666;">Số lượng: 1</small></td>
-                  <td class="price">${subtotal.toLocaleString()}<sup>${globalConfig.currencySymbol}</sup></td>
-                </tr>
+                ${order.items.map(item => `
+                  <tr>
+                    <td>${item.title}<br/><small style="color: #666;">SL: ${item.quantity || 1} x ${item.price.toLocaleString()}</small></td>
+                    <td class="price">${(item.price * (item.quantity || 1)).toLocaleString()}<sup>${globalConfig.currencySymbol}</sup></td>
+                  </tr>
+                `).join('')}
               </table>
             </div>
 
@@ -180,19 +229,15 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
                   <td class="price">${vatAmount.toLocaleString()}<sup>${globalConfig.currencySymbol}</sup></td>
                 </tr>
                 ` : ''}
-                ${specialTaxAmount > 0 ? `
-                <tr>
-                  <td>Thuế Tiêu thụ ĐB (${(specialTaxRate * 100).toFixed(0)}%):</td>
-                  <td class="price">${specialTaxAmount.toLocaleString()}<sup>${globalConfig.currencySymbol}</sup></td>
-                </tr>
-                ` : ''}
+                ${!order.isPOS ? `
                 <tr>
                   <td>Phí vận chuyển:</td>
                   <td class="price">${shippingFee.toLocaleString()}<sup>${globalConfig.currencySymbol}</sup></td>
                 </tr>
+                ` : ''}
                 <tr class="bold" style="font-size: 14px;">
                   <td style="padding-top: 8px;">TỔNG CỘNG:</td>
-                  <td class="price" style="padding-top: 8px;">${total.toLocaleString()}<sup>${globalConfig.currencySymbol}</sup></td>
+                  <td class="price" style="padding-top: 8px;">${order.totalAmount.toLocaleString()}<sup>${globalConfig.currencySymbol}</sup></td>
                 </tr>
               </table>
             </div>
@@ -292,16 +337,26 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
                   className={`p-4 cursor-pointer transition-all hover:bg-blue-50/30 ${selectedOrder?.id === order.id ? 'bg-blue-50 border-l-4 border-blue-600' : ''}`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">#{order.id.slice(0, 8).toUpperCase()}</span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">#{order.id.slice(0, 8).toUpperCase()}</span>
+                      {order.isPOS && (
+                        <span className="flex items-center gap-1 text-[8px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded uppercase">
+                          <Store size={8} /> POS
+                        </span>
+                      )}
+                    </div>
                     {getStatusBadge(order.status)}
                   </div>
-                  <h4 className="font-bold text-sm text-gray-900 truncate mb-1">{order.title}</h4>
+                  <h4 className="font-bold text-sm text-gray-900 truncate mb-1">
+                    {order.items.length > 1 ? `${order.items[0].title} (+${order.items.length - 1} món)` : order.items[0].title}
+                  </h4>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-black text-blue-600">
-                      {order.price.toLocaleString()}<sup>{globalConfig.currencySymbol}</sup>
+                      {order.totalAmount.toLocaleString()}<sup>{globalConfig.currencySymbol}</sup>
                     </span>
                     <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                       <Truck size={10}/> {order.shippingInfo?.carrier || 'Dự kiến 3 ngày'}
+                       {order.isPOS ? <CheckCircle size={10} className="text-green-500" /> : <Truck size={10}/>} 
+                       {order.isPOS ? 'Tại quầy' : (order.shippingInfo?.carrier || 'Dự kiến 3 ngày')}
                     </span>
                   </div>
                 </div>
@@ -387,54 +442,58 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
                   </div>
 
                   {/* Payment Summary */}
-                  <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow h-full">
                     <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4 uppercase tracking-wider text-xs">
                       <div className="p-1.5 bg-green-100 rounded-lg text-green-600"><DollarSign size={14} /></div>
                       Tổng kết thanh toán
                     </h3>
                     <div className="space-y-4">
                       <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
-                         <span className="text-sm text-gray-500 font-medium">Giá sản phẩm</span>
-                         <span className="text-sm font-black">{selectedOrder.price.toLocaleString()}<sup>{globalConfig.currencySymbol}</sup></span>
+                         <span className="text-sm text-gray-500 font-medium whitespace-nowrap overflow-hidden text-ellipsis mr-2">Tổng sản phẩm</span>
+                         <span className="text-sm font-black text-right shrink-0">
+                           {order.items.reduce((sum, i) => sum + (i.price * (i.quantity || 1)), 0).toLocaleString()}<sup>{globalConfig.currencySymbol}</sup>
+                         </span>
                       </div>
                       <div className="flex justify-between items-center px-3">
-                         <span className="text-sm text-gray-500 font-medium">Thuế VAT ({( (selectedOrder.vatRate !== undefined ? selectedOrder.vatRate : globalConfig.defaultVatRate) * 100).toFixed(0)}%)</span>
-                         <span className="text-sm font-bold">+{(selectedOrder.price * (selectedOrder.vatRate !== undefined ? selectedOrder.vatRate : globalConfig.defaultVatRate)).toLocaleString()}<sup>{globalConfig.currencySymbol}</sup></span>
+                         <span className="text-sm text-gray-500 font-medium">Thuế VAT ({ (globalConfig.defaultVatRate * 100).toFixed(0)}%)</span>
+                         <span className="text-sm font-bold text-right shrink-0">
+                           +{(order.items.reduce((sum, i) => sum + (i.price * (i.quantity || 1)), 0) * globalConfig.defaultVatRate).toLocaleString()}<sup>{globalConfig.currencySymbol}</sup>
+                         </span>
                       </div>
-                      {selectedOrder.specialTaxRate ? (
+                      {!order.isPOS && (
                         <div className="flex justify-between items-center px-3">
-                           <span className="text-sm text-gray-500 font-medium">Thuế TTĐB ({(selectedOrder.specialTaxRate * 100).toFixed(0)}%)</span>
-                           <span className="text-sm font-bold">+{(selectedOrder.price * selectedOrder.specialTaxRate).toLocaleString()}<sup>{globalConfig.currencySymbol}</sup></span>
+                           <span className="text-sm text-gray-500 font-medium">Phí vận chuyển</span>
+                           <span className="text-sm font-bold text-right shrink-0">+35.000<sup>{globalConfig.currencySymbol}</sup></span>
                         </div>
-                      ) : null}
-                      <div className="flex justify-between items-center px-3">
-                         <span className="text-sm text-gray-500 font-medium">Phí vận chuyển</span>
-                         <span className="text-sm font-bold">+35.000<sup>{globalConfig.currencySymbol}</sup></span>
-                      </div>
+                      )}
                       
                       <div className="pt-4 border-t-2 border-dashed border-gray-100 mt-4">
                          <div className="flex justify-between items-end">
                             <div>
-                               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tổng tiền khách trả</p>
-                               <span className="text-3xl font-black text-blue-600">
-                                 {(selectedOrder.price * (1 + (selectedOrder.vatRate !== undefined ? selectedOrder.vatRate : globalConfig.defaultVatRate) + (selectedOrder.specialTaxRate || 0)) + 35000).toLocaleString()}<sup>{globalConfig.currencySymbol}</sup>
+                               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Khách trả</p>
+                               <span className="text-2xl font-black text-blue-600">
+                                 {order.totalAmount.toLocaleString()}<sup>{globalConfig.currencySymbol}</sup>
                                </span>
                             </div>
                             <div className="text-right">
                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Dự tính doanh thu</p>
                                <span className="text-sm font-black text-emerald-600">
-                                 +{(selectedOrder.price * (1 - globalConfig.platformFeeRate)).toLocaleString()}<sup>{globalConfig.currencySymbol}</sup>
+                                 +{(order.items.reduce((sum, i) => sum + (i.price * (i.quantity || 1)), 0) * (1 - globalConfig.platformFeeRate)).toLocaleString()}<sup>{globalConfig.currencySymbol}</sup>
                                </span>
                             </div>
                          </div>
                       </div>
 
                       <div className="mt-6 flex gap-2">
-                        <div className="flex-1 p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center gap-3">
-                           <ShieldCheck size={20} className="text-indigo-600 shrink-0" />
+                        <div className={`flex-1 p-3 border rounded-xl flex items-center gap-3 ${order.isPOS ? 'bg-amber-50 border-amber-100' : 'bg-indigo-50 border-indigo-100'}`}>
+                           {order.isPOS ? <ShoppingBag size={20} className="text-amber-600 shrink-0" /> : <ShieldCheck size={20} className="text-indigo-600 shrink-0" />}
                            <div>
-                              <p className="text-[10px] font-black text-indigo-700 uppercase">Escrow Locked</p>
-                              <p className="text-[9px] text-indigo-500 leading-tight">Tiền đang được AmazeBid giữ an toàn. Giải ngân sau khi giao hàng thành công.</p>
+                              <p className={`text-[10px] font-black uppercase ${order.isPOS ? 'text-amber-700' : 'text-indigo-700'}`}>{order.isPOS ? 'Direct Sale (POS)' : 'Escrow Locked'}</p>
+                              <p className={`text-[9px] leading-tight ${order.isPOS ? 'text-amber-500' : 'text-indigo-500'}`}>
+                                {order.isPOS 
+                                  ? 'Giao dịch hoàn tất tại quầy. Doanh thu được ghi nhận trực tiếp.' 
+                                  : 'Tiền đang được AmazeBid giữ an toàn. Giải ngân sau khi giao hàng thành công.'}
+                              </p>
                            </div>
                         </div>
                       </div>
@@ -445,36 +504,37 @@ const SellerOrderManagement: React.FC<SellerOrderManagementProps> = ({ products,
                   <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                     <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-4 uppercase tracking-wider text-xs">
                       <div className="p-1.5 bg-orange-100 rounded-lg text-orange-600"><Package size={14} /></div>
-                      Danh sách mặt hàng
+                      Danh sách mặt hàng ({selectedOrder.items.length})
                     </h3>
                     <div className="space-y-4">
-                      <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-2xl transition-all hover:bg-white hover:ring-2 hover:ring-blue-100 group">
-                        <div className="w-24 h-24 rounded-xl overflow-hidden shadow-sm">
-                          <img src={selectedOrder.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                             <div>
-                                <h4 className="font-black text-lg text-gray-900">{selectedOrder.title}</h4>
-                                <p className="text-xs text-gray-500 font-bold bg-white inline-block px-2 py-1 rounded-lg mt-1">{selectedOrder.category}</p>
-                             </div>
-                             <div className="text-right">
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Đơn giá</p>
-                                <p className="text-xl font-black text-gray-900">{selectedOrder.price.toLocaleString()}<sup>{globalConfig.currencySymbol}</sup></p>
-                             </div>
+                      {selectedOrder.items.map((item, idx) => (
+                        <div key={`${item.id}-${idx}`} className="flex items-center gap-6 p-4 bg-gray-50 rounded-2xl transition-all hover:bg-white hover:ring-2 hover:ring-blue-100 group">
+                          <div className="w-24 h-24 rounded-xl overflow-hidden shadow-sm bg-white shrink-0">
+                            <img src={item.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                           </div>
-                          <div className="mt-4 flex items-center justify-between">
-                             <div className="flex items-center gap-4 text-xs font-bold text-gray-500">
-                                <span>Màu sắc: Mặc định</span>
-                                <span>Size: One Size</span>
-                                <span>Số lượng: <span className="text-blue-600 font-black">01</span></span>
-                             </div>
-                             <div className="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-gray-400 border border-gray-100">
-                                SKU: {selectedOrder.id.slice(0,8).toUpperCase()}
-                             </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-4">
+                               <div className="min-w-0">
+                                  <h4 className="font-black text-lg text-gray-900 truncate">{item.title}</h4>
+                                  <p className="text-xs text-gray-500 font-bold bg-white inline-block px-2 py-1 rounded-lg mt-1">{item.category}</p>
+                               </div>
+                               <div className="text-right shrink-0">
+                                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Đơn giá</p>
+                                  <p className="text-xl font-black text-gray-900">{(item.price * (item.quantity || 1)).toLocaleString()}<sup>{globalConfig.currencySymbol}</sup></p>
+                               </div>
+                            </div>
+                            <div className="mt-4 flex items-center justify-between">
+                               <div className="flex items-center gap-4 text-xs font-bold text-gray-500">
+                                  <span>Số lượng: <span className="text-blue-600 font-black">{item.quantity || 1}</span></span>
+                                  {item.barcode && <span>Mã vạch: {item.barcode}</span>}
+                               </div>
+                               <div className="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-gray-400 border border-gray-100">
+                                  SKU: {item.id.slice(0,8).toUpperCase()}
+                               </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
 

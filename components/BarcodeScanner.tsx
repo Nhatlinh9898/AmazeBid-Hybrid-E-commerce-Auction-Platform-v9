@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { X, Scan } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,10 +10,10 @@ interface BarcodeScannerProps {
 }
 
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onScanSuccess }) => {
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = React.useRef<Html5QrcodeScanner | null>(null);
   const scannerId = "barcode-scanner-viewport";
 
-  const handleScanSuccess = useCallback((decodedText: string) => {
+  const handleScanSuccess = React.useCallback((decodedText: string) => {
     onScanSuccess(decodedText);
     if (scannerRef.current) {
         scannerRef.current.clear();
@@ -21,7 +21,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onScan
     onClose();
   }, [onScanSuccess, onClose]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isOpen) {
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {
@@ -67,7 +67,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onScan
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
       >
         <motion.div 
           initial={{ scale: 0.9, y: 20 }}

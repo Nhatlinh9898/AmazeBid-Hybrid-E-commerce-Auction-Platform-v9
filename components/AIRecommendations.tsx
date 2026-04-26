@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { Product } from '../types';
 import ProductCard from './ProductCard';
@@ -11,10 +11,10 @@ interface AIRecommendationsProps {
 }
 
 const AIRecommendations: React.FC<AIRecommendationsProps> = ({ products, cartItems, onAddToCart, onPlaceBid }) => {
-  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [recommendedProducts, setRecommendedProducts] = React.useState<Product[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Simulate AI processing time
     const timer = setTimeout(() => {
       // Simple mock logic: if cart has items, recommend similar categories. 

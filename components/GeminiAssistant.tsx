@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { X, Send, Bot } from 'lucide-react';
 import { Message, Product } from '../types';
 import { getShoppingAdvice } from '../services/geminiService';
@@ -11,18 +11,18 @@ interface GeminiAssistantProps {
   onClose?: () => void;
 }
 
-const GeminiAssistant: React.FC<GeminiAssistantProps> = ({ products, isOpen: externalOpen, onClose }) => {
-  const [internalOpen, setInternalOpen] = useState(false);
+const GeminiAssistant: React.FC<GeminiAssistantProps> = ({ products, externalOpen, onClose }) => {
+  const [internalOpen, setInternalOpen] = React.useState(false);
   const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
   const setIsOpen = onClose || setInternalOpen;
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = React.useState<Message[]>([
     { role: 'model', text: 'Chào mừng bạn đến với AmazeBid! Tôi là Gemini Assistant. Bạn cần tìm sản phẩm mua ngay hay muốn tham gia đấu giá?' }
   ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }

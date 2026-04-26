@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Wallet, ArrowDownCircle, ShieldCheck, AlertCircle, Loader2, CheckCircle2, 
   Building2, X, History, Sparkles, BrainCircuit, Clock, ArrowUpRight, 
@@ -16,20 +16,20 @@ interface UserWalletModalProps {
 
 const UserWalletModal: React.FC<UserWalletModalProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
-  const [wallet, setWallet] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [wallet, setWallet] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState('');
   
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [isEditingBank, setIsEditingBank] = useState(false);
-  const [bankName, setBankName] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [accountName, setAccountName] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = React.useState('');
+  const [isEditingBank, setIsEditingBank] = React.useState(false);
+  const [bankName, setBankName] = React.useState('');
+  const [accountNumber, setAccountNumber] = React.useState('');
+  const [accountName, setAccountName] = React.useState('');
 
-  const [aiAnalysis, setAiAnalysis] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'escrow' | 'ai'>('overview');
+  const [aiAnalysis, setAiAnalysis] = React.useState('');
+  const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<'overview' | 'history' | 'escrow' | 'ai'>('overview');
 
   const fetchWallet = React.useCallback(async () => {
     if (!user) return;
@@ -48,7 +48,7 @@ const UserWalletModal: React.FC<UserWalletModalProps> = ({ isOpen, onClose }) =>
     }
   }, [user]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isOpen && user) {
       fetchWallet();
     }

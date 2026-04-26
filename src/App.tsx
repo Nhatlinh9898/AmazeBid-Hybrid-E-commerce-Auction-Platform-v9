@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Activity, AlertCircle, CheckCircle2, Clock, Database, Server, RefreshCw, Play, ShieldAlert, Terminal } from 'lucide-react';
 import { cn } from './lib/utils';
 import { Job } from './types';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'monitoring' | 'dlq' | 'tests'>('monitoring');
-  const [stats, setStats] = useState<any>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [dlq, setDlq] = useState<Job[]>([]);
-  const [testLogs, setTestLogs] = useState<string[]>([]);
-  const [isRunningTests, setIsRunningTests] = useState(false);
+  const [activeTab, setActiveTab] = React.useState<'monitoring' | 'dlq' | 'tests'>('monitoring');
+  const [stats, setStats] = React.useState<any>(null);
+  const [jobs, setJobs] = React.useState<Job[]>([]);
+  const [dlq, setDlq] = React.useState<Job[]>([]);
+  const [testLogs, setTestLogs] = React.useState<string[]>([]);
+  const [isRunningTests, setIsRunningTests] = React.useState(false);
 
   const fetchDashboard = async () => {
     try {
@@ -23,7 +23,7 @@ function App() {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchDashboard();
     const interval = setInterval(fetchDashboard, 2000);
     return () => clearInterval(interval);

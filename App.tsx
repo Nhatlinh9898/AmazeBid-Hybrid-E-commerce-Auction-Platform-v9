@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React from 'react';
 import Navbar from './components/Navbar';
 import ProductCard from './components/ProductCard';
 import BottomToolbar from './components/BottomToolbar';
@@ -82,36 +82,15 @@ import UserWalletModal from './components/UserWalletModal';
 
 const InnerApp: React.FC = () => {
   const { user } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [streams, setStreams] = useState<LiveStream[]>([]);
-  const [contentPosts, setContentPosts] = useState<ContentPost[]>([]); 
-  const [isLoading, setIsLoading] = useState(true);
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [streams, setStreams] = React.useState<LiveStream[]>([]);
+  const [contentPosts, setContentPosts] = React.useState<ContentPost[]>([]); 
+  const [isLoading, setIsLoading] = React.useState(true);
 
   // Fetch initial data from backend
-  useEffect(() => {
-    const testHealth = async (retries = 3) => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(new Error('Timeout after 5s')), 5000);
-          
-          const res = await fetch('/api/health', { signal: controller.signal });
-          clearTimeout(timeoutId);
-          
-          if (res.ok) {
-            const data = await res.json();
-            console.log('API Health Check Result:', data);
-            return;
-          }
-        } catch (error) {
-          console.warn(`Health check attempt ${i + 1} failed:`, error);
-          if (i === retries - 1) console.error('API Health Check Failed after retries');
-          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-        }
-      }
-    };
-    testHealth();
-
+  React.useEffect(() => {
+    let unsubscribeStores: (() => void) | undefined;
+    
     const fetchData = async (retries = 3) => {
       for (let i = 0; i < retries; i++) {
         try {
@@ -181,10 +160,29 @@ const InnerApp: React.FC = () => {
       }
     };
     
-    let unsubscribeStores: (() => void) | undefined;
-    fetchData().then(unsub => {
+    const initApp = async () => {
+      // 1. Health check
+      const testHealth = async (retries = 10) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const res = await fetch('/api/health');
+            if (res.ok) return true;
+          } catch {
+            // Health check failed, retry
+          }
+          await new Promise(r => setTimeout(r, 2000));
+        }
+        return false;
+      };
+
+      await testHealth();
+      
+      // 2. Fetch data
+      const unsub = await fetchData();
       unsubscribeStores = unsub;
-    });
+    };
+    
+    initApp();
 
     // Socket Listeners
     socket.on('bid:updated', ({ productId, product }: { productId: string, product: Product }) => {
@@ -198,41 +196,41 @@ const InnerApp: React.FC = () => {
     };
   }, []);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isVisualSearching, setIsVisualSearching] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const [filterType, setFilterType] = useState<'ALL' | ItemType>('ALL');
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [isVisualSearching, setIsVisualSearching] = React.useState(false);
+  const [selectedCategory, setSelectedCategory] = React.useState('Tất cả');
+  const [filterType, setFilterType] = React.useState<'ALL' | ItemType>('ALL');
+  const [cart, setCart] = React.useState<CartItem[]>([]);
   
   // Modals State
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isSellModalOpen, setIsSellModalOpen] = useState(false);
-  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
-  const [isOrderDashboardOpen, setIsOrderDashboardOpen] = useState(false);
-  const [bidModalProduct, setBidModalProduct] = useState<Product | null>(null);
-  const [isCreateStreamModalOpen, setIsCreateStreamModalOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isCustomerServiceOpen, setIsCustomerServiceOpen] = useState(false);
-  const [isContentStudioOpen, setIsContentStudioOpen] = useState(false);
-  const [isKOLStudioOpen, setIsKOLStudioOpen] = useState(false);
-  const [isSuperDealsOpen, setIsSuperDealsOpen] = useState(false);
-  const [isSellerDashboardOpen, setIsSellerDashboardOpen] = useState(false);
-  const [isAdminAITasksOpen, setIsAdminAITasksOpen] = useState(false);
-  const [isAvatarStudioOpen, setIsAvatarStudioOpen] = useState(false); // New State
-  const [isCommunityOpen, setIsCommunityOpen] = useState(false); // New State
-  const [isEmailInboxOpen, setIsEmailInboxOpen] = useState(false); // New State
-  const [isStoreDiscoveryOpen, setIsStoreDiscoveryOpen] = useState(false);
-  const [isStoreRegistrationOpen, setIsStoreRegistrationOpen] = useState(false);
-  const [isWalletOpen, setIsWalletOpen] = useState(false);
-  const [isGeminiOpen, setIsGeminiOpen] = useState(false);
-  const [isAIWorkerOpen, setIsAIWorkerOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isMenuDiscoveryOpen, setIsMenuDiscoveryOpen] = useState(false);
-  const [isDigitalMenuOpen, setIsDigitalMenuOpen] = useState(false);
-  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
-  const [activeBusinessPage, setActiveBusinessPage] = useState<string | null>(null);
-  const [chatTargetUser, setChatTargetUser] = useState<{ id: string, fullName: string, avatar: string } | null>(null);
+  const [isCartOpen, setIsCartOpen] = React.useState(false);
+  const [isSellModalOpen, setIsSellModalOpen] = React.useState(false);
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = React.useState(false);
+  const [isOrderDashboardOpen, setIsOrderDashboardOpen] = React.useState(false);
+  const [bidModalProduct, setBidModalProduct] = React.useState<Product | null>(null);
+  const [isCreateStreamModalOpen, setIsCreateStreamModalOpen] = React.useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
+  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+  const [isCustomerServiceOpen, setIsCustomerServiceOpen] = React.useState(false);
+  const [isContentStudioOpen, setIsContentStudioOpen] = React.useState(false);
+  const [isKOLStudioOpen, setIsKOLStudioOpen] = React.useState(false);
+  const [isSuperDealsOpen, setIsSuperDealsOpen] = React.useState(false);
+  const [isSellerDashboardOpen, setIsSellerDashboardOpen] = React.useState(false);
+  const [isAdminAITasksOpen, setIsAdminAITasksOpen] = React.useState(false);
+  const [isAvatarStudioOpen, setIsAvatarStudioOpen] = React.useState(false); // New State
+  const [isCommunityOpen, setIsCommunityOpen] = React.useState(false); // New State
+  const [isEmailInboxOpen, setIsEmailInboxOpen] = React.useState(false); // New State
+  const [isStoreDiscoveryOpen, setIsStoreDiscoveryOpen] = React.useState(false);
+  const [isStoreRegistrationOpen, setIsStoreRegistrationOpen] = React.useState(false);
+  const [isWalletOpen, setIsWalletOpen] = React.useState(false);
+  const [isGeminiOpen, setIsGeminiOpen] = React.useState(false);
+  const [isAIWorkerOpen, setIsAIWorkerOpen] = React.useState(false);
+  const [isChatOpen, setIsChatOpen] = React.useState(false);
+  const [isMenuDiscoveryOpen, setIsMenuDiscoveryOpen] = React.useState(false);
+  const [isDigitalMenuOpen, setIsDigitalMenuOpen] = React.useState(false);
+  const [selectedStoreId, setSelectedStoreId] = React.useState<string | null>(null);
+  const [activeBusinessPage, setActiveBusinessPage] = React.useState<string | null>(null);
+  const [chatTargetUser, setChatTargetUser] = React.useState<{ id: string, fullName: string, avatar: string } | null>(null);
 
   const closeAllPages = () => {
     setIsCommunityOpen(false);
@@ -249,7 +247,7 @@ const InnerApp: React.FC = () => {
     setShowLiveList(false);
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     (window as any).onOpenMenuDiscovery = () => {
       closeAllPages();
       setIsMenuDiscoveryOpen(true);
@@ -265,26 +263,27 @@ const InnerApp: React.FC = () => {
       delete (window as any).onOpenDigitalMenu;
     };
   }, []);
-  const [feedPosts, setFeedPosts] = useState(MOCK_FEED_POSTS);
-  const [reviews] = useState(MOCK_REVIEWS);
-  const [following, setFollowing] = useState<string[]>([]); // New State for Follows
+
+  const [feedPosts, setFeedPosts] = React.useState(MOCK_FEED_POSTS);
+  const [reviews] = React.useState(MOCK_REVIEWS);
+  const [following, setFollowing] = React.useState<string[]>([]); // New State for Follows
 
   // Stripe Payment State
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [clientSecret, setClientSecret] = React.useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
 
   // E-commerce Core State
-  const [selectedShipping, setSelectedShipping] = useState<ShippingOption>(MOCK_SHIPPING_OPTIONS[0]);
-  const [discountCodeInput, setDiscountCodeInput] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState<DiscountCode | null>(null);
-  const [discountError, setDiscountError] = useState('');
+  const [selectedShipping, setSelectedShipping] = React.useState<ShippingOption>(MOCK_SHIPPING_OPTIONS[0]);
+  const [discountCodeInput, setDiscountCodeInput] = React.useState('');
+  const [appliedDiscount, setAppliedDiscount] = React.useState<DiscountCode | null>(null);
+  const [discountError, setDiscountError] = React.useState('');
 
   // Live Stream States
-  const [activeStream, setActiveStream] = useState<LiveStream | null>(null);
-  const [isHostMode, setIsHostMode] = useState(false); 
-  const [showLiveList, setShowLiveList] = useState(false);
+  const [activeStream, setActiveStream] = React.useState<LiveStream | null>(null);
+  const [isHostMode, setIsHostMode] = React.useState(false); 
+  const [showLiveList, setShowLiveList] = React.useState(false);
 
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = React.useState<string | null>(null);
 
   const categories = [
     'Tất cả', 
@@ -307,7 +306,7 @@ const InnerApp: React.FC = () => {
     'Dịch vụ (Services)'
   ];
 
-  const filteredProducts = useMemo(() => {
+  const filteredProducts = React.useMemo(() => {
     return products.filter(p => {
       if (p.status !== OrderStatus.AVAILABLE) return false;
       const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -631,13 +630,13 @@ const InnerApp: React.FC = () => {
   };
 
   // Filter products belonging to current user
-  const myProducts = useMemo(() => {
+  const myProducts = React.useMemo(() => {
       if (!user) return [];
       return products.filter(p => p.sellerId === user.id);
   }, [products, user]);
 
   // Filter products for Super Deals (items with discounts)
-  const superDealsProducts = useMemo(() => {
+  const superDealsProducts = React.useMemo(() => {
     return products.filter(p => p.type === ItemType.FIXED_PRICE && (p.originalPrice && p.originalPrice > p.price));
   }, [products]);
 

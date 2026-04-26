@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { X, Plus, Image as ImageIcon, FileText, Trash2, Search, Tag, Database, Upload, Video, Settings, BookOpen, Info, ShieldCheck, Monitor, Globe } from 'lucide-react';
 import { KnowledgeItem, User } from '../types';
 import { db, auth } from '../firebase';
@@ -16,28 +16,28 @@ interface KnowledgeBaseManagerProps {
 const BRIDGE_URL = 'http://localhost:3001';
 
 export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOpen, onClose, onSelectImage, onSelectVideo, currentUser }) => {
-  const [items, setItems] = useState<KnowledgeItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'ALL' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'SPEC' | 'INSTRUCTION'>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isBridgeOnline, setIsBridgeOnline] = useState(false);
-  const [localWorkspace, setLocalWorkspace] = useState<{path: string, files: any[]} | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [showWorkspaceSetup, setShowWorkspaceSetup] = useState(false);
-  const [basePathInput, setBasePathInput] = useState('');
+  const [items, setItems] = React.useState<KnowledgeItem[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [activeTab, setActiveTab] = React.useState<'ALL' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'SPEC' | 'INSTRUCTION'>('ALL');
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [isBridgeOnline, setIsBridgeOnline] = React.useState(false);
+  const [localWorkspace, setLocalWorkspace] = React.useState<{path: string, files: any[]} | null>(null);
+  const [isSyncing, setIsSyncing] = React.useState(false);
+  const [showWorkspaceSetup, setShowWorkspaceSetup] = React.useState(false);
+  const [basePathInput, setBasePathInput] = React.useState('');
   
   // Form state
-  const [isAdding, setIsAdding] = useState(false);
-  const [useLocalSource, setUseLocalSource] = useState(false);
-  const [newItemType, setNewItemType] = useState<'TEXT' | 'IMAGE' | 'VIDEO' | 'SPEC' | 'INSTRUCTION'>('TEXT');
-  const [newItemTitle, setNewItemTitle] = useState('');
-  const [newItemContent, setNewItemContent] = useState('');
-  const [newItemTags, setNewItemTags] = useState('');
+  const [isAdding, setIsAdding] = React.useState(false);
+  const [useLocalSource, setUseLocalSource] = React.useState(false);
+  const [newItemType, setNewItemType] = React.useState<'TEXT' | 'IMAGE' | 'VIDEO' | 'SPEC' | 'INSTRUCTION'>('TEXT');
+  const [newItemTitle, setNewItemTitle] = React.useState('');
+  const [newItemContent, setNewItemContent] = React.useState('');
+  const [newItemTags, setNewItemTags] = React.useState('');
 
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.email === 'Nhatlinhckm2016@gmail.com';
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const checkBridge = async () => {
       try {
         await fetch(BRIDGE_URL, { method: 'HEAD', mode: 'no-cors' });
@@ -72,7 +72,7 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
     }
   }, [isBridgeOnline]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isBridgeOnline && isOpen) {
       syncLocalWorkspace();
     }
@@ -119,7 +119,7 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
   };
 
   // Test Firestore Connection
-  useEffect(() => {
+  React.useEffect(() => {
     if (!db || !currentUser || !auth) return;
     
     const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
@@ -144,7 +144,7 @@ export const KnowledgeBaseManager: React.FC<KnowledgeBaseManagerProps> = ({ isOp
   }, [currentUser]);
 
   // Real-time sync with Firestore
-  useEffect(() => {
+  React.useEffect(() => {
     if (!db || !isOpen || !currentUser || !auth) return;
 
     let unsubscribeSnapshot: (() => void) | null = null;

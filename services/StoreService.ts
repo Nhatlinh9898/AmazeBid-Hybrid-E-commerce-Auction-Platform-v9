@@ -69,7 +69,7 @@ class StoreService {
     this.notify();
   }
 
-  private notify() {
+  notify() {
     this.listeners.forEach(l => l([...this.stores]));
   }
 
@@ -83,6 +83,14 @@ class StoreService {
 
   getStores(): PhysicalStore[] {
     return [...this.stores];
+  }
+
+  getStoreById(id: string): PhysicalStore | null {
+    return this.stores.find(s => s.id === id) || null;
+  }
+
+  getStoresByOwner(ownerId: string): PhysicalStore[] {
+    return this.stores.filter(s => s.ownerId === ownerId);
   }
 
   updateStore(id: string, updates: Partial<PhysicalStore>) {

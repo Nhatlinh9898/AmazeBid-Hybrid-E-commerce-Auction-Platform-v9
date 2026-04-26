@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { edgeAI } from '../services/edgeAIService';
 import { p2p } from '../services/p2pService';
 import { Cpu, ShieldCheck } from 'lucide-react';
@@ -8,14 +8,14 @@ import { Cpu, ShieldCheck } from 'lucide-react';
  * Quản lý việc đóng góp tài nguyên CPU/GPU của người dùng.
  */
 export const AIWorkerManager: React.FC<{ isOpen?: boolean }> = ({ isOpen: externalOpen }) => {
-  const [caps, setCaps] = useState<any>(null);
-  const [isContributing, setIsContributing] = useState(false);
-  const [tasksProcessed, setTasksProcessed] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
+  const [caps, setCaps] = React.useState<any>(null);
+  const [isContributing, setIsContributing] = React.useState(false);
+  const [tasksProcessed, setTasksProcessed] = React.useState(0);
+  const [isHovered, setIsHovered] = React.useState(false);
 
   const isOpen = externalOpen !== undefined ? externalOpen : isHovered;
 
-  useEffect(() => {
+  React.useEffect(() => {
     const init = async () => {
       const capabilities = await edgeAI.getCapabilities();
       setCaps(capabilities);

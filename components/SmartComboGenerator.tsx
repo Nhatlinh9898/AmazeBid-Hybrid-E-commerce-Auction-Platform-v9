@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Package, DollarSign, TrendingUp, CheckCircle2, ChevronRight, Wand2, RefreshCw, Bot, Share2, Layout } from 'lucide-react';
 import { generatePriceBundles, rewriteWithStyle, BundleSchema, StyleProfile, STYLE_PROFILES } from '../services/aiPromptService';
@@ -11,10 +11,10 @@ interface SmartComboGeneratorProps {
 }
 
 export const SmartComboGenerator: React.FC<SmartComboGeneratorProps> = ({ product, onClose }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [bundles, setBundles] = useState<BundleSchema | null>(null);
-  const [selectedStyle, setSelectedStyle] = useState<StyleProfile>('AmazeBid');
-  const [activeTier, setActiveTier] = useState<'budget' | 'standard' | 'premium'>('standard');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [bundles, setBundles] = React.useState<BundleSchema | null>(null);
+  const [selectedStyle, setSelectedStyle] = React.useState<StyleProfile>('AmazeBid');
+  const [activeTier, setActiveTier] = React.useState<'budget' | 'standard' | 'premium'>('standard');
 
   const handleGenerate = async () => {
     setIsLoading(true);

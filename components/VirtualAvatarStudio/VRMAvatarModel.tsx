@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -15,18 +15,18 @@ interface VRMAvatarModelProps {
 }
 
 const VRMAvatarModel: React.FC<VRMAvatarModelProps> = ({ url, customization, isTalking, animation, moveCommand, resetPosTrigger }) => {
-  const [vrm, setVrm] = useState<VRM | null>(null);
-  const groupRef = useRef<THREE.Group>(null);
-  const rotationRef = useRef(0);
-  const posRef = useRef({ x: 0, z: 0 });
+  const [vrm, setVrm] = React.useState<VRM | null>(null);
+  const groupRef = React.useRef<THREE.Group>(null);
+  const rotationRef = React.useRef(0);
+  const posRef = React.useRef({ x: 0, z: 0 });
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (resetPosTrigger > 0) {
       posRef.current = { x: 0, z: 0 };
     }
   }, [resetPosTrigger]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (moveCommand.ts > 0) {
       if (moveCommand.dir === 'FORWARD') posRef.current.z += 12; // 1 step down
       if (moveCommand.dir === 'BACKWARD') posRef.current.z -= 12; // 1 step up
@@ -39,14 +39,14 @@ const VRMAvatarModel: React.FC<VRMAvatarModelProps> = ({ url, customization, isT
   }, [moveCommand]);
 
   // Use animation prop to satisfy lint or implement logic
-  useEffect(() => {
+  React.useEffect(() => {
     if (vrm && animation) {
       console.log("VRM Animation requested:", animation);
       // Future: Implement VRM animation loading/playing
     }
   }, [vrm, animation]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!url) return;
 
     const validateAndLoad = async () => {
@@ -102,7 +102,7 @@ const VRMAvatarModel: React.FC<VRMAvatarModelProps> = ({ url, customization, isT
     };
   }, [url]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (vrm) {
       vrm.scene.traverse((child: any) => {
         if (child.isMesh) {

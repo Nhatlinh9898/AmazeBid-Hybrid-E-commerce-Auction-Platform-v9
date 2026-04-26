@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 export const AdminAITasks = () => {
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = React.useState([]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetch('/api/dashboard')
       .then(res => res.json())
       .then(data => setTasks(data.jobs));

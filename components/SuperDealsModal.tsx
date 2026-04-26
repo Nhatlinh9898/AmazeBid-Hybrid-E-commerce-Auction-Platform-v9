@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { X, Clock, Zap, Flame, ShoppingCart, Percent, Tag, ArrowRight } from 'lucide-react';
 import { Product } from '../types';
 
@@ -11,9 +11,9 @@ interface SuperDealsModalProps {
 }
 
 const SuperDealsModal: React.FC<SuperDealsModalProps> = ({ isOpen, onClose, products, onAddToCart }) => {
-  const [timeLeft, setTimeLeft] = useState(10800); // 3 hours in seconds
+  const [timeLeft, setTimeLeft] = React.useState(10800); // 3 hours in seconds
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isOpen) return;
     const timer = setInterval(() => {
       setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));

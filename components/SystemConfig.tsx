@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Cpu, 
   DollarSign, 
@@ -18,14 +18,14 @@ import { api } from '../services/api';
 import { motion, AnimatePresence } from 'motion/react';
 
 const SystemConfig: React.FC = () => {
-  const [config, setConfig] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deploying, setDeploying] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
+  const [config, setConfig] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [deploying, setDeploying] = React.useState(false);
+  const [success, setSuccess] = React.useState(false);
+  const [error, setError] = React.useState('');
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchConfig();
   }, []);
 

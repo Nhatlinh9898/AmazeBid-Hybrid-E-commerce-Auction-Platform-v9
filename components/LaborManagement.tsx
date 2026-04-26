@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Users, UserPlus, DollarSign, Briefcase, 
   Trash2, Plus, Phone, Mail, TrendingDown, PieChart as PieChartIcon,
@@ -14,13 +14,13 @@ interface LaborManagementProps {
 }
 
 export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTabChange }) => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [laborCosts, setLaborCosts] = useState<LaborCost[]>([]);
-  const [isAddingEmployee, setIsAddingEmployee] = useState(false);
-  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
-  const [isAddingCost, setIsAddingCost] = useState(false);
+  const [employees, setEmployees] = React.useState<Employee[]>([]);
+  const [laborCosts, setLaborCosts] = React.useState<LaborCost[]>([]);
+  const [isAddingEmployee, setIsAddingEmployee] = React.useState(false);
+  const [editingEmployeeId, setEditingEmployeeId] = React.useState<string | null>(null);
+  const [isAddingCost, setIsAddingCost] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const unsubscribe = equityService.subscribe((data) => {
       setEmployees(data.employees.filter(e => e.ownerId === ownerId));
       setLaborCosts(data.laborCosts.filter(lc => lc.ownerId === ownerId));
@@ -28,7 +28,7 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
     return () => unsubscribe();
   }, [ownerId]);
 
-  const [empForm, setEmpForm] = useState<Omit<Employee, 'id' | 'ownerId'>>({
+  const [empForm, setEmpForm] = React.useState<Omit<Employee, 'id' | 'ownerId'>>({
     name: '',
     role: '',
     phone: '',
@@ -57,7 +57,7 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
     status: 'ACTIVE'
   });
 
-  const [costForm, setCostForm] = useState<Omit<LaborCost, 'id' | 'ownerId'>>({
+  const [costForm, setCostForm] = React.useState<Omit<LaborCost, 'id' | 'ownerId'>>({
     employeeId: '',
     amount: 0,
     date: new Date().toISOString().split('T')[0],

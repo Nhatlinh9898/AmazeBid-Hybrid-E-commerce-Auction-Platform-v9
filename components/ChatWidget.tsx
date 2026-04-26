@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { MessageSquare, X, Send, User as UserIcon } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 
@@ -21,20 +21,20 @@ interface ChatWidgetProps {
 }
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ currentUserId, targetUser, isOpen: externalOpen, onClose }) => {
-  const [internalOpen, setInternalOpen] = useState(!!targetUser);
+  const [internalOpen, setInternalOpen] = React.useState(!!targetUser);
   const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
   const setIsOpen = (val: boolean) => {
     if (onClose && !val) onClose();
     setInternalOpen(val);
   };
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [otherUserTyping, setOtherUserTyping] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = React.useState<Message[]>([]);
+  const [inputText, setInputText] = React.useState('');
+  const [isTyping, setIsTyping] = React.useState(false);
+  const [otherUserTyping, setOtherUserTyping] = React.useState(false);
+  const socketRef = React.useRef<Socket | null>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!currentUserId) return;
 
     // Initialize socket
@@ -63,7 +63,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ currentUserId, targetUser, isOp
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     scrollToBottom();
   }, [messages, isOpen]);
 

@@ -959,9 +959,13 @@ router.post('/admin/withdraw', async (req, res) => {
 
 router.post('/orders/complete', async (req, res) => {
   try {
-    const { items, totalAmount, shippingInfo } = req.body;
+    const { items, totalAmount, shippingInfo, isPOS, sellerId, storeId, userId } = req.body;
     const order = {
       id: `ord_${Date.now()}`,
+      userId: userId || 'anonymous',
+      sellerId,
+      storeId,
+      isPOS: !!isPOS,
       items,
       totalAmount,
       shippingInfo,
@@ -972,36 +976,66 @@ router.post('/orders/complete', async (req, res) => {
     
     await db.update('orders', (prev) => [order, ...prev]);
     
-    // Update product status
+    // Update product status/stock
     const productIds = items.map((i: any) => i.id);
-    await db.update('products', (prev) => prev.map(p => 
-      productIds.includes(p.id) ? { ...p, status: OrderStatus.PAID_ESCROW } : p
-    ));
-
-    // Update seller's pending balance
     const products = db.get('products');
     const users = db.get('users');
-    
+
+    await db.update('products', (prev) => prev.map(p => {
+      if (productIds.includes(p.id)) {
+        const item = items.find((i: any) => i.id === p.id);
+        // Decrease stock if it's a menu item or has stock tracked
+        if (p.stock !== undefined) {
+          const newStock = Math.max(0, p.stock - (item?.quantity || 1));
+          return { ...p, stock: newStock, status: newStock === 0 ? OrderStatus.OUT_OF_STOCK : p.status };
+        }
+        return { ...p, status: OrderStatus.PAID_ESCROW };
+      }
+      return p;
+    }));
+
+    // If it's a store menu item, update the store stock as well
+    if (storeId) {
+      await db.update('stores', (stores) => stores.map((s: any) => {
+        if (s.id === storeId) {
+          return {
+            ...s,
+            menu: s.menu.map((m: any) => {
+              const orderedItem = items.find((i: any) => i.id === m.id);
+              if (orderedItem && m.stock !== undefined) {
+                const newStock = Math.max(0, m.stock - (orderedItem.quantity || 1));
+                return { ...m, stock: newStock };
+              }
+              return m;
+            })
+          };
+        }
+        return s;
+      }));
+    }
+
     for (const item of items) {
       const product = products.find(p => p.id === item.id);
-      if (product && product.sellerId) {
-        const sellerIndex = users.findIndex(u => u.id === product.sellerId);
+      const targetSellerId = sellerId || product?.sellerId;
+      
+      if (targetSellerId) {
+        const sellerIndex = users.findIndex(u => u.id === targetSellerId);
         if (sellerIndex !== -1) {
           const seller = users[sellerIndex];
           if (!seller.wallet) {
             seller.wallet = { balance: seller.balance || 0, pendingBalance: 0, kycStatus: 'unverified' };
           }
-          seller.wallet.pendingBalance += item.price;
+          seller.wallet.pendingBalance += item.price * (item.quantity || 1);
           
           // Add to escrow items
           if (!seller.wallet.escrowItems) seller.wallet.escrowItems = [];
           seller.wallet.escrowItems.unshift({
             id: `esc_${Date.now()}_${item.id}`,
             orderId: order.id,
-            amount: item.price,
-            expectedReleaseDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days later
+            amount: item.price * (item.quantity || 1),
+            expectedReleaseDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             status: 'HELD',
-            productName: product.title
+            productName: item.title || product?.title || 'Sản phẩm tại quầy'
           });
         }
       }
@@ -1113,8 +1147,26 @@ router.get('/orders/user/:userId', (req, res) => {
 });
 
 router.get('/orders/seller/:sellerId', (req, res) => {
-  const orders = db.get('orders');
-  sendSuccess(res, { orders }, 'get_seller_orders');
+  try {
+    const { sellerId } = req.params;
+    console.log(`[v3Router] Handling get_seller_orders for seller: ${sellerId}`);
+    
+    // Ensure db is loaded and orders collection exists
+    const orders = db.get('orders') || [];
+    
+    // Filter orders where the order has the sellerId OR any item in the order belongs to the seller
+    const sellerOrders = orders.filter((o: any) => 
+      o && (
+        o.sellerId === sellerId || 
+        (o.items && Array.isArray(o.items) && o.items.some((item: any) => item && item.sellerId === sellerId))
+      )
+    );
+    
+    sendSuccess(res, { orders: sellerOrders }, 'get_seller_orders');
+  } catch (error) {
+    console.error('Error in get_seller_orders:', error);
+    sendError(res, 'Failed to fetch seller orders', 500);
+  }
 });
 
 router.put('/orders/:id/status', async (req, res) => {

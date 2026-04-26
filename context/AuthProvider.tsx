@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { ReactNode } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { User } from '../types';
@@ -7,11 +7,11 @@ import { api } from '../services/api';
 import { AuthContext } from './AuthContext';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = React.useState<User | null>(null);
 
   const adminEmail = (process.env.VITE_ADMIN_EMAIL || 'Nhatlinhckm2016@gmail.com').toLowerCase();
 
-  const assignRole = useCallback((userData: any): User => {
+  const assignRole = React.useCallback((userData: any): User => {
     if (!userData) return userData;
     const userEmail = (userData.email || '').toLowerCase();
     const isAdmin = userEmail === adminEmail;
@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [adminEmail]);
 
   // Load user from backend on mount
-  useEffect(() => {
+  React.useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('auth_token');
       if (!token) return;

@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -16,19 +16,19 @@ interface Avatar3DModelProps {
 const Avatar3DModel: React.FC<Avatar3DModelProps> = ({ url, customization, isTalking, animation, moveCommand, resetPosTrigger }) => {
   const { scene, animations } = useGLTF(url);
   
-  const clone = useMemo(() => scene.clone(), [scene]);
-  const groupRef = useRef<THREE.Group>(null);
-  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const rotationRef = useRef(0);
-  const posRef = useRef({ x: 0, z: 0 });
+  const clone = React.useMemo(() => scene.clone(), [scene]);
+  const groupRef = React.useRef<THREE.Group>(null);
+  const mixerRef = React.useRef<THREE.AnimationMixer | null>(null);
+  const rotationRef = React.useRef(0);
+  const posRef = React.useRef({ x: 0, z: 0 });
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (resetPosTrigger > 0) {
         posRef.current = { x: 0, z: 0 };
     }
   }, [resetPosTrigger]);
 
-  useEffect(() => {
+  React.useEffect(() => {
       if (moveCommand.ts > 0) {
           if (moveCommand.dir === 'FORWARD') posRef.current.z += 12; // 1 step down
           if (moveCommand.dir === 'BACKWARD') posRef.current.z -= 12; // 1 step up
@@ -40,7 +40,7 @@ const Avatar3DModel: React.FC<Avatar3DModelProps> = ({ url, customization, isTal
       }
   }, [moveCommand]);
 
-  useEffect(() => {
+  React.useEffect(() => {
       if (animations && animations.length > 0) {
           mixerRef.current = new THREE.AnimationMixer(clone);
           
@@ -68,7 +68,7 @@ const Avatar3DModel: React.FC<Avatar3DModelProps> = ({ url, customization, isTal
       }
   }, [clone, animations, isTalking, animation]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Mouse move handler for character-only rotation
     const handleMouseMove = (e: MouseEvent) => {
       const x = (e.clientX / window.innerWidth) - 0.5;
@@ -118,7 +118,7 @@ const Avatar3DModel: React.FC<Avatar3DModelProps> = ({ url, customization, isTal
       }
   });
 
-  useEffect(() => {
+  React.useEffect(() => {
     clone.traverse((child: any) => {
         if (child.isMesh) {
             // For the Robot, we'll try to tint its main material

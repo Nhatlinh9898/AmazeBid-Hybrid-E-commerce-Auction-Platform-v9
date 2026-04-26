@@ -22,12 +22,20 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  // DEBUG Request logger
+  app.use((req, res, next) => {
+    console.log(`[DEBUG] Incoming Request: ${req.method} ${req.path}`);
+    console.log(`[DEBUG] Headers:`, JSON.stringify(req.headers));
+    next();
+  });
+
   // API Health Check
   app.get('/api/health', (req, res) => {
-    console.log('[Server] Health check requested');
+    console.log('[Server] Health check requested - EXPLICIT HANDLER');
     try {
       res.json({ 
-        status: 'ok_v3', 
+        status: 'ok_v4_debug', 
+        time: new Date().toISOString(),
         gemini_key: !!process.env.GEMINI_API_KEY,
         api_key: !!process.env.API_KEY,
         db_ready: !!db
@@ -112,19 +120,17 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
-    console.log('Initializing Vite...');
+    console.log('[Server] Initializing Vite...');
     try {
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
       });
       app.use(vite.middlewares);
-      console.log('Vite initialized');
+      console.log('[Server] Vite middleware mounted');
     } catch (e: any) {
-      console.error(`Vite initialization failed: ${e.message}`);
-      throw e;
+      console.error(`[Server] Vite initialization failed: ${e.message}`);
     }
-    console.log('Vite middleware mounted');
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
@@ -133,11 +139,13 @@ async function startServer() {
     });
   }
 
+  // Start listening after all middlewares (including Vite) are set up
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    
-    // Background Auction Manager (Runs every 1 minute)
-    setInterval(async () => {
+    console.log(`[Server] Total app listening on http://0.0.0.0:${PORT} (ENV: ${process.env.NODE_ENV || 'development'})`);
+  });
+
+  // Background Auction Manager (Runs every 1 minute)
+  setInterval(async () => {
       try {
         const products = db.get('products') || [];
         const now = new Date();
@@ -188,7 +196,6 @@ async function startServer() {
       console.error('[Server] P2P Initialization failed:', err.message);
     }
     */
-  });
 }
 
 startServer().catch(err => {

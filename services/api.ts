@@ -12,8 +12,8 @@ interface BackendResponse<T> {
   };
 }
 
-// Hàm helper để gọi API
-async function fetchClient<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+// Hàm helper để gọi API với Retry logic
+async function fetchClient<T>(endpoint: string, options: RequestInit = {}, retries = 2): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   const headers = {
     'Content-Type': 'application/json',
@@ -22,10 +22,13 @@ async function fetchClient<T>(endpoint: string, options: RequestInit = {}): Prom
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(new Error('Timeout after 10s')), 10000); // 10s timeout
+  const timeoutMs = 30000; // Increased to 30s
+  const timeoutId = setTimeout(() => controller.abort(new Error('Timeout after 30s')), timeoutMs);
 
+  const fullUrl = `${BASE_URL}${endpoint}`;
+  
   try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(fullUrl, {
       ...options,
       headers,
       signal: controller.signal
@@ -36,17 +39,39 @@ async function fetchClient<T>(endpoint: string, options: RequestInit = {}): Prom
     let result: BackendResponse<T>;
     try {
       result = JSON.parse(text);
-    } catch (error) {
-      throw new Error(text || 'API Error', { cause: error });
+    } catch (parseError) {
+      // Nếu không phải JSON, có thể là lỗi 500 hoặc server đang khởi động (trả về HTML)
+      if (retries > 0) {
+        console.warn(`[API] Non-JSON response for ${endpoint}, retrying... (${retries} left)`);
+        await new Promise(res => setTimeout(res, 2000));
+        return fetchClient(endpoint, options, retries - 1);
+      }
+      console.error(`[API] Non-JSON response for ${endpoint}:`, text.substring(0, 500));
+      throw new Error(`Server returned non-JSON response for ${endpoint}`, { cause: parseError });
     }
     
     if (result.status === 'error') {
-      throw new Error((result.data as any).message || 'API Error');
+      const message = (result.data as any)?.message || 'API Error';
+      // Nếu token hết hạn, xóa token
+      if (message.includes('Token không hợp lệ') || message.includes('hết hạn')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+      }
+      throw new Error(message);
     }
 
     return result.data;
-  } catch (error) {
-    console.error(`API Call Error [${endpoint}]:`, error);
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    
+    // Nếu là lỗi network (Failed to fetch) và còn lượt retry
+    if (error.name === 'TypeError' && error.message === 'Failed to fetch' && retries > 0) {
+      console.warn(`[API] Fetch failed for ${endpoint}, retrying... (${retries} left)`);
+      await new Promise(res => setTimeout(res, 1000)); // Chờ 1s trước khi thử lại
+      return fetchClient(endpoint, options, retries - 1);
+    }
+
+    console.error(`API Call Error [${endpoint}]:`, error.message);
     throw error;
   }
 }

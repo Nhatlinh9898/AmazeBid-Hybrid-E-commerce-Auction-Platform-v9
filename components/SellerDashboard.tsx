@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart, ChevronLeft, ChevronRight, Calendar, Cpu } from 'lucide-react';
 import { SmartComboGenerator } from './SmartComboGenerator';
 import { StoreManagement } from './StoreManagement';
@@ -9,13 +9,14 @@ import ProductManagement from './ProductManagement';
 import SellerOrderManagement from './SellerOrderManagement';
 import InventoryDashboard from '../src/components/InventoryDashboard';
 import PackagingSuggestionComponent from '../src/components/PackagingSuggestion';
-import { Product, OrderStatus, ItemType, PhysicalStore } from '../types';
+import { Product, OrderStatus, ItemType, PhysicalStore, Order } from '../types';
 import { supplyChainService } from '../src/services/SupplyChainService';
 import { equityService } from '../src/services/EquityService';
 import { localAnalyzeProfit } from '../src/services/inventoryService';
 import { useAuth } from '../context/useAuth';
 import { storeService } from '../services/StoreService';
 import { configService } from '../services/ConfigService';
+import { api } from '../services/api';
 import { GlobalConfig } from '../types';
 
 interface SellerDashboardProps {
@@ -30,29 +31,50 @@ type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'aler
 
 const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId, onRefreshProducts }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [globalConfig, setGlobalConfig] = useState<GlobalConfig>(() => configService.getConfig());
-  const [selectedProductForCombo, setSelectedProductForCombo] = useState<Product | null>(null);
-  const [selectedProductForProfit, setSelectedProductForProfit] = useState<Product | null>(null);
+  const [activeTab, setActiveTab] = React.useState<TabType>('overview');
+  const [globalConfig, setGlobalConfig] = React.useState<GlobalConfig>(() => configService.getConfig());
+  const [selectedProductForCombo, setSelectedProductForCombo] = React.useState<Product | null>(null);
+  const [selectedProductForProfit, setSelectedProductForProfit] = React.useState<Product | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const unsub = configService.subscribe(setGlobalConfig);
     return () => unsub();
   }, []);
-  const [now] = useState(() => Date.now());
-  const tabsRef = useRef<HTMLDivElement>(null);
+  const [now] = React.useState(() => Date.now());
+  const tabsRef = React.useRef<HTMLDivElement>(null);
 
   // Filte states for Tax Report
-  const [startDate, setStartDate] = useState(() => {
+  const [startDate, setStartDate] = React.useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
     return d.toISOString().split('T')[0];
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
-  const [stores, setStores] = useState<PhysicalStore[]>([]);
+  const [endDate, setEndDate] = React.useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedStoreId, setSelectedStoreId] = React.useState<string>('all');
+  const [stores, setStores] = React.useState<PhysicalStore[]>([]);
+  const [realOrders, setRealOrders] = React.useState<Order[]>([]);
 
-  useEffect(() => {
+  const fetchRealOrders = React.useCallback(async () => {
+    try {
+      const response = await api.orders.getSellerOrders(currentUserId);
+      if (response && response.orders) {
+        setRealOrders(response.orders);
+      }
+    } catch (err) {
+      console.error('Failed to fetch real orders for dashboard:', err);
+    }
+  }, [currentUserId]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const load = async () => {
+        await fetchRealOrders();
+      };
+      load();
+    }
+  }, [isOpen, fetchRealOrders]);
+
+  React.useEffect(() => {
     const unsubscribe = storeService.subscribe((allStores) => {
         setStores(allStores.filter(s => s.ownerId === currentUserId));
     });
@@ -70,7 +92,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
   };
 
   // Logic tính toán thống kê
-  const stats = useMemo(() => {
+  const stats = React.useMemo(() => {
     const oneDayFromNow = new Date(now + 24 * 60 * 60 * 1000);
     // 1. Lọc sản phẩm của người bán hiện tại và theo filter (cho Tax Report)
     const myProducts = products.filter(p => p.sellerId === currentUserId);
@@ -80,35 +102,72 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     const endObj = new Date(endDate);
     endObj.setHours(23, 59, 59, 999);
 
-    const filteredSoldOrders = myProducts.filter(p => {
+    const legacySoldOrders = myProducts.filter(p => {
         if (!p.soldDate) return false;
         const soldDate = new Date(p.soldDate);
-        const matchesDate = soldDate >= startObj && soldDate <= endObj;
-        
-        // Optional: Filter by store if applicable (Physical Products might have storeId)
-        // Since original Product type doesn't have storeId, we can skip or assume all for now
-        // But if p has a store reference, we would use it here.
-        return matchesDate;
+        return soldDate >= startObj && soldDate <= endObj;
+    });
+
+    // POS and other real orders from the API
+    const filteredRealOrders = realOrders.filter(o => {
+        const orderDate = new Date(o.createdAt);
+        const matchesDate = orderDate >= startObj && orderDate <= endObj;
+        const matchesStore = selectedStoreId === 'all' || o.storeId === selectedStoreId;
+        return matchesDate && matchesStore;
+    });
+
+    // Flatten all items from orders to treat them similar to product entries for cat stats
+    const allOrderLineItems: any[] = [];
+    
+    // Process legacy orders
+    legacySoldOrders.forEach(p => {
+      allOrderLineItems.push({
+        id: p.id,
+        title: p.title,
+        price: p.price,
+        category: p.category,
+        quantity: 1,
+        isAffiliate: p.isAffiliate,
+        commissionRate: p.commissionRate,
+        vatRate: p.vatRate,
+        specialTaxRate: p.specialTaxRate,
+        soldDate: p.soldDate,
+        isPOS: false
+      });
+    });
+
+    // Process real orders (including POS)
+    filteredRealOrders.forEach(order => {
+      order.items.forEach(item => {
+        allOrderLineItems.push({
+          ...item,
+          quantity: item.quantity || 1,
+          soldDate: order.createdAt,
+          isPOS: order.isPOS
+        });
+      });
     });
 
     // 2. Phân loại theo trạng thái
     const activeListings = myProducts.filter(p => p.status === OrderStatus.AVAILABLE);
     const pendingListings = myProducts.filter(p => p.status === OrderStatus.PENDING_VERIFICATION);
-    const soldOrders = filteredSoldOrders;
     
     // 3. Tính tổng doanh thu (Gross Revenue) & Affiliate Commission
     let totalRevenue = 0;
     let affiliateRevenue = 0;
     let physicalRevenue = 0;
-    const affiliateOrders: any[] = [];
+    let posRevenue = 0;
+    const affiliateHighlightOrders: any[] = [];
 
-    soldOrders.forEach(order => {
-        if (order.isAffiliate) {
-            const commission = (order.price * (order.commissionRate || 0)) / 100;
+    allOrderLineItems.forEach(item => {
+        if (item.isAffiliate) {
+            const commission = (item.price * (item.commissionRate || 0)) / 100;
             affiliateRevenue += commission;
-            affiliateOrders.push({ ...order, commissionEarned: commission });
+            affiliateHighlightOrders.push({ ...item, commissionEarned: commission });
         } else {
-            physicalRevenue += order.price;
+            const lineTotal = item.price * (item.quantity || 1);
+            physicalRevenue += lineTotal;
+            if (item.isPOS) posRevenue += lineTotal;
         }
     });
     totalRevenue = physicalRevenue + affiliateRevenue;
@@ -116,14 +175,14 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     // 4. Thống kê theo danh mục (Category Breakdown)
     const categoryStats: Record<string, { count: number; revenue: number }> = {};
     
-    soldOrders.forEach(order => {
-        if (!categoryStats[order.category]) {
-            categoryStats[order.category] = { count: 0, revenue: 0 };
+    allOrderLineItems.forEach(item => {
+        if (!categoryStats[item.category]) {
+            categoryStats[item.category] = { count: 0, revenue: 0 };
         }
-        categoryStats[order.category].count += 1;
-        categoryStats[order.category].revenue += order.isAffiliate 
-            ? (order.price * (order.commissionRate || 0)) / 100 
-            : order.price;
+        categoryStats[item.category].count += (item.quantity || 1);
+        categoryStats[item.category].revenue += item.isAffiliate 
+            ? (item.price * (item.commissionRate || 0)) / 100 
+            : (item.price * (item.quantity || 1));
     });
 
     // Chuyển object thành array để render
@@ -152,12 +211,12 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     const totalSupplyCost = myInvoices.reduce((sum: number, inv: any) => sum + (inv.totalAmount || inv.amount || 0), 0);
     const taxableIncome = Math.max(0, totalRevenue - platformFee - totalSupplyCost - totalLaborCost - totalAiSpending);
     
-    // VAT calculation needs to handle per-product vatRate if available
+    // VAT calculation
     let totalVat = 0;
-    soldOrders.forEach(order => {
-       const rate = order.vatRate !== undefined ? order.vatRate : globalConfig.defaultVatRate;
-       // We use the rate correctly to extract VAT from Gross Price
-       const vatAmount = (order.price / (1 + (order.specialTaxRate || 0) + rate)) * rate;
+    allOrderLineItems.forEach(item => {
+       const rate = item.vatRate !== undefined ? item.vatRate : globalConfig.defaultVatRate;
+       const lineTotal = item.price * (item.quantity || 1);
+       const vatAmount = (lineTotal / (1 + (item.specialTaxRate || 0) + rate)) * rate;
        totalVat += vatAmount;
     });
 
@@ -176,10 +235,10 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     ];
 
     const conversionData = {
-      views: (soldOrders.length + activeListings.length) * 45,
-      clicks: (soldOrders.length + activeListings.length) * 12,
-      orders: soldOrders.length,
-      rate: soldOrders.length > 0 ? (soldOrders.length / ((soldOrders.length + activeListings.length) * 45) * 100).toFixed(2) : '0.00'
+      views: (allOrderLineItems.length + activeListings.length) * 45,
+      clicks: (allOrderLineItems.length + activeListings.length) * 12,
+      orders: filteredRealOrders.length + legacySoldOrders.length,
+      rate: (filteredRealOrders.length + legacySoldOrders.length) > 0 ? ((filteredRealOrders.length + legacySoldOrders.length) / ((allOrderLineItems.length + activeListings.length) * 45) * 100).toFixed(2) : '0.00'
     };
 
     // 7. Top Products Data (Stable random for demo)
@@ -201,16 +260,12 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     });
 
     // 10. Grouping sold orders by Month/Quarter for Tax Report
-    const groupedOrders = soldOrders.map((order, idx) => {
-        // Fallback to a mock date if soldDate is missing for existing data
-        // Using idx and title length to make it deterministic (avoid lint error)
-        const daysAgo = (idx * 7 + (order.title?.length || 0)) % 90;
-        const soldDate = order.soldDate || new Date(now - daysAgo * 1000 * 60 * 60 * 24).toISOString().split('T')[0];
-        const dateObj = new Date(soldDate);
+    const groupedOrders = allOrderLineItems.map((item) => {
+        const dateObj = new Date(item.soldDate || now);
         const month = dateObj.getMonth() + 1;
         const year = dateObj.getFullYear();
         const quarter = Math.ceil(month / 3);
-        return { ...order, soldDate, month, year, quarter };
+        return { ...item, month, year, quarter };
     });
 
     const monthlyStats: Record<string, { month: number, year: number, revenue: number, count: number, orders: any[] }> = {};
@@ -221,16 +276,16 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         if (!monthlyStats[monthKey]) {
             monthlyStats[monthKey] = { month: order.month, year: order.year, revenue: 0, count: 0, orders: [] };
         }
-        monthlyStats[monthKey].revenue += order.price;
-        monthlyStats[monthKey].count += 1;
+        monthlyStats[monthKey].revenue += (order.price * (order.quantity || 1));
+        monthlyStats[monthKey].count += (order.quantity || 1);
         monthlyStats[monthKey].orders.push(order);
 
         const quarterKey = `${order.year}-Q${order.quarter}`;
         if (!quarterlyStats[quarterKey]) {
             quarterlyStats[quarterKey] = { quarter: order.quarter, year: order.year, revenue: 0, count: 0, orders: [] };
         }
-        quarterlyStats[quarterKey].revenue += order.price;
-        quarterlyStats[quarterKey].count += 1;
+        quarterlyStats[quarterKey].revenue += (order.price * (order.quantity || 1));
+        quarterlyStats[quarterKey].count += (order.quantity || 1);
         quarterlyStats[quarterKey].orders.push(order);
     });
 
@@ -243,16 +298,17 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         totalProducts: myProducts.length,
         activeCount: activeListings.length,
         pendingCount: pendingListings.length,
-        soldCount: soldOrders.length,
+        soldCount: filteredRealOrders.length + legacySoldOrders.length,
         totalRevenue,
         affiliateRevenue,
         physicalRevenue,
+        posRevenue,
         totalAiSpending,
         categoryList,
-        recentOrders: groupedOrders.sort((a, b) => b.soldDate.localeCompare(a.soldDate)).slice(0, 10),
+        recentOrders: allOrderLineItems.sort((a, b) => (b.soldDate || '').localeCompare(a.soldDate || '')).slice(0, 10),
         monthlyStats: Object.values(monthlyStats).sort((a, b) => b.year - a.year || b.month - a.month),
         quarterlyStats: Object.values(quarterlyStats).sort((a, b) => b.year - a.year || b.quarter - a.quarter),
-        affiliateOrders,
+        affiliateOrders: affiliateHighlightOrders,
         tax: {
             platformFee,
             taxableIncome,
@@ -270,7 +326,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         soldOrders: groupedOrders,
         totalLaborCost
     };
-  }, [products, currentUserId, now, startDate, endDate, globalConfig, user]);
+  }, [products, realOrders, currentUserId, now, startDate, endDate, globalConfig, user, selectedStoreId]);
 
   if (!isOpen) return null;
 

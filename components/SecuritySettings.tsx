@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/useAuth';
 import { 
@@ -16,14 +16,14 @@ import {
 
 const SecuritySettings: React.FC = () => {
   const { user, toggle2FA } = useAuth();
-  const [blockedIps, setBlockedIps] = useState<string[]>([]);
-  const [newIp, setNewIp] = useState('');
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [is2FALoading, setIs2FALoading] = useState(false);
-  const [isResetLoading, setIsResetLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [blockedIps, setBlockedIps] = React.useState<string[]>([]);
+  const [newIp, setNewIp] = React.useState('');
+  const [actionLoading, setActionLoading] = React.useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [is2FALoading, setIs2FALoading] = React.useState(false);
+  const [isResetLoading, setIsResetLoading] = React.useState(false);
+  const [successMessage, setSuccessMessage] = React.useState('');
+  const [errorMessage, setErrorMessage] = React.useState('');
 
   const fetchBlockedIps = async () => {
     try {
@@ -34,7 +34,7 @@ const SecuritySettings: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchBlockedIps();
   }, []);
 

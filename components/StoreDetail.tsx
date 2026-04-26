@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React from 'react';
 import { MapPin, Star, Clock, ChevronLeft, ShoppingBag, Plus, Minus, QrCode, CreditCard, CheckCircle2, Info, Loader2, X, Utensils, Printer } from 'lucide-react';
 import { PhysicalStore, StoreMenuItem } from '../types';
 import { storeService } from '../services/StoreService';
@@ -9,16 +9,16 @@ interface StoreDetailProps {
 }
 
 const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
-  const [store, setStore] = useState<PhysicalStore | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState<{item: StoreMenuItem, quantity: number}[]>([]);
-  const [showPayment, setShowPayment] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [lastOrder, setLastOrder] = useState<{items: {item: StoreMenuItem, quantity: number}[], total: number} | null>(null);
+  const [store, setStore] = React.useState<PhysicalStore | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [cart, setCart] = React.useState<{item: StoreMenuItem, quantity: number}[]>([]);
+  const [showPayment, setShowPayment] = React.useState(false);
+  const [paymentSuccess, setPaymentSuccess] = React.useState(false);
+  const [lastOrder, setLastOrder] = React.useState<{items: {item: StoreMenuItem, quantity: number}[], total: number} | null>(null);
 
-  const transactionId = useMemo(() => Math.random().toString(36).substring(2, 10).toUpperCase(), []);
+  const transactionId = React.useMemo(() => Math.random().toString(36).substring(2, 10).toUpperCase(), []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchStore = async () => {
       setLoading(true);
       try {
@@ -33,9 +33,9 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
     fetchStore();
   }, [storeId]);
 
-  const [activeTab, setActiveTab] = useState<'menu' | 'reviews' | 'info'>('menu');
+  const [activeTab, setActiveTab] = React.useState<'menu' | 'reviews' | 'info'>('menu');
 
-  const categories = useMemo(() => {
+  const categories = React.useMemo(() => {
     if (!store) return [];
     return Array.from(new Set(store.menu.map(item => item.category)));
   }, [store]);

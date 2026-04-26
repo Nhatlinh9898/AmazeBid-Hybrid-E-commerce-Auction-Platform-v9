@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ArrowDownCircle, ShieldCheck, History, X, AlertCircle, Users, Wallet, LayoutDashboard, ShieldAlert, Loader2, Settings, TrendingUp } from 'lucide-react';
 import { api } from '../services/api';
 import UserManagement from './UserManagement';
@@ -17,22 +17,22 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ECONOMICS' | 'WALLET' | 'USERS' | 'VERIFICATION' | 'SECURITY' | 'SETTINGS' | 'SYSTEM_CONFIG'>('OVERVIEW');
-  const [wallet, setWallet] = useState<any>(null);
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab] = React.useState<'OVERVIEW' | 'ECONOMICS' | 'WALLET' | 'USERS' | 'VERIFICATION' | 'SECURITY' | 'SETTINGS' | 'SYSTEM_CONFIG'>('OVERVIEW');
+  const [wallet, setWallet] = React.useState<any>(null);
+  const [withdrawAmount, setWithdrawAmount] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState('');
   
   // Bank Account State
-  const [isEditingBank, setIsEditingBank] = useState(false);
-  const [bankName, setBankName] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [accountName, setAccountName] = useState('');
+  const [isEditingBank, setIsEditingBank] = React.useState(false);
+  const [bankName, setBankName] = React.useState('');
+  const [accountNumber, setAccountNumber] = React.useState('');
+  const [accountName, setAccountName] = React.useState('');
 
   // 2FA State for Withdrawal
-  const [show2FA, setShow2FA] = useState(false);
-  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [show2FA, setShow2FA] = React.useState(false);
+  const [twoFactorCode, setTwoFactorCode] = React.useState('');
 
   const fetchWallet = async () => {
     try {
@@ -50,7 +50,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isOpen) {
       fetchWallet();
     }

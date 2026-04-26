@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react';
+import React from 'react';
 import { X, Image as ImageIcon, Music, MessageSquare, Zap, Bot, Radio, Palette, Languages, Speaker, Box, Move3d, Send, Camera, BookOpen, User, CheckCircle, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react';
 import { MOCK_AVATARS, MOCK_ENVIRONMENTS, MOCK_OUTFITS } from '../../data';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -28,7 +28,7 @@ type CameraView = 'WIDE' | 'CLOSEUP' | 'PRODUCT' | 'AUDIENCE';
 const SceneController = ({ environment, runwayMode, cameraView }: { environment: AvatarEnvironment, runwayMode: boolean, cameraView: CameraView }) => {
   const { camera } = useThree();
   
-  useEffect(() => {
+  React.useEffect(() => {
     if (runwayMode) {
       if (cameraView === 'WIDE') {
         camera.position.set(0, 5, 195);
@@ -302,26 +302,26 @@ const VideoBackdrop = ({ videoUrl, environment, runwayMode }: { videoUrl: string
 };
 
 const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClose, products }) => {
-  const [activeTab, setActiveTab] = useState<'SETUP' | 'CUSTOMIZE' | 'STUDIO' | 'LIVE' | 'AI_CREATIVE'>('SETUP');
+  const [activeTab, setActiveTab] = React.useState<'SETUP' | 'CUSTOMIZE' | 'STUDIO' | 'LIVE' | 'AI_CREATIVE'>('SETUP');
   
-  const [selectedAvatar, setSelectedAvatar] = useState(MOCK_AVATARS[0]);
-  const [selectedEnv, setSelectedEnv] = useState(MOCK_ENVIRONMENTS[0]);
-  const [selectedOutfit, setSelectedOutfit] = useState<AvatarOutfit>(MOCK_OUTFITS[0]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0] || null);
+  const [selectedAvatar, setSelectedAvatar] = React.useState(MOCK_AVATARS[0]);
+  const [selectedEnv, setSelectedEnv] = React.useState(MOCK_ENVIRONMENTS[0]);
+  const [selectedOutfit, setSelectedOutfit] = React.useState<AvatarOutfit>(MOCK_OUTFITS[0]);
+  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(products[0] || null);
 
-  const [use3DMode, setUse3DMode] = useState(false);
-  const [customVrmUrl, setCustomVrmUrl] = useState<string | null>(null);
-  const [customVrmOutfitUrl, setCustomVrmOutfitUrl] = useState<string | null>(null);
-  const [isMotionCapture, setIsMotionCapture] = useState(false);
-  const [motionCaptureError, setMotionCaptureError] = useState(false);
+  const [use3DMode, setUse3DMode] = React.useState(false);
+  const [customVrmUrl, setCustomVrmUrl] = React.useState<string | null>(null);
+  const [customVrmOutfitUrl, setCustomVrmOutfitUrl] = React.useState<string | null>(null);
+  const [isMotionCapture, setIsMotionCapture] = React.useState(false);
+  const [motionCaptureError, setMotionCaptureError] = React.useState(false);
   
-  const webcamRef = useRef<HTMLVideoElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const autoRoutineRef = useRef(false);
-  const aiRoutineRef = useRef(false);
+  const webcamRef = React.useRef<HTMLVideoElement>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+  const autoRoutineRef = React.useRef(false);
+  const aiRoutineRef = React.useRef(false);
 
-  const [customization, setCustomization] = useState<AvatarCustomization & { voiceName: string, outfitColor: string, eyeColor: string, bodyType: 'SLIM' | 'ATHLETIC' | 'CURVY' }>({
+  const [customization, setCustomization] = React.useState<AvatarCustomization & { voiceName: string, outfitColor: string, eyeColor: string, bodyType: 'SLIM' | 'ATHLETIC' | 'CURVY' }>({
       heightScale: 1.0,
       skinToneHash: '#ffffff',
       hairStyle: 'LONG',
@@ -334,31 +334,31 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
       bodyType: 'ATHLETIC'
   });
 
-  const [outfitCategory, setOutfitCategory] = useState<string>('ALL');
-  const [isSuggestingOutfit, setIsSuggestingOutfit] = useState(false);
-  const [isLive, setIsLive] = useState(false);
-  const [currentAnimation, setCurrentAnimation] = useState<string>('Idle');
-  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
-  const [runwayMode, setRunwayMode] = useState(false);
-  const [moveCommand, setMoveCommand] = useState<{dir: string, ts: number}>({dir: 'NONE', ts: 0});
-  const [resetPosTrigger, setResetPosTrigger] = useState(0);
-  const [isAutoRoutine, setIsAutoRoutine] = useState(false);
-  const [isAIChoreographing, setIsAIChoreographing] = useState(false);
-  const [isAIRoutineRunning, setIsAIRoutineRunning] = useState(false);
-  const [avatarState, setAvatarState] = useState<AvatarState>('IDLE');
-  const [chatHistory, setChatHistory] = useState<{user: string, text: string}[]>([]);
-  const [lyrics, setLyrics] = useState<string[]>([]);
-  const [hostInput, setHostInput] = useState('');
+  const [outfitCategory, setOutfitCategory] = React.useState<string>('ALL');
+  const [isSuggestingOutfit, setIsSuggestingOutfit] = React.useState(false);
+  const [isLive, setIsLive] = React.useState(false);
+  const [currentAnimation, setCurrentAnimation] = React.useState<string>('Idle');
+  const [isGeneratingScript, setIsGeneratingScript] = React.useState(false);
+  const [runwayMode, setRunwayMode] = React.useState(false);
+  const [moveCommand, setMoveCommand] = React.useState<{dir: string, ts: number}>({dir: 'NONE', ts: 0});
+  const [resetPosTrigger, setResetPosTrigger] = React.useState(0);
+  const [isAutoRoutine, setIsAutoRoutine] = React.useState(false);
+  const [isAIChoreographing, setIsAIChoreographing] = React.useState(false);
+  const [isAIRoutineRunning, setIsAIRoutineRunning] = React.useState(false);
+  const [avatarState, setAvatarState] = React.useState<AvatarState>('IDLE');
+  const [chatHistory, setChatHistory] = React.useState<{user: string, text: string}[]>([]);
+  const [lyrics, setLyrics] = React.useState<string[]>([]);
+  const [hostInput, setHostInput] = React.useState('');
   
-  const [restreamTikTok, setRestreamTikTok] = useState(false);
-  const [restreamFacebook, setRestreamFacebook] = useState(false);
-  const [activeVoucher, setActiveVoucher] = useState<string | null>(null);
-  const [pinnedProduct, setPinnedProduct] = useState<Product | null>(null);
-  const [showVideoOverlay, setShowVideoOverlay] = useState<string | null>(null);
-  const [cameraView, setCameraView] = useState<CameraView>('WIDE');
-  const [showBridgeGuide, setShowBridgeGuide] = useState(false);
+  const [restreamTikTok, setRestreamTikTok] = React.useState(false);
+  const [restreamFacebook, setRestreamFacebook] = React.useState(false);
+  const [activeVoucher, setActiveVoucher] = React.useState<string | null>(null);
+  const [pinnedProduct, setPinnedProduct] = React.useState<Product | null>(null);
+  const [showVideoOverlay, setShowVideoOverlay] = React.useState<string | null>(null);
+  const [cameraView, setCameraView] = React.useState<CameraView>('WIDE');
+  const [showBridgeGuide, setShowBridgeGuide] = React.useState(false);
   
-  const [kolAssets, setKolAssets] = useState<any[]>(() => {
+  const [kolAssets, setKolAssets] = React.useState<any[]>(() => {
     if (typeof window === 'undefined' || !window.localStorage) return [];
     try {
       const saved = localStorage.getItem('kol_assets');
@@ -370,7 +370,7 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
     }
   });
 
-  const [savedStyles, setSavedStyles] = useState<any[]>(() => {
+  const [savedStyles, setSavedStyles] = React.useState<any[]>(() => {
     if (typeof window === 'undefined' || !window.localStorage) return [];
     try {
       const saved = localStorage.getItem('avatar_saved_styles');
@@ -380,12 +380,12 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
     }
   });
   
-  const [audioLevel, setAudioLevel] = useState<number[]>(new Array(10).fill(10));
-  const [aiCreativePrompt, setAiCreativePrompt] = useState('');
-  const [isGeneratingCreative, setIsGeneratingCreative] = useState(false);
-  const [creativeStory, setCreativeStory] = useState<string | null>(null);
+  const [audioLevel, setAudioLevel] = React.useState<number[]>(new Array(10).fill(10));
+  const [aiCreativePrompt, setAiCreativePrompt] = React.useState('');
+  const [isGeneratingCreative, setIsGeneratingCreative] = React.useState(false);
+  const [creativeStory, setCreativeStory] = React.useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     let stream: MediaStream | null = null;
     let interval: NodeJS.Timeout;
 
@@ -427,14 +427,14 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
     };
   }, [isMotionCapture, isLive]);
 
-  useEffect(() => {
+  React.useEffect(() => {
       autoRoutineRef.current = isAutoRoutine;
       if (isAutoRoutine) {
           runAutoRoutine();
       }
   }, [isAutoRoutine]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (videoRef.current && !use3DMode) {
       let nextSrc = selectedAvatar.idleVideo;
       if (avatarState === 'TALKING') nextSrc = selectedAvatar.talkingVideo;
@@ -447,7 +447,7 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
     }
   }, [avatarState, selectedAvatar, use3DMode]);
 
-  useEffect(() => {
+  React.useEffect(() => {
       if (avatarState !== 'IDLE') {
           const interval = setInterval(() => {
               setAudioLevel(prev => prev.map(() => Math.random() * 100));
@@ -461,7 +461,7 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
       }
   }, [avatarState]);
 
-  useEffect(() => {
+  React.useEffect(() => {
       const timeout = setTimeout(() => {
           setCustomization(prev => ({
               ...prev,
@@ -472,7 +472,7 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
       return () => clearTimeout(timeout);
   }, [selectedAvatar]);
 
-  const generateResponse = useCallback(async (userMessage: string) => {
+  const generateResponse = React.useCallback(async (userMessage: string) => {
     setAvatarState('TALKING');
     
     try {
@@ -580,7 +580,7 @@ const VirtualAvatarStudio: React.FC<VirtualAvatarStudioProps> = ({ isOpen, onClo
     }
   }, [selectedAvatar.name, customization, selectedProduct, kolAssets]);
 
-  useEffect(() => {
+  React.useEffect(() => {
       if (isLive) {
           const interval = setInterval(() => {
               const msgs = ['Sản phẩm đẹp quá!', 'Review chi tiết đi ạ', 'Có size M không?', 'Hát bài gì đi idol ơi'];

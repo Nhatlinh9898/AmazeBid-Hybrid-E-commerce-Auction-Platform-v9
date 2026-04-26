@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { api } from '../services/api';
 import { CheckCircle, XCircle, FileText, AlertTriangle, Bot, Loader2 } from 'lucide-react';
 
 const AdminVerification: React.FC = () => {
-  const [pendingProducts, setPendingProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [pendingProducts, setPendingProducts] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [verifyingId, setVerifyingId] = React.useState<string | null>(null);
 
   const fetchPending = async () => {
     try {
@@ -18,7 +18,7 @@ const AdminVerification: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchPending();
   }, []);
 

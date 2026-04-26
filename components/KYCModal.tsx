@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X, ShieldCheck, Upload, Camera, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { User } from '../types';
 import { emailService } from '../services/EmailService';
@@ -10,11 +10,11 @@ interface KYCModalProps {
 }
 
 const KYCModal: React.FC<KYCModalProps> = ({ isOpen, onClose, user }) => {
-  const [step, setStep] = useState(1);
-  const [kycType, setKycType] = useState<'PERSONAL' | 'BUSINESS'>('PERSONAL');
-  const [files, setFiles] = useState<File[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [step, setStep] = React.useState(1);
+  const [kycType, setKycType] = React.useState<'PERSONAL' | 'BUSINESS'>('PERSONAL');
+  const [files, setFiles] = React.useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSuccess, setIsSuccess] = React.useState(false);
 
   if (!isOpen) return null;
 

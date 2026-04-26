@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Truck, Package, Plus, Trash2, Phone, User, 
   MapPin, FileText, Star, PieChart as PieChartIcon,
@@ -14,15 +14,15 @@ interface SupplyChainManagementProps {
 }
 
 export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ownerId, onTabChange }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'materials' | 'suppliers' | 'invoices'>('materials');
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [materials, setMaterials] = useState<RawMaterial[]>([]);
-  const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
+  const [activeSubTab, setActiveSubTab] = React.useState<'materials' | 'suppliers' | 'invoices'>('materials');
+  const [suppliers, setSuppliers] = React.useState<Supplier[]>([]);
+  const [materials, setMaterials] = React.useState<RawMaterial[]>([]);
+  const [invoices, setInvoices] = React.useState<PurchaseInvoice[]>([]);
   
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const unsubscribe = supplyChainService.subscribe((data) => {
       setSuppliers(data.suppliers.filter(s => s.ownerId === ownerId));
       setMaterials(data.materials.filter(m => m.ownerId === ownerId));
@@ -32,7 +32,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
   }, [ownerId]);
 
   // Form states
-  const [supplierForm, setSupplierForm] = useState<Omit<Supplier, 'id' | 'ownerId'>>({
+  const [supplierForm, setSupplierForm] = React.useState<Omit<Supplier, 'id' | 'ownerId'>>({
     name: '',
     contactPerson: '',
     phone: '',
@@ -42,7 +42,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
     rating: 5
   });
 
-  const [materialForm, setMaterialForm] = useState<Omit<RawMaterial, 'id' | 'ownerId'>>({
+  const [materialForm, setMaterialForm] = React.useState<Omit<RawMaterial, 'id' | 'ownerId'>>({
     name: '',
     category: 'Nguyên liệu chính',
     unit: 'kg',
@@ -53,7 +53,7 @@ export const SupplyChainManagement: React.FC<SupplyChainManagementProps> = ({ ow
     minStockAlert: 5
   });
 
-  const [invoiceForm, setInvoiceForm] = useState<Omit<PurchaseInvoice, 'id' | 'ownerId'>>({
+  const [invoiceForm, setInvoiceForm] = React.useState<Omit<PurchaseInvoice, 'id' | 'ownerId'>>({
     supplierId: '',
     items: [],
     totalAmount: 0,

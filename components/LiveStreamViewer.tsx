@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { X, Heart, Send, Share2, Mic, MicOff, Camera, CameraOff, ShoppingBag, CreditCard, CheckCircle2, TrendingUp, VideoOff, ExternalLink, Layers, ChevronRight, ChevronLeft, Link as LinkIcon } from 'lucide-react';
 import { LiveStream, Product, ItemType } from '../types';
 import socket from '../services/socket';
@@ -14,30 +14,30 @@ interface LiveStreamViewerProps {
 }
 
 const LiveStreamViewer: React.FC<LiveStreamViewerProps> = ({ stream, products, onClose, onPlaceBid, onAddToCart, isHost = false }) => {
-  const [messages, setMessages] = useState<{user: string, text: string}[]>([]);
-  const [input, setInput] = useState('');
-  const [featuredProduct, setFeaturedProduct] = useState<Product | null>(null);
-  const [showShareToast, setShowShareToast] = useState(false);
+  const [messages, setMessages] = React.useState<{user: string, text: string}[]>([]);
+  const [input, setInput] = React.useState('');
+  const [featuredProduct, setFeaturedProduct] = React.useState<Product | null>(null);
+  const [showShareToast, setShowShareToast] = React.useState(false);
   
   // Host Controls
-  const [cameraEnabled, setCameraEnabled] = useState(true);
-  const [micEnabled, setMicEnabled] = useState(true);
-  const [cameraError, setCameraError] = useState(false); // Track camera permission errors
+  const [cameraEnabled, setCameraEnabled] = React.useState(true);
+  const [micEnabled, setMicEnabled] = React.useState(true);
+  const [cameraError, setCameraError] = React.useState(false); // Track camera permission errors
   
   // Checkout States
-  const [checkoutProduct, setCheckoutProduct] = useState<Product | null>(null);
-  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [checkoutProduct, setCheckoutProduct] = React.useState<Product | null>(null);
+  const [orderSuccess, setOrderSuccess] = React.useState(false);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const historyRef = useRef<HTMLDivElement>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const historyRef = React.useRef<HTMLDivElement>(null);
 
   // Filter products: If stream exists, use its list. If host mode (creating), filter by currentUser
   const currentProducts = stream && stream.featuredProductIds.length > 0
     ? products.filter(p => stream.featuredProductIds.includes(p.id))
     : products.filter(p => p.sellerId === 'currentUser'); 
 
-  useEffect(() => {
+  React.useEffect(() => {
     // If we have products, feature the first one by default
     if (currentProducts.length > 0 && !featuredProduct) {
         const timer = setTimeout(() => {
@@ -48,7 +48,7 @@ const LiveStreamViewer: React.FC<LiveStreamViewerProps> = ({ stream, products, o
   }, [currentProducts, featuredProduct]);
 
   // Sync featured product updates (e.g. price change)
-  useEffect(() => {
+  React.useEffect(() => {
     if (featuredProduct) {
         const updated = products.find(p => p.id === featuredProduct.id);
         if (updated && updated !== featuredProduct) {
@@ -61,19 +61,19 @@ const LiveStreamViewer: React.FC<LiveStreamViewerProps> = ({ stream, products, o
   }, [products, featuredProduct]);
 
   // Scroll bid history
-  useEffect(() => {
+  React.useEffect(() => {
       if (historyRef.current) historyRef.current.scrollTop = 0; 
   }, [featuredProduct?.bidHistory]);
 
   // Auto-scroll chat
-  useEffect(() => {
+  React.useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
   // Socket: Join auction room for featured product
-  useEffect(() => {
+  React.useEffect(() => {
     if (featuredProduct && featuredProduct.type === ItemType.AUCTION) {
       const productId = featuredProduct.id;
       socket.emit('join:auction', productId);
@@ -84,7 +84,7 @@ const LiveStreamViewer: React.FC<LiveStreamViewerProps> = ({ stream, products, o
   }, [featuredProduct]);
 
   // Effect: Handle Stream Simulation (Viewer) OR Camera Access (Host)
-  useEffect(() => {
+  React.useEffect(() => {
     const peerConnections: { [id: string]: RTCPeerConnection } = {};
     let localStream: MediaStream | null = null;
     const streamId = stream?.id || 'demo-stream';

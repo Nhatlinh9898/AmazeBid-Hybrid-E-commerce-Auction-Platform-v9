@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { X, Camera, RefreshCw, Check, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -9,13 +9,13 @@ interface CameraCaptureProps {
 }
 
 const CameraCapture: React.FC<CameraCaptureProps> = ({ isOpen, onClose, onCapture }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = React.useState<MediaStream | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = React.useState<string | null>(null);
 
-  const stopCamera = useCallback(() => {
+  const stopCamera = React.useCallback(() => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
@@ -23,7 +23,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ isOpen, onClose, onCaptur
     setCapturedImage(null);
   }, [stream]);
 
-  const startCamera = useCallback(async () => {
+  const startCamera = React.useCallback(async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' },
@@ -40,7 +40,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ isOpen, onClose, onCaptur
     }
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     let active = true;
 
     const init = async () => {

@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useEffect } from 'react';
+import React from 'react';
 import { Search, ShoppingCart, User as UserIcon, MapPin, Gavel, LayoutGrid, PlusCircle, Package, Video, Sparkles, Zap, BarChart3, Shield, Bot, Camera, Users, Wand2, Mic, Mail, Store as LucideStore, PlusSquare, Utensils } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import { emailService } from '../services/EmailService';
@@ -39,11 +39,11 @@ const Navbar: React.FC<NavbarProps> = ({
   onGoHome, onOpenKOLStudio, onOpenEmailInbox, onOpenStoreDiscovery, onOpenStoreRegistration, onOpenWallet
 }) => {
   const { user } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isListening, setIsListening] = useState(false);
-  const [unreadEmails, setUnreadEmails] = useState(0);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isListening, setIsListening] = React.useState(false);
+  const [unreadEmails, setUnreadEmails] = React.useState(0);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const unsubscribe = emailService.subscribe((emails) => {
       setUnreadEmails(emails.filter(e => !e.isRead).length);
     });

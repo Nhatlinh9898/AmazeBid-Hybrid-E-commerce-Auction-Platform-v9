@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Trophy, Star, Award, TrendingUp, ShieldCheck } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -12,10 +12,10 @@ interface LeaderboardUser {
 }
 
 const Leaderboard: React.FC = () => {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [leaderboard, setLeaderboard] = React.useState<LeaderboardUser[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
         const data = await api.gamification.getLeaderboard();

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Edit2, Trash2, Save, X, 
-  Package, DollarSign, Tag, Loader2
+  Package, DollarSign, Tag, Loader2, Scan, Plus
 } from 'lucide-react';
 import { Product, OrderStatus } from '../types';
 import { api } from '../services/api';
 import { useAuth } from '../context/useAuth';
+import BarcodeScanner from './BarcodeScanner';
 
 interface ProductManagementProps {
   onUpdate?: () => void;
@@ -19,6 +20,9 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [filter, setFilter] = useState<'ALL' | 'AVAILABLE' | 'SOLD' | 'PENDING'>('ALL');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<'SEARCH' | 'EDIT'>('SEARCH');
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -30,7 +34,6 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
     setLoading(true);
     try {
       const response = await api.products.getAll();
-      // Filter products belonging to the current user
       const myProducts = response.products.filter((p: Product) => p.sellerId === user.id);
       setProducts(myProducts);
     } catch (error) {
@@ -40,28 +43,57 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
     }
   };
 
+  const handleOpenCreate = () => {
+    setEditingProduct({
+      id: '',
+      title: '',
+      price: 0,
+      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500',
+      description: '',
+      category: 'Điện tử',
+      sellerId: user?.id || '',
+      status: OrderStatus.AVAILABLE,
+      stock: 0,
+      barcode: ''
+    });
+    setIsCreating(true);
+  };
+
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct || !editingProduct.id) return;
+    if (!editingProduct) return;
 
     setIsSaving(true);
     try {
-      await api.products.update(editingProduct.id, {
-        title: editingProduct.title,
-        price: editingProduct.price,
-        stock: editingProduct.stock,
-        category: editingProduct.category,
-        description: editingProduct.description,
-        status: editingProduct.status
-      });
+      if (isCreating) {
+        const response = await api.products.create({
+          ...editingProduct,
+          sellerId: user?.id || ''
+        });
+        setProducts(prev => [response, ...prev]);
+        alert('Thêm sản phẩm mới thành công!');
+      } else {
+        if (!editingProduct.id) return;
+        await api.products.update(editingProduct.id, {
+          title: editingProduct.title,
+          price: editingProduct.price,
+          stock: editingProduct.stock,
+          category: editingProduct.category,
+          description: editingProduct.description,
+          status: editingProduct.status,
+          barcode: editingProduct.barcode
+        });
+        
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? editingProduct : p));
+        alert('Cập nhật sản phẩm thành công!');
+      }
       
-      setProducts(prev => prev.map(p => p.id === editingProduct.id ? editingProduct : p));
       setEditingProduct(null);
+      setIsCreating(false);
       if (onUpdate) onUpdate();
-      alert('Cập nhật sản phẩm thành công! Dữ liệu kho hàng cũng đã được đồng bộ.');
     } catch (error) {
-      console.error('Error updating product:', error);
-      alert('Lỗi khi cập nhật sản phẩm');
+      console.error('Error saving product:', error);
+      alert('Lỗi khi lưu sản phẩm');
     } finally {
       setIsSaving(false);
     }
@@ -81,8 +113,23 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
     }
   };
 
+  const handleScanSuccess = (decodedText: string) => {
+    if (scanMode === 'SEARCH') {
+      const foundProduct = products.find(p => p.barcode === decodedText || p.id === decodedText);
+      if (foundProduct) {
+        setEditingProduct(foundProduct);
+      } else {
+        alert(`Không tìm thấy sản phẩm với mã: ${decodedText}. Bạn có thể tạo sản phẩm mới với mã này.`);
+        setSearchTerm(decodedText);
+      }
+    } else if (scanMode === 'EDIT' && editingProduct) {
+      setEditingProduct({ ...editingProduct, barcode: decodedText });
+    }
+  };
+
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (p.barcode && p.barcode.includes(searchTerm));
     const matchesFilter = filter === 'ALL' || 
       (filter === 'AVAILABLE' && p.status === OrderStatus.AVAILABLE) ||
       (filter === 'SOLD' && p.status === OrderStatus.DELIVERED) ||
@@ -107,25 +154,35 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
           <h2 className="text-2xl font-bold text-gray-900">Quản lý sản phẩm</h2>
           <p className="text-sm text-gray-500">Chỉnh sửa, cập nhật giá và quản lý kho hàng của bạn</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-              <Package size={20} />
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <button 
+            onClick={handleOpenCreate}
+            className="w-full sm:w-auto bg-[#febd69] hover:bg-[#f3a847] text-black px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/10 transition-all transition-transform active:scale-95"
+          >
+            <Plus size={20} />
+            Thêm sản phẩm mới
+          </button>
+          
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex-1 sm:flex-none bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                <Package size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Tổng sản phẩm</p>
+                <p className="text-lg font-bold text-gray-900">{products.length}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Tổng sản phẩm</p>
-              <p className="text-lg font-bold text-gray-900">{products.length}</p>
-            </div>
-          </div>
-          <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-              <DollarSign size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Giá trị kho</p>
-              <p className="text-lg font-bold text-gray-900">
-                ${(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 1)), 0)).toLocaleString()}
-              </p>
+            <div className="flex-1 sm:flex-none bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                <DollarSign size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Giá trị kho</p>
+                <p className="text-lg font-bold text-gray-900">
+                  ${(products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 1)), 0)).toLocaleString()}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -133,15 +190,28 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
 
       {/* Filters & Search */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input 
-            type="text"
-            placeholder="Tìm kiếm sản phẩm theo tên..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex-1 relative flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input 
+              type="text"
+              placeholder="Tìm theo tên hoặc mã vạch..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button 
+            onClick={() => {
+              setScanMode('SEARCH');
+              setIsScannerOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-bold text-sm"
+            title="Quét mã vạch để tìm hoặc nhập kho"
+          >
+            <Scan size={18} />
+            <span className="hidden sm:inline">Quét mã</span>
+          </button>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {(['ALL', 'AVAILABLE', 'SOLD', 'PENDING'] as const).map((f) => (
@@ -234,23 +304,54 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
           <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="bg-[#131921] p-4 text-white flex justify-between items-center">
               <h3 className="font-bold flex items-center gap-2">
-                <Edit2 size={18} className="text-[#febd69]" /> Chỉnh sửa sản phẩm
+                {isCreating ? <Plus size={18} className="text-[#febd69]" /> : <Edit2 size={18} className="text-[#febd69]" />}
+                {isCreating ? 'Thêm sản phẩm mới' : 'Chỉnh sửa sản phẩm'}
               </h3>
-              <button onClick={() => setEditingProduct(null)} className="hover:bg-gray-800 p-1 rounded-full">
+              <button 
+                onClick={() => {
+                  setEditingProduct(null);
+                  setIsCreating(false);
+                }} 
+                className="hover:bg-gray-800 p-1 rounded-full"
+              >
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleUpdateProduct} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tên sản phẩm</label>
-                <input 
-                  type="text"
-                  required
-                  className="w-full border border-gray-200 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={editingProduct.title}
-                  onChange={(e) => setEditingProduct({...editingProduct, title: e.target.value})}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mã vạch (Barcode)</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      className="flex-1 border border-gray-200 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                      value={editingProduct.barcode || ''}
+                      onChange={(e) => setEditingProduct({...editingProduct, barcode: e.target.value})}
+                      placeholder="EAN/UPC/Code128"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setScanMode('EDIT');
+                        setIsScannerOpen(true);
+                      }}
+                      className="p-2.5 bg-gray-100 rounded-lg hover:bg-gray-200 text-gray-600"
+                    >
+                      <Scan size={18} />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tên sản phẩm</label>
+                  <input 
+                    type="text"
+                    required
+                    className="w-full border border-gray-200 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={editingProduct.title}
+                    onChange={(e) => setEditingProduct({...editingProduct, title: e.target.value})}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -299,14 +400,20 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ onUpdate }) => {
                   disabled={isSaving}
                   className="flex-1 py-2.5 bg-[#febd69] hover:bg-[#f3a847] text-black rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                  Lưu thay đổi
+                  {isSaving ? <Loader2 size={18} className="animate-spin" /> : (isCreating ? <Plus size={18} /> : <Save size={18} />)}
+                  {isCreating ? 'Tạo sản phẩm' : 'Lưu thay đổi'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+      {/* Scanner */}
+      <BarcodeScanner 
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
+      />
     </div>
   );
 };

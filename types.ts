@@ -358,11 +358,16 @@ export interface Product {
   // Fraud Detection
   isFraudulent?: boolean;
   fraudReason?: string;
+  barcode?: string;
+  stock?: number;
 }
 
 export interface Order {
   id: string;
   userId: string;
+  sellerId?: string; // New: Primary seller ID (for POS/Direct sales)
+  storeId?: string;  // New: Store ID if applicable
+  isPOS?: boolean;   // New: Flag for POS orders
   items: CartItem[];
   totalAmount: number;
   status: OrderStatus;
@@ -437,6 +442,7 @@ export interface StoreMenuItem {
   image: string;
   category: string;
   isAvailable: boolean;
+  barcode?: string;
   vatRate?: number; // New: VAT rate
   specialTaxRate?: number; // New: Special tax rate
   recipe?: ProductRecipe; // New: Recipe for cost calculation

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Edit2, Save, ShoppingBag, Store as LucideStore, Loader2, Image as ImageIcon, Check, AlertCircle, Calculator, ChevronRight, Scale, Globe } from 'lucide-react';
+import React from 'react';
+import { X, Plus, Trash2, Edit2, Save, ShoppingBag, Store as LucideStore, Loader2, Image as ImageIcon, Check, AlertCircle, Calculator, ChevronRight, Scale, Globe, Scan, ShoppingCart, CreditCard, User } from 'lucide-react';
 import { PhysicalStore, StoreMenuItem, RawMaterial, ProductRecipe, ProductIngredient, ItemType, OrderStatus } from '../types';
 import { storeService } from '../services/StoreService';
 import { supplyChainService } from '../src/services/SupplyChainService';
 import { api } from '../services/api';
 import { PricingService } from '../services/pricingService';
+import BarcodeScanner from './BarcodeScanner';
 
 interface StoreManagementProps {
   ownerId: string;
@@ -12,19 +13,24 @@ interface StoreManagementProps {
 }
 
 export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRefreshProducts }) => {
-  const [stores, setStores] = useState<PhysicalStore[]>([]);
-  const [selectedStore, setSelectedStore] = useState<PhysicalStore | null>(null);
-  const [isEditingMenu, setIsEditingMenu] = useState(false);
-  const [isEditingStore, setIsEditingStore] = useState(false);
-  const [editingItem, setEditingItem] = useState<StoreMenuItem | null>(null);
-  const [isAddingItem, setIsAddingItem] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [availableMaterials, setAvailableMaterials] = useState<RawMaterial[]>([]);
-  const [showRecipeEditor, setShowRecipeEditor] = useState(false);
-  const [isPublishing, setIsPublishing] = useState<string | null>(null);
+  const [stores, setStores] = React.useState<PhysicalStore[]>([]);
+  const [selectedStore, setSelectedStore] = React.useState<PhysicalStore | null>(null);
+  const [isEditingMenu, setIsEditingMenu] = React.useState(false);
+  const [isEditingStore, setIsEditingStore] = React.useState(false);
+  const [editingItem, setEditingItem] = React.useState<StoreMenuItem | null>(null);
+  const [isAddingItem, setIsAddingItem] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [availableMaterials, setAvailableMaterials] = React.useState<RawMaterial[]>([]);
+  const [showRecipeEditor, setShowRecipeEditor] = React.useState(false);
+  const [isPublishing, setIsPublishing] = React.useState<string | null>(null);
+  const [showPOS, setShowPOS] = React.useState(false);
+  const [posCart, setPosCart] = React.useState<{item: StoreMenuItem, quantity: number}[]>([]);
+  const [isScannerOpen, setIsScannerOpen] = React.useState(false);
+  const [posStep, setPosStep] = React.useState<'CART' | 'PAYMENT' | 'RECEIPT'>('CART');
+  const [paymentMethod, setPaymentMethod] = React.useState<'CASH' | 'CARD' | 'TRANSFER'>('CASH');
 
   // Form state for new/edit item
-  const [itemForm, setItemForm] = useState<{
+  const [itemForm, setItemForm] = React.useState<{
     name: string;
     description: string;
     price: number;
@@ -33,6 +39,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
     isAvailable: boolean;
     vatRate: number;
     specialTaxRate: number;
+    barcode: string;
+    stock: number;
     recipe: ProductRecipe;
   }>({
     name: '',
@@ -43,6 +51,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
     isAvailable: true,
     vatRate: 0.08, // Default 8% VAT
     specialTaxRate: 0,
+    barcode: '',
+    stock: 99,
     recipe: {
       ingredients: [],
       laborCostEstimate: 0,
@@ -55,7 +65,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
     }
   });
 
-  const [storeForm, setStoreForm] = useState({
+  const [storeForm, setStoreForm] = React.useState({
     name: '',
     description: '',
     address: '',
@@ -63,7 +73,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
     category: '' as any
   });
 
-  useEffect(() => {
+  React.useEffect(() => {
     const unsubscribeStore = storeService.subscribe((allStores) => {
       const myStores = allStores.filter(s => s.ownerId === ownerId);
       setStores(myStores);
@@ -85,7 +95,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
   }, [ownerId]);
 
   // Calculate total cost whenever recipe changes
-  useEffect(() => {
+  React.useEffect(() => {
     const ingredientsCost = itemForm.recipe.ingredients.reduce((sum, ing) => {
       const baseCost = ing.quantity * ing.costPerUnit;
       const wastageFactor = 1 + (ing.wastagePercentage / 100);
@@ -228,6 +238,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
       isAvailable: true,
       vatRate: 0.08,
       specialTaxRate: 0,
+      barcode: '',
+      stock: 99,
       recipe: {
         ingredients: [],
         laborCostEstimate: 0,
@@ -253,6 +265,8 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
       isAvailable: item.isAvailable,
       vatRate: item.vatRate || 0.08,
       specialTaxRate: item.specialTaxRate || 0,
+      barcode: item.barcode || '',
+      stock: item.stock !== undefined ? item.stock : 99,
       recipe: item.recipe || {
         ingredients: [],
         laborCostEstimate: 0,
@@ -319,6 +333,78 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
     });
   };
 
+  const handleScanSuccess = (barcode: string) => {
+    if (!selectedStore) return;
+
+    // If we're in the item form (adding or editing), update the barcode field
+    if (isAddingItem || isEditingMenu) {
+      setItemForm(prev => ({ ...prev, barcode }));
+      return;
+    }
+
+    // Otherwise, assume we're in POS mode and trying to add to cart
+    const item = selectedStore.menu.find(i => i.barcode === barcode || i.id === barcode);
+    if (item) {
+      addToPosCart(item);
+    } else {
+      alert(`Không tìm thấy món với mã vạch: ${barcode}. Bạn có thể thêm món này vào thực đơn trước.`);
+    }
+  };
+
+  const addToPosCart = (item: StoreMenuItem) => {
+    setPosCart(prev => {
+      const existing = prev.find(i => i.item.id === item.id);
+      if (existing) {
+        return prev.map(i => i.item.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, { item, quantity: 1 }];
+    });
+  };
+
+  const removeFromPosCart = (itemId: string) => {
+    setPosCart(prev => prev.filter(i => i.item.id !== itemId));
+  };
+
+  const posTotal = posCart.reduce((sum, entry) => sum + (entry.item.price * entry.quantity), 0);
+
+  const handlePOSCheckout = async () => {
+    if (posCart.length === 0 || !selectedStore) return;
+    
+    try {
+      setPosStep('RECEIPT');
+      
+      // Map POS cart items to Order items format
+      const orderItems = posCart.map(entry => ({
+        ...entry.item,
+        quantity: entry.quantity,
+        sellerId: selectedStore.ownerId,
+        storeId: selectedStore.id
+      }));
+
+      // Create a real order in the system so it reflects in management and stats
+      await api.orders.create({
+        items: orderItems,
+        totalAmount: posTotal,
+        paymentMethod: paymentMethod,
+        status: OrderStatus.COMPLETED,
+        userId: `POS_GUEST_${Math.random().toString(36).slice(2, 5).toUpperCase()}`,
+        isPOS: true // Custom flag for identification
+      });
+
+      // Optional: Refresh local store data if needed
+    } catch (error) {
+      console.error('POS Checkout failed:', error);
+      alert('Lỗi khi ghi nhận đơn hàng POS. Vui lòng thử lại.');
+      setPosStep('PAYMENT');
+    }
+  };
+
+  const resetPOS = () => {
+    setPosCart([]);
+    setPosStep('CART');
+    setShowPOS(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -367,6 +453,16 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                   <p className="text-sm text-gray-500">{selectedStore.menu.length} món trong danh sách</p>
                 </div>
                 <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setPosCart([]);
+                      setPosStep('CART');
+                      setShowPOS(true);
+                    }}
+                    className="bg-[#febd69] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#f3a847] transition-all shadow-lg"
+                  >
+                    <ShoppingCart size={18} /> POS / Bán tại quầy
+                  </button>
                   <button 
                     onClick={startEditStore}
                     className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-gray-50 transition-all"
@@ -491,6 +587,36 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                 </div>
 
                 <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Mã vạch (Barcode)</label>
+                    <div className="flex gap-2">
+                       <input 
+                         type="text" 
+                         className="flex-1 px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                         placeholder="EAN/UPC/Code128"
+                         value={itemForm.barcode}
+                         onChange={e => setItemForm(prev => ({ ...prev, barcode: e.target.value }))}
+                       />
+                       <button 
+                         onClick={() => setIsScannerOpen(true)}
+                         className="p-2 bg-gray-100 rounded-xl hover:bg-gray-200 text-gray-600"
+                         title="Quét mã vạch"
+                       >
+                         <Scan size={18}/>
+                       </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Số lượng tồn kho</label>
+                    <input 
+                      type="number" 
+                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                      value={itemForm.stock}
+                      onChange={e => setItemForm(prev => ({ ...prev, stock: parseInt(e.target.value) || 0 }))}
+                      placeholder="Số lượng nhập kho..."
+                    />
+                  </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tên món</label>
                     <input 
@@ -774,6 +900,165 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
           </div>
         </div>
       )}
+      {/* POS Modal */}
+      {showPOS && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={resetPOS} />
+          <div className="relative bg-white dark:bg-zinc-900 w-full max-w-4xl h-[80vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:flex-row animate-in zoom-in-95">
+            {/* POS Left: Inventory/Search */}
+            <div className="flex-1 p-6 overflow-hidden flex flex-col border-r border-zinc-100 dark:border-zinc-800">
+               <div className="flex items-center justify-between mb-6">
+                 <h3 className="text-xl font-black flex items-center gap-2">
+                   <ShoppingCart className="text-blue-600" /> BÁN TẠI QUẦY (POS)
+                 </h3>
+                 <button 
+                   onClick={() => setIsScannerOpen(true)}
+                   className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-blue-700"
+                 >
+                   <Scan size={18} /> Quét mã
+                 </button>
+               </div>
+
+               <div className="flex-1 overflow-y-auto pr-2 no-scrollbar">
+                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                   {selectedStore.menu.filter(i => i.isAvailable).map(item => (
+                     <button 
+                       key={item.id}
+                       onClick={() => addToPosCart(item)}
+                       className="bg-zinc-50 dark:bg-zinc-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-3 rounded-2xl text-left transition-all border border-transparent hover:border-blue-200"
+                     >
+                       <div className="w-full aspect-square rounded-xl overflow-hidden mb-2 bg-zinc-200">
+                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                       </div>
+                       <h4 className="text-xs font-bold line-clamp-1 truncate">{item.name}</h4>
+                       <p className="text-sm font-black text-blue-600">{(item.price || 0).toLocaleString()}đ</p>
+                     </button>
+                   ))}
+                 </div>
+               </div>
+            </div>
+
+            {/* POS Right: Cart & Checkout */}
+            <div className="w-full sm:w-[350px] bg-zinc-50 dark:bg-zinc-800/50 p-6 flex flex-col h-full">
+               <div className="flex items-center justify-between mb-4">
+                 <h4 className="font-black text-gray-900 dark:text-white">GIỎ HÀNG TẠI QUẦY</h4>
+                 <button onClick={resetPOS} className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full">
+                   <X size={20} />
+                 </button>
+               </div>
+
+               <div className="flex-1 overflow-y-auto space-y-3 mb-6 pr-1 no-scrollbar">
+                 {posCart.length > 0 ? posCart.map(entry => (
+                   <div key={entry.item.id} className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800 flex gap-3">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0">
+                        <img src={entry.item.image} alt={entry.item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="text-[11px] font-bold truncate">{entry.item.name}</h5>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs font-bold text-blue-600">{entry.quantity} x {entry.item.price.toLocaleString()}đ</span>
+                          <button onClick={() => removeFromPosCart(entry.item.id)} className="text-red-500 hover:bg-red-50 p-1 rounded">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                   </div>
+                 )) : (
+                   <div className="flex flex-col items-center justify-center py-20 text-zinc-400">
+                     <ShoppingCart size={32} className="mb-2 opacity-20" />
+                     <p className="text-xs font-bold">Chưa có món nào</p>
+                   </div>
+                 )}
+               </div>
+
+               <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                 <div className="flex justify-between items-center px-1">
+                   <span className="text-sm font-bold text-zinc-500">TỔNG CỘNG</span>
+                   <span className="text-xl font-black text-blue-600">{posTotal.toLocaleString()}đ</span>
+                 </div>
+                 
+                 {posStep === 'CART' && (
+                   <button 
+                     onClick={() => setPosStep('PAYMENT')}
+                     disabled={posCart.length === 0}
+                     className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-blue-700 shadow-xl shadow-blue-500/20 disabled:opacity-50"
+                   >
+                     THANH TOÁN <ChevronRight size={18} />
+                   </button>
+                 )}
+
+                 {posStep === 'PAYMENT' && (
+                   <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4">
+                     <div className="grid grid-cols-3 gap-2">
+                       <button 
+                         onClick={() => setPaymentMethod('CASH')}
+                         className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${paymentMethod === 'CASH' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 bg-white'}`}
+                       >
+                         <Calculator size={18} />
+                         <span className="text-[10px] font-bold">Tiền mặt</span>
+                       </button>
+                       <button 
+                         onClick={() => setPaymentMethod('CARD')}
+                         className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${paymentMethod === 'CARD' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-100 bg-white'}`}
+                       >
+                         <CreditCard size={18} />
+                         <span className="text-[10px] font-bold">Thẻ/POS</span>
+                       </button>
+                       <button 
+                         onClick={() => setPaymentMethod('TRANSFER')}
+                         className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${paymentMethod === 'TRANSFER' ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-100 bg-white'}`}
+                       >
+                         <User size={18} />
+                         <span className="text-[10px] font-bold">Chuyển khoản</span>
+                       </button>
+                     </div>
+                     <button 
+                       onClick={handlePOSCheckout}
+                       className="w-full py-4 bg-green-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-green-700 shadow-xl shadow-green-500/20"
+                     >
+                       <Check size={18} /> XÁC NHẬN THANH TOÁN
+                     </button>
+                     <button 
+                       onClick={() => setPosStep('CART')}
+                       className="w-full py-2 text-zinc-500 font-bold text-xs"
+                     >
+                       Quay lại giỏ hàng
+                     </button>
+                   </div>
+                 )}
+
+                 {posStep === 'RECEIPT' && (
+                   <div className="text-center space-y-4 animate-in zoom-in-95">
+                      <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Check size={32} />
+                      </div>
+                      <h4 className="font-black text-lg">THANH TOÁN THÀNH CÔNG</h4>
+                      <p className="text-xs text-zinc-500">Đơn hàng #POS-${Math.random().toString(36).slice(2, 8).toUpperCase()} đã được ghi nhận.</p>
+                      <button 
+                        onClick={() => {
+                           // We can use the existing handlePrint logic here if we adapt it or just a simple alert
+                           alert('Đang kết nối máy in hóa đơn...');
+                           resetPOS();
+                        }}
+                        className="w-full py-4 bg-[#131921] text-white rounded-2xl font-black"
+                      >
+                        IN HÓA ĐƠN
+                      </button>
+                      <button onClick={resetPOS} className="w-full py-2 text-blue-600 font-bold text-xs uppercase underline">Xong / Giao dịch mới</button>
+                   </div>
+                 )}
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barcode Scanner */}
+      <BarcodeScanner 
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
+      />
     </div>
   );
 };

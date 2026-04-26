@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { X, Mail, Lock, User, ArrowRight, Github, Smartphone, Facebook, Chrome, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 
@@ -12,21 +12,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const { login, register, loginWithPhone, loginWithSocial, verify2FA } = useAuth();
   
   // Views: 'LOGIN' | 'REGISTER'
-  const [view, setView] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
+  const [view, setView] = React.useState<'LOGIN' | 'REGISTER'>('LOGIN');
   // Methods: 'EMAIL' | 'PHONE'
-  const [method, setMethod] = useState<'EMAIL' | 'PHONE'>('EMAIL');
+  const [method, setMethod] = React.useState<'EMAIL' | 'PHONE'>('EMAIL');
   
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '', otp: '', expiresIn: '24h' });
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [formData, setFormData] = React.useState({ name: '', email: '', password: '', phone: '', otp: '', expiresIn: '24h' });
   
   // OTP State
-  const [otpSent, setOtpSent] = useState(false);
+  const [otpSent, setOtpSent] = React.useState(false);
 
   // 2FA State
-  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
-  const [twoFactorEmail, setTwoFactorEmail] = useState('');
-  const [twoFactorCode, setTwoFactorCode] = useState('');
-  const [twoFactorError, setTwoFactorError] = useState('');
+  const [twoFactorRequired, setTwoFactorRequired] = React.useState(false);
+  const [twoFactorEmail, setTwoFactorEmail] = React.useState('');
+  const [twoFactorCode, setTwoFactorCode] = React.useState('');
+  const [twoFactorError, setTwoFactorError] = React.useState('');
 
   if (!isOpen) return null;
 
