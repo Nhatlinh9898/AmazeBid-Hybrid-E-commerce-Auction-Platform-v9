@@ -4,6 +4,7 @@ import { PricingService } from '../services/pricingService';
 import { OrderStatus, ItemType, WalletTransaction, EscrowItem } from '../types';
 import Stripe from 'stripe';
 import bcrypt from 'bcryptjs';
+import admin from 'firebase-admin';
 import SecurityService from '../services/SecurityService';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
@@ -187,7 +188,7 @@ router.get('/auth/me', (req, res) => {
   }
 
   const users = db.get('users');
-  let user = users.find(u => u.id === decoded.id);
+  let user = users.find(u => u.id === decoded.id || u.email === decoded.email);
 
   // Handle virtual admin user
   if (!user && decoded.id === 'admin_root') {
@@ -305,7 +306,7 @@ router.post('/auth/firebase', async (req, res) => {
 
     const { email, name, picture, uid } = decodedToken;
     const users = db.get('users');
-    let user = users.find(u => u.email === email || (u as any).firebaseUid === uid);
+    let user = users.find(u => u.email === email || (u as any).firebaseUid === uid || (u as any).userId === email);
 
     if (!user) {
       // Create new verified account from social login

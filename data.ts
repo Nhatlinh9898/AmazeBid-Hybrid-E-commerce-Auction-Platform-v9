@@ -216,6 +216,7 @@ export const MOCK_FEED_POSTS: FeedPost[] = [
     relatedProductId: '1',
     likes: 124,
     comments: 15,
+    commentsList: [],
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
   {
@@ -227,6 +228,7 @@ export const MOCK_FEED_POSTS: FeedPost[] = [
     relatedProductId: '2',
     likes: 89,
     comments: 32,
+    commentsList: [],
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
   }
 ];

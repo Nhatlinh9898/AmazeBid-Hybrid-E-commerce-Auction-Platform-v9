@@ -245,6 +245,24 @@ const CommunityFeed: React.FC<CommunityFeedProps> = ({ posts, reviews, products,
                 </button>
               </div>
 
+              {/* Render Comments */}
+              {post.commentsList && post.commentsList.length > 0 && (
+                <div className="px-4 py-2 border-t border-gray-50 space-y-3 bg-gray-50/30">
+                  {post.commentsList.map(comment => (
+                    <div key={comment.id} className="flex gap-3">
+                      <img src={comment.userAvatar} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      <div className="bg-gray-100 rounded-2xl px-3 py-2 text-sm flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-gray-900">{comment.userName}</span>
+                          <span className="text-[10px] text-gray-400">{new Date(comment.createdAt).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <p className="text-gray-700 mt-0.5">{comment.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Comment Input */}
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-3">
                 <img src={currentUserAvatar || "https://i.pravatar.cc/150?img=11"} alt="Current User" className="w-8 h-8 rounded-full object-cover" />

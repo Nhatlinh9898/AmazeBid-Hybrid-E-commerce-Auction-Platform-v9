@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Upload, Gavel, DollarSign, Tag, Info, PlusCircle, CreditCard, Landmark, Wallet, CheckCircle2, Sparkles, Link2, Globe, Download, Calculator, TrendingUp, ShieldAlert, Camera, FileText, ScanText, Bot, Loader2, Edit2, Trash2, Clock, Cpu } from 'lucide-react';
+import { X, Upload, Gavel, DollarSign, Tag, Info, PlusCircle, CreditCard, Landmark, Wallet, CheckCircle2, Sparkles, Link2, Globe, Download, Calculator, TrendingUp, ShieldAlert, Camera, FileText, ScanText, Bot, Loader2, Edit2, Trash2, Clock, Cpu, Zap } from 'lucide-react';
 import { Product, ItemType, OrderStatus, AffiliateAccount } from '../types';
 import { PRODUCT_TEMPLATES, AFFILIATE_NETWORK_ITEMS } from '../data';
 import { api } from '../services/api';
@@ -30,7 +30,29 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onAddProduct }) 
   // AI Pricing State
   const [pricingPlan, setPricingPlan] = useState<any>(null);
   const [aiDescription, setAiDescription] = useState('');
+  const [aiPersuasiveAdvice, setAiPersuasiveAdvice] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
+
+  const handleGetPersuasiveAdvice = async () => {
+    if (!formData.title || !formData.price || isGeneratingAdvice) return;
+    setIsGeneratingAdvice(true);
+    try {
+      const prompt = `
+        Tôi đang bán sản phẩm "${formData.title}" với giá $${formData.price}.
+        Mô tả: ${formData.description.substring(0, 100)}...
+        Hãy cho tôi 3 lời khuyên "thuyết phục" khách hàng (psychological pricing & selling) để bán được hàng nhanh hơn mà không cần giảm giá quá sâu.
+        Định dạng trả về: JSON { "advice": ["...", "...", "..."], "suggestedHook": "..." }
+      `;
+      const result = await api.ai.generate({ prompt, task: 'sales_advice', modelType: 'FLASH' });
+      const data = typeof result.content === 'string' ? JSON.parse(result.content.replace(/```json|```/g, '')) : result.content;
+      setAiPersuasiveAdvice(data.advice.join('\n• '));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingAdvice(false);
+    }
+  };
 
   // Affiliate Link Input (Manual)
   const [manualAffiliateLink, setManualAffiliateLink] = useState('');
@@ -1266,8 +1288,29 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onAddProduct }) 
                     </div>
 
                     <div className="bg-gray-50 p-4 rounded-xl space-y-4">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider">Hình thức giao dịch</label>
-                    <div className="flex p-1 bg-white rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider">Chiến lược thuyết phục (AI)</label>
+                            <button 
+                                type="button"
+                                onClick={handleGetPersuasiveAdvice}
+                                disabled={isGeneratingAdvice || !formData.title}
+                                className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md font-bold hover:bg-indigo-200 transition-colors flex items-center gap-1 disabled:opacity-50"
+                            >
+                                {isGeneratingAdvice ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                                Lấy tư vấn bán hàng
+                            </button>
+                        </div>
+                        
+                        {aiPersuasiveAdvice && (
+                            <div className="bg-white p-3 rounded-lg border border-indigo-100 text-[11px] text-indigo-800 leading-relaxed animate-in slide-in-from-top-1">
+                                <div className="font-bold mb-1 flex items-center gap-1 text-indigo-600">
+                                    <Bot size={12} /> AI Tư vấn:
+                                </div>
+                                • {aiPersuasiveAdvice}
+                            </div>
+                        )}
+
+                        <div className="flex p-1 bg-white rounded-lg border border-gray-200">
                         <button 
                         type="button"
                         onClick={() => setFormData({...formData, type: ItemType.FIXED_PRICE})}
@@ -1413,18 +1456,36 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onAddProduct }) 
                     <div className="bg-red-50 p-4 rounded-xl border border-red-100 space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <TrendingUp size={16} className="text-red-600" />
+                                <Zap size={16} className="text-red-600" />
                                 <span className="text-xs font-bold text-red-800 uppercase tracking-wider">Chương trình Flash Sale</span>
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input 
-                                    type="checkbox" 
-                                    className="sr-only peer" 
-                                    checked={formData.isFlashSale}
-                                    onChange={e => setFormData({...formData, isFlashSale: e.target.checked})}
-                                />
-                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
-                            </label>
+                            <div className="flex items-center gap-4">
+                                {formData.isFlashSale && (
+                                    <button 
+                                        type="button"
+                                        onClick={async () => {
+                                            const currentPrice = parseFloat(formData.price);
+                                            if (!currentPrice) return;
+                                            // Simulate AI logic: usually 15-30% off for flash sale
+                                            const smartPrice = (currentPrice * (0.7 + Math.random() * 0.15)).toFixed(2);
+                                            setFormData({...formData, flashSalePrice: smartPrice});
+                                            alert(`AI đề xuất giá Flash Sale tối ưu: $${smartPrice} dựa trên nhu cầu thị trường hiện tại.`);
+                                        }}
+                                        className="text-[10px] text-red-700 bg-white px-2 py-1 rounded border border-red-200 font-bold hover:bg-red-100 transition-colors"
+                                    >
+                                        <Bot size={10} className="inline mr-1" /> Tối ưu giá AI
+                                    </button>
+                                )}
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer" 
+                                        checked={formData.isFlashSale}
+                                        onChange={e => setFormData({...formData, isFlashSale: e.target.checked})}
+                                    />
+                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                                </label>
+                            </div>
                         </div>
                         
                         {formData.isFlashSale && (

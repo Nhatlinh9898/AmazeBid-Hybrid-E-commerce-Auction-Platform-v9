@@ -182,6 +182,15 @@ export interface Review {
   createdAt: string;
 }
 
+export interface PostComment {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface FeedPost {
   id: string;
   userId: string;
@@ -192,6 +201,7 @@ export interface FeedPost {
   relatedProductId?: string;
   likes: number;
   comments: number;
+  commentsList?: PostComment[];
   createdAt: string;
   isAiGenerated?: boolean;
 }

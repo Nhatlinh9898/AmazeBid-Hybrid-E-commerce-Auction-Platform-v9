@@ -225,6 +225,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onPlace
             <div className="relative w-full max-w-md">
                 <AISalesAssistant 
                     product={product} 
+                    isFloating={false}
+                    isOpen={true}
+                    onClose={() => setIsNegotiationOpen(false)}
                     onNegotiationSuccess={(finalPrice) => {
                         // In a real app, we'd update the cart or product price for this user
                         console.log('Negotiated price:', finalPrice);

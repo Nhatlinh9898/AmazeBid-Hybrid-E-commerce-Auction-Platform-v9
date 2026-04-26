@@ -65,6 +65,11 @@ export const AISalesAssistant: React.FC<AISalesAssistantProps> = ({
         if (onNegotiationSuccess) onNegotiationSuccess(userOffer);
       } else if (result.status === 'REJECTED') {
         setNegotiationStatus('REJECTED');
+      } else if (result.status === 'COUNTER' && result.counterOffer) {
+        // Option to accept counter offer
+        setTimeout(() => {
+          setMessages(prev => [...prev, { role: 'assistant', text: `Tôi có thể để cho bạn giá $${result.counterOffer}. Bạn thấy sao?` }]);
+        }, 1000);
       }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', text: 'Rất tiếc, tôi đang gặp chút trục trặc. Bạn thử lại sau nhé!' }]);

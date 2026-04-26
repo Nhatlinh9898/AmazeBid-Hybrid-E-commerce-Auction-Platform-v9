@@ -581,8 +581,26 @@ const InnerApp: React.FC = () => {
     setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
   };
 
-  const handleCommentPost = (postId: string) => {
-    setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: p.comments + 1 } : p));
+  const handleCommentPost = (postId: string, comment: string) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    
+    const newCommentObj = {
+      id: `comm_${Date.now()}`,
+      userId: user.id,
+      userName: user.fullName,
+      userAvatar: user.avatar,
+      content: comment,
+      createdAt: new Date().toISOString()
+    };
+
+    setFeedPosts(prev => prev.map(p => p.id === postId ? { 
+      ...p, 
+      comments: (p.comments || 0) + 1,
+      commentsList: [...(p.commentsList || []), newCommentObj]
+    } : p));
     showNotification("Đã gửi bình luận!");
   };
 
