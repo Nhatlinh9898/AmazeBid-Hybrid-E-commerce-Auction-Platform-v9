@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Upload, Gavel, DollarSign, Tag, Info, PlusCircle, CreditCard, Landmark, Wallet, CheckCircle2, Sparkles, Link2, Globe, Download, Calculator, TrendingUp, ShieldAlert, Camera, FileText, ScanText, Bot, Loader2, Edit2, Trash2, Clock, Cpu, Zap } from 'lucide-react';
-import { Product, ItemType, OrderStatus, AffiliateAccount } from '../types';
+import { Product, ItemType, OrderStatus, AffiliateAccount, SalesAssistantTone } from '../types';
 import { PRODUCT_TEMPLATES, AFFILIATE_NETWORK_ITEMS } from '../data';
 import { api } from '../services/api';
 import { aiImportService } from '../services/aiImportService';
@@ -9,7 +9,7 @@ import { edgeAI } from '../services/edgeAIService';
 import { localProcessingService } from '../services/localProcessingService';
 import BarcodeScanner from './BarcodeScanner';
 import CameraCapture from './CameraCapture';
-import { Scan } from 'lucide-react';
+import { Scan, HandCoins, Heart, Award } from 'lucide-react';
 
 interface SellModalProps {
   isOpen: boolean;
@@ -100,6 +100,7 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onAddProduct }) 
     pricingStrategy: 'MANUAL' as 'AUTO' | 'MANUAL',
     isNegotiable: true,
     minNegotiationPrice: '',
+    salesAssistantTone: SalesAssistantTone.friendly,
     // AI Classification
     aiPriority: 'NORMAL' as 'URGENT' | 'NORMAL' | 'LOW',
     aiTags: '',
@@ -1434,20 +1435,43 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onAddProduct }) 
                             </div>
                             
                             {formData.isNegotiable && (
-                                <div className="space-y-2">
-                                    <label className="block text-[9px] font-bold text-emerald-600 uppercase">Giá tối thiểu AI có thể chốt ($)</label>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs">$</div>
-                                        <input 
-                                            type="number"
-                                            className="w-full border border-emerald-200 p-2 pl-6 rounded-lg focus:border-emerald-500 outline-none transition-all text-sm font-bold bg-white"
-                                            placeholder="VD: 80"
-                                            value={formData.minNegotiationPrice}
-                                            onChange={e => setFormData({...formData, minNegotiationPrice: e.target.value})}
-                                        />
+                                <>
+                                    <div className="space-y-2">
+                                        <label className="block text-[9px] font-bold text-emerald-600 uppercase">Giá tối thiểu AI có thể chốt ($)</label>
+                                        <div className="relative">
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs">$</div>
+                                            <input 
+                                                type="number"
+                                                className="w-full border border-emerald-200 p-2 pl-6 rounded-lg focus:border-emerald-500 outline-none transition-all text-sm font-bold bg-white"
+                                                placeholder="VD: 80"
+                                                value={formData.minNegotiationPrice}
+                                                onChange={e => setFormData({...formData, minNegotiationPrice: e.target.value})}
+                                            />
+                                        </div>
+                                        <p className="text-[9px] text-emerald-500 italic">AI sẽ thay bạn mặc cả với khách hàng nhưng không bao giờ chốt dưới giá này.</p>
                                     </div>
-                                    <p className="text-[9px] text-emerald-500 italic">AI sẽ thay bạn mặc cả với khách hàng nhưng không bao giờ chốt dưới giá này.</p>
-                                </div>
+
+                                    <div className="space-y-2 pt-2 border-t border-emerald-100">
+                                        <label className="block text-[9px] font-bold text-emerald-600 uppercase">Phong cách thuyết phục (Tone)</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { id: SalesAssistantTone.friendly, label: 'Thân thiện', icon: Heart, color: 'text-pink-500', bg: 'bg-pink-50', border: 'border-pink-200' },
+                                                { id: SalesAssistantTone.luxury, label: 'Sang trọng', icon: Award, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
+                                                { id: SalesAssistantTone.aggressive, label: 'Quyết liệt', icon: HandCoins, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+                                            ].map((t) => (
+                                                <button
+                                                    key={t.id}
+                                                    type="button"
+                                                    onClick={() => setFormData({...formData, salesAssistantTone: t.id})}
+                                                    className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all ${formData.salesAssistantTone === t.id ? `${t.border} ${t.bg} scale-105 shadow-sm` : 'border-gray-100 bg-white opacity-60 hover:opacity-100'}`}
+                                                >
+                                                    <t.icon size={16} className={t.color} />
+                                                    <span className="text-[8px] font-bold mt-1 uppercase">{t.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                     )}

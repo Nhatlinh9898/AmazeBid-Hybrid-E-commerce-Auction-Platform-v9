@@ -97,6 +97,18 @@ class WorkforceService {
     }
   }
 
+  // Lấy danh sách ID các chi nhánh mà nhân viên đang làm việc
+  getStoresByStaff(userId: string): string[] {
+    return this.staff
+      .filter(s => s.userId === userId && s.status === 'ACTIVE')
+      .map(s => s.storeId);
+  }
+
+  // Lấy thông tin chi tiết vai trò của nhân viên tại một chi nhánh
+  getStaffInfo(userId: string, storeId: string): StoreStaff | null {
+    return this.staff.find(s => s.userId === userId && s.storeId === storeId && s.status === 'ACTIVE') || null;
+  }
+
   // Xác thực đăng nhập nhân viên
   authenticate(userId: string, storeId: string, password?: string): StoreStaff | null {
     const member = this.staff.find(s => 

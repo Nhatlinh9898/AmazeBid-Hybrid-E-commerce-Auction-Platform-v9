@@ -307,6 +307,12 @@ export interface PackagingInfo {
   isFragile: boolean;
 }
 
+export enum SalesAssistantTone {
+  aggressive = 'aggressive',
+  luxury = 'luxury',
+  friendly = 'friendly'
+}
+
 export interface Product {
   id: string;
   title: string;
@@ -370,6 +376,7 @@ export interface Product {
   fraudReason?: string;
   barcode?: string;
   stock?: number;
+  salesAssistantTone?: SalesAssistantTone;
 }
 
 export interface Order {

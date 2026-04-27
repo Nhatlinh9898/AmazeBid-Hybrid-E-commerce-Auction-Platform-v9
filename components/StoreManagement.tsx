@@ -6,15 +6,19 @@ import { supplyChainService } from '../src/services/SupplyChainService';
 import { api } from '../services/api';
 import { PricingService } from '../services/pricingService';
 import BarcodeScanner from './BarcodeScanner';
+import { workforceService } from '../services/WorkforceService';
+import { StaffPermission } from '../types';
 
 interface StoreManagementProps {
   ownerId: string;
+  isStaffMode?: boolean;
   onRefreshProducts?: () => void;
 }
 
-export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRefreshProducts }) => {
+export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isStaffMode = false, onRefreshProducts }) => {
   const [stores, setStores] = React.useState<PhysicalStore[]>([]);
   const [selectedStore, setSelectedStore] = React.useState<PhysicalStore | null>(null);
+  const [staffInfo, setStaffInfo] = React.useState<any>(null);
   const [isEditingMenu, setIsEditingMenu] = React.useState(false);
   const [isEditingStore, setIsEditingStore] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<StoreMenuItem | null>(null);
@@ -75,10 +79,13 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
 
   React.useEffect(() => {
     const unsubscribeStore = storeService.subscribe((allStores) => {
-      const myStores = allStores.filter(s => s.ownerId === ownerId);
-      setStores(myStores);
-      if (myStores.length > 0 && !selectedStore) {
-        setSelectedStore(myStores[0]);
+      const accessibleStoresList = isStaffMode 
+        ? allStores.filter(s => workforceService.getStoresByStaff(ownerId).includes(s.id))
+        : allStores.filter(s => s.ownerId === ownerId);
+      
+      setStores(accessibleStoresList);
+      if (accessibleStoresList.length > 0 && !selectedStore) {
+        setSelectedStore(accessibleStoresList[0]);
       }
       setIsLoading(false);
     });
@@ -91,8 +98,22 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
       unsubscribeStore();
       unsubscribeSupply();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId]);
+  }, [ownerId, isStaffMode]);
+
+  // Track staff info when store changes
+  React.useEffect(() => {
+    if (isStaffMode && selectedStore) {
+      setStaffInfo(workforceService.getStaffInfo(ownerId, selectedStore.id));
+    } else {
+      setStaffInfo(null);
+    }
+  }, [selectedStore, isStaffMode, ownerId]);
+
+  const hasPermission = (permission: StaffPermission): boolean => {
+    if (!isStaffMode) return true; // Owner has all permissions
+    if (!staffInfo) return false;
+    return workforceService.hasPermission(ownerId, staffInfo.storeId, permission);
+  };
 
   // Calculate total cost whenever recipe changes
   React.useEffect(() => {
@@ -453,33 +474,39 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                   <p className="text-sm text-gray-500">{selectedStore.menu.length} món trong danh sách</p>
                 </div>
                 <div className="flex gap-2">
-                  <button 
-                    onClick={() => {
-                      setPosCart([]);
-                      setPosStep('CART');
-                      setShowPOS(true);
-                    }}
-                    className="bg-[#febd69] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#f3a847] transition-all shadow-lg"
-                  >
-                    <ShoppingCart size={18} /> POS / Bán tại quầy
-                  </button>
-                  <button 
-                    onClick={startEditStore}
-                    className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-gray-50 transition-all"
-                  >
-                    <Edit2 size={18} /> Sửa thông tin CH
-                  </button>
-                  <button 
-                    onClick={() => {
-                      resetForm();
-                      setIsAddingItem(true);
-                      setIsEditingStore(false);
-                      setIsEditingMenu(false);
-                    }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
-                  >
-                    <Plus size={18} /> Thêm món mới
-                  </button>
+                  {hasPermission(StaffPermission.CREATE_ORDER) && (
+                    <button 
+                      onClick={() => {
+                        setPosCart([]);
+                        setPosStep('CART');
+                        setShowPOS(true);
+                      }}
+                      className="bg-[#febd69] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#f3a847] transition-all shadow-lg"
+                    >
+                      <ShoppingCart size={18} /> POS / Bán tại quầy
+                    </button>
+                  )}
+                  {hasPermission(StaffPermission.MANAGE_STAFF) && (
+                    <button 
+                      onClick={startEditStore}
+                      className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-gray-50 transition-all"
+                    >
+                      <Edit2 size={18} /> Sửa thông tin CH
+                    </button>
+                  )}
+                  {hasPermission(StaffPermission.MANAGE_PRODUCTS) && (
+                    <button 
+                      onClick={() => {
+                        resetForm();
+                        setIsAddingItem(true);
+                        setIsEditingStore(false);
+                        setIsEditingMenu(false);
+                      }}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                    >
+                      <Plus size={18} /> Thêm món mới
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -493,15 +520,22 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, onRef
                       <div className="flex justify-between items-start">
                         <h4 className="font-bold text-gray-900 truncate">{item.name}</h4>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => handlePublishToMarketplace(item)} 
-                            disabled={isPublishing === item.id}
-                            className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg title='Đăng lên Marketplace'"
-                          >
-                            {isPublishing === item.id ? <Loader2 size={14} className="animate-spin"/> : <Globe size={14}/>}
-                          </button>
-                          <button onClick={() => startEdit(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 size={14}/></button>
-                          <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
+                          {hasPermission(StaffPermission.MANAGE_MARKETING) && (
+                            <button 
+                              onClick={() => handlePublishToMarketplace(item)} 
+                              disabled={isPublishing === item.id}
+                              className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg"
+                              title="Đăng lên Marketplace"
+                            >
+                              {isPublishing === item.id ? <Loader2 size={14} className="animate-spin"/> : <Globe size={14}/>}
+                            </button>
+                          )}
+                          {hasPermission(StaffPermission.MANAGE_PRODUCTS) && (
+                            <>
+                              <button onClick={() => startEdit(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 size={14}/></button>
+                              <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
+                            </>
+                          )}
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 line-clamp-1 mb-2">{item.description || 'Không có mô tả'}</p>

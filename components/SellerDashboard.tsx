@@ -19,6 +19,8 @@ import { configService } from '../services/ConfigService';
 import { api } from '../services/api';
 import { GlobalConfig } from '../types';
 
+import { workforceService } from '../services/WorkforceService';
+
 interface SellerDashboardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,7 +29,7 @@ interface SellerDashboardProps {
   onRefreshProducts?: () => void;
 }
 
-type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity' | 'orders';
+type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity' | 'orders' | 'workplace';
 
 const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId, onRefreshProducts }) => {
   const { user } = useAuth();
@@ -80,6 +82,8 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     });
     return unsubscribe;
   }, [currentUserId]);
+
+  const isStaff = React.useMemo(() => workforceService.getStoresByStaff(currentUserId).length > 0, [currentUserId]);
 
   const scrollTabs = (direction: 'left' | 'right') => {
     if (tabsRef.current) {
@@ -369,6 +373,14 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                 >
                     <BarChart3 size={16} /> Tổng quan
                 </button>
+                {isStaff && (
+                  <button 
+                    onClick={() => setActiveTab('workplace')}
+                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'workplace' ? 'border-indigo-600 text-indigo-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                    <Briefcase size={16} /> Nơi làm việc (Nhân viên)
+                  </button>
+                )}
                 <button 
                     onClick={() => setActiveTab('orders')}
                     className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'orders' ? 'border-amber-600 text-amber-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
@@ -471,6 +483,10 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
             )}
             
             {/* TAB: OVERVIEW */}
+            {activeTab === 'workplace' && (
+              <StoreManagement ownerId={currentUserId} isStaffMode={true} onRefreshProducts={onRefreshProducts} />
+            )}
+
             {activeTab === 'overview' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                     {/* 1. Overview Cards */}

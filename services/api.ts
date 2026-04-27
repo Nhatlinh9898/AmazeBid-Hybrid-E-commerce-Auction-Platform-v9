@@ -335,11 +335,20 @@ export const api = {
 
       const minPrice = product.minNegotiationPrice || (product.costPrice ? product.costPrice * 1.05 : product.price * 0.8);
       
+      const toneMap = {
+        aggressive: "Quyết liệt, tập trung vào sự khan hiếm và áp lực thời gian. Thẳng thắn nhưng chuyên nghiệp (Urgency & Scarcity).",
+        luxury: "Sang trọng, đẳng cấp, nhấn mạnh vào giá trị độc bản và trải nghiệm thượng lưu. Ngôn từ lịch thiệp và chọn lọc (Exclusivity & Value).",
+        friendly: "Thân thiện, nhiệt tình, như một người bạn đang giúp khách hàng có được món đồ ưng ý. Dễ gần và cởi mở (Rapport & Empathy)."
+      };
+      const selectedTone = product.salesAssistantTone ? toneMap[product.salesAssistantTone] : toneMap['friendly'];
+
       // Enhanced persuasive prompt
       const prompt = `
         Bạn là một chuyên gia bán hàng nghệ thuật và tâm lý tại AmazeBid.
         Mục tiêu: Bán sản phẩm "${product.title}" với giá tốt nhất có thể, đồng thời làm khách hàng cảm thấy họ đang nhận được một giá trị tuyệt vời.
         
+        PHONG CÁCH GIAO TIẾP (TONE): ${selectedTone}
+
         Thông tin sản phẩm:
         - Tên: ${product.title}
         - Giá niêm yết: $${product.price}
@@ -352,13 +361,12 @@ export const api = {
         QUY TẮC THƯƠNG LƯỢNG (PSHYCOLOGICAL SELLING):
         1. KHÔNG chấp nhận ngay lập tức trừ khi giá đề nghị rất gần giá niêm yết.
         2. Nếu giá đề nghị thấp hơn giá sàn ($${minPrice}):
-           - Hãy giải thích giá trị của sản phẩm (chất lượng, độ hiếm, tính năng).
-           - Sử dụng các cụm từ như "Tôi rất muốn giúp bạn, nhưng...", "Sản phẩm này thực sự đáng giá hơn thế vì...".
+           - Hãy giải thích giá trị của sản phẩm theo PHONG CÁCH GIAO TIẾP đã chọn.
            - Đưa ra giá đối nghị (thường là mức trung bình giữa giá niêm yết và giá sàn) một cách tinh tế.
         3. Nếu giá đề nghị >= giá sàn ($${minPrice}):
            - Nếu giá vẫn còn thấp hơn giá niêm yết nhiều, hãy thử "đẩy" thêm một chút bằng cách tặng thêm giá trị ảo (ví dụ: ưu tiên giao hàng, bảo đảm chất lượng).
-           - Nếu chấp nhận, hãy làm cho khách hàng cảm thấy họ đã thắng lợi: "Đây là một deal cực tốt, tôi sẽ giữ nó cho bạn!"
-        4. Tông giọng: Chuyên nghiệp, nhiệt tình, không cứng nhắc, đậm chất nghệ thuật bán hàng.
+           - Nếu chấp nhận, hãy làm cho khách hàng cảm thấy họ đã thắng lợi.
+        4. Luôn tuân thủ nghiêm ngặt PHONG CÁCH GIAO TIẾP: ${selectedTone}.
 
         BẮT BUỘC trả về định dạng sau (không thêm văn bản thừa):
         STATUS: [ACCEPTED / COUNTER / REJECTED]
