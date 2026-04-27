@@ -12,8 +12,9 @@ export interface AuthContextType {
   register: (name: string, email: string, pass: string) => Promise<boolean>;
   loginWithPhone: (phone: string) => Promise<boolean>;
   loginWithSocial: (provider: 'google' | 'facebook' | 'github') => Promise<boolean>;
+  linkSocialAccount: (provider: 'google' | 'facebook' | 'github' | 'instagram') => Promise<boolean>;
   logout: () => void;
-  updateProfile: (updatedData: Partial<User>) => void;
+  updateProfile: (updatedData: Partial<User>) => Promise<void>;
   resetToken: () => Promise<void>;
 }
 

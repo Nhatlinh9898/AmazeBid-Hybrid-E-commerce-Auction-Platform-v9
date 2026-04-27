@@ -100,6 +100,7 @@ export const api = {
     verify2FA: (code: string, secret: string) => fetchClient<{ success: boolean }>('/auth/2fa/verify', { method: 'POST', body: JSON.stringify({ code, secret }) }),
     toggle2FA: (enabled: boolean) => fetchClient<{ enabled: boolean }>('/auth/2fa/toggle', { method: 'POST', body: JSON.stringify({ enabled }) }),
     login2FA: (email: string, code: string) => fetchClient<{ user: any, token: string }>('/auth/2fa/login', { method: 'POST', body: JSON.stringify({ email, code }) }),
+    updateProfile: (data: any) => fetchClient<{ user: any }>('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
   },
 
   // Đấu giá

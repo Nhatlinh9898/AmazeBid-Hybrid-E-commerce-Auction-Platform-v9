@@ -23,8 +23,10 @@ class SecurityService {
    */
   static verifyToken(token: string): any {
     try {
-      return jwt.verify(token, this.jwtSecret);
-    } catch {
+      const decoded = jwt.verify(token, this.jwtSecret);
+      return decoded;
+    } catch (error: any) {
+      console.error('[SecurityService] Token verification failed:', error.message);
       return null;
     }
   }

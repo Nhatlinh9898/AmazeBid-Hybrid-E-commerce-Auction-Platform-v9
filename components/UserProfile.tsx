@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { User, CreditCard, ShieldCheck, MapPin, Eye, EyeOff, Edit2, Plus, LogOut, Lock, X, Share2, Copy, Check, Facebook, Instagram, Chrome, Users, Link, Save, Trash2, AlertTriangle, Phone, FileText, ShoppingBag, Gavel, Calendar, Video, Sparkles, Camera, RefreshCw, Zap, TrendingUp, Info, Clock, Landmark, Wallet, CreditCard as CreditCardIcon, Loader2, Monitor } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
-import { PaymentMethod, SocialAccount, Product, ContentPost, ItemType, AISubscriptionTier } from '../types';
+import { PaymentMethod, Product, ContentPost, ItemType, AISubscriptionTier } from '../types';
 import KYCModal from './KYCModal';
 import UserWalletModal from './UserWalletModal';
 import SystemRequirements from './SystemRequirements';
+import ServiceTermsModal from './ServiceTermsModal';
 
 interface UserProfileProps {
   isOpen: boolean;
@@ -15,8 +16,8 @@ interface UserProfileProps {
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts = [], myPosts = [] }) => {
-  const { user, logout, updateProfile, resetToken, setup2FA, confirm2FA, toggle2FA } = useAuth();
-  const [activeTab, setActiveTab] = useState<'INFO' | 'PAYMENT' | 'SECURITY' | 'SOCIAL' | 'POSTS' | 'LOYALTY' | 'AI_BILLING' | 'SYSTEM_REQ'>('INFO');
+  const { user, logout, updateProfile, resetToken, setup2FA, confirm2FA, toggle2FA, linkSocialAccount } = useAuth();
+  const [activeTab, setActiveTab] = useState<'INFO' | 'PAYMENT' | 'SECURITY' | 'SOCIAL' | 'POSTS' | 'LOYALTY' | 'AI_BILLING' | 'SYSTEM_REQ' | 'GUIDE'>('INFO');
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
   const [friendCodeInput, setFriendCodeInput] = useState('');
@@ -26,6 +27,16 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [showCheckoutUI, setShowCheckoutUI] = useState<AISubscriptionTier | null>(null);
+  const [isLinkingFriend, setIsLinkingFriend] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<Record<string, boolean>>({});
+
+  // Generate referral code if missing
+  useEffect(() => {
+    if (user && !user.referralCode) {
+      const generatedCode = `AMZ-${user.id.slice(0, 4).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
+      updateProfile({ referralCode: generatedCode });
+    }
+  }, [user, updateProfile]);
 
   const handleSubscribeAIPro = async () => {
     if (!user) return;
@@ -67,11 +78,23 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
   const [twoFactorError, setTwoFactorError] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const [hasReadServiceTerms, setHasReadServiceTerms] = useState(false);
+  const [isServiceTermsModalOpen, setIsServiceTermsModalOpen] = useState(false);
+
   useEffect(() => {
     // Fetch tasks and vouchers
     fetch('/api/tasks').then(res => res.json()).then(data => setTasks(data.tasks));
     fetch('/api/vouchers').then(res => res.json()).then(data => setVouchers(data.vouchers));
-  }, []);
+
+    // Check for tab hint (e.g. from SellModal or BidModal redirection)
+    if (isOpen) {
+      const hint = localStorage.getItem('user-profile-tab-hint');
+      if (hint === 'GUIDE') {
+        setActiveTab('GUIDE');
+        localStorage.removeItem('user-profile-tab-hint');
+      }
+    }
+  }, [isOpen]);
 
   const completeTask = async (taskId: string) => {
     const res = await fetch('/api/tasks/complete', {
@@ -224,21 +247,40 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
   };
 
   // --- Social Logic ---
-  const toggleSocialConnection = (provider: string) => {
+  const handleLinkFriendCode = async () => {
+    if (!friendCodeInput) return;
+    setIsLinkingFriend(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    alert(`Đã liên kết mã giới thiệu: ${friendCodeInput}`);
+    setFriendCodeInput('');
+    setIsLinkingFriend(false);
+    
+    // Simulate updating friend count
+    updateProfile({ friendCount: (user.friendCount || 0) + 1 });
+  };
+
+  const toggleSocialConnection = async (provider: string) => {
       const currentAccounts = user.socialAccounts || [];
-      const exists = currentAccounts.find(a => a.provider === provider);
+      const account = currentAccounts.find(a => a.provider === provider);
       
-      let newAccounts: SocialAccount[];
-      
-      if (exists) {
-          newAccounts = currentAccounts.map(a => 
-              a.provider === provider ? { ...a, connected: !a.connected } : a
-          );
+      if (account && account.connected) {
+          // Disconnect logic
+          if (confirm(`Bạn có chắc chắn muốn hủy liên kết tài khoản ${provider}?`)) {
+              const updated = currentAccounts.map(a => 
+                  a.provider === provider ? { ...a, connected: false } : a
+              );
+              updateProfile({ socialAccounts: updated });
+          }
       } else {
-          newAccounts = [...currentAccounts, { provider: provider as any, connected: true, username: 'user_connected' }];
+          // Real Connect logic
+          setSocialLoading(prev => ({ ...prev, [provider]: true }));
+          try {
+            await linkSocialAccount(provider as any);
+          } finally {
+            setSocialLoading(prev => ({ ...prev, [provider]: false }));
+          }
       }
-      
-      updateProfile({ socialAccounts: newAccounts });
   };
 
   const handleCopyCode = () => {
@@ -350,11 +392,19 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                     <Sparkles size={16} /> Loyalty & Phần thưởng
                 </button>
 
+                {user.role === 'ADMIN' && (
+                  <button 
+                      onClick={() => setActiveTab('SYSTEM_REQ')}
+                      className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-3 ${activeTab === 'SYSTEM_REQ' ? 'bg-[#131921] text-white' : 'hover:bg-gray-200 text-gray-600'}`}
+                  >
+                      <Monitor size={16} /> Cấu hình & Vận hành
+                  </button>
+                )}
                 <button 
-                    onClick={() => setActiveTab('SYSTEM_REQ')}
-                    className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-3 ${activeTab === 'SYSTEM_REQ' ? 'bg-[#131921] text-white' : 'hover:bg-gray-200 text-gray-600'}`}
+                    onClick={() => setActiveTab('GUIDE')}
+                    className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-3 ${activeTab === 'GUIDE' ? 'bg-[#131921] text-white' : 'hover:bg-gray-200 text-gray-600'}`}
                 >
-                    <Monitor size={16} /> Cấu hình & Vận hành
+                    <FileText size={16} /> Hướng dẫn & Cam kết
                 </button>
             </nav>
 
@@ -364,11 +414,253 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
             >
                 <LogOut size={16} /> Đăng xuất
             </button>
+
+            <ServiceTermsModal 
+              isOpen={isServiceTermsModalOpen} 
+              onClose={() => setIsServiceTermsModalOpen(false)} 
+              onConfirmRead={() => setHasReadServiceTerms(true)}
+            />
         </div>
 
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto p-8 pt-12 relative custom-scrollbar">
             
+            {/* TAB: GUIDE & TERMS */}
+            {activeTab === 'GUIDE' && (
+                <div className="space-y-6 animate-in slide-in-from-right-4 pb-12">
+                    <div className="flex justify-between items-center mb-6 pr-12">
+                        <h2 className="text-2xl font-bold">Hướng Dẫn Quyền Hạn & Cam Kết Hoạt Động</h2>
+                        {user.isTermsConfirmed ? (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                                <Check size={14} /> Đã xác nhận điều khoản
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
+                                <AlertTriangle size={14} /> Chưa xác nhận
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Section 1: Rights & Permissions */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-blue-600 text-white rounded-lg">
+                                    <Users size={20} />
+                                </div>
+                                <h3 className="font-bold text-gray-900">Quyền Hạn Nhân Viên (Staff)</h3>
+                            </div>
+                            <div className="space-y-3 text-sm text-gray-700">
+                                <p className="font-medium">Khi làm việc tại các chi nhánh/cửa hàng:</p>
+                                <ul className="list-disc pl-5 space-y-1 opacity-80">
+                                    <li>Chỉ có quyền thực hiện các tác vụ được cấp phép (Bán hàng, Kho, Quản lý...).</li>
+                                    <li>Dữ liệu khách hàng và doanh thu tại chi nhánh thuộc sở hữu của chủ cửa hàng.</li>
+                                    <li>Mọi hoạt động được ghi nhật ký bảo mật nghiêm ngặt.</li>
+                                </ul>
+                                <div className="mt-4 p-3 bg-white rounded-xl border border-blue-200 text-xs text-blue-800 italic">
+                                    "Nhân viên là đại diện của chi nhánh trong giờ làm việc và phải tuân thủ nội quy cửa hàng."
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                                    <ShoppingBag size={20} />
+                                </div>
+                                <h3 className="font-bold text-gray-900">Quyền Lợi Cá Nhân Độc Lập</h3>
+                            </div>
+                            <div className="space-y-3 text-sm text-gray-700">
+                                <p className="font-medium">Ngoài giờ làm việc hoặc trên tư cách cá nhân:</p>
+                                <ul className="list-disc pl-5 space-y-1 opacity-80">
+                                    <li>Bạn có đầy đủ quyền lợi của một người dùng AmazeBid thông thường.</li>
+                                    <li>Tự do tạo cửa hàng riêng, tự doanh độc lập và sử dụng AI Assistant cá nhân.</li>
+                                    <li>Doanh thu và tài sản cá nhân được tách biệt hoàn toàn với cửa hàng đang làm thuê.</li>
+                                </ul>
+                                <div className="mt-4 p-3 bg-white rounded-xl border border-indigo-200 text-xs text-indigo-800 italic">
+                                    "AmazeBid khuyến khích tinh thần khởi nghiệp. Nhân viên vẫn có thể trở thành chủ doanh nghiệp riêng trên nền tảng."
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 2: Commitments */}
+                    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                        <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                            <ShieldCheck className="text-green-600" size={20} /> Cam Kết Nội Dung & Điều Khoản Hoạt Động
+                        </h3>
+                        <div className="space-y-4 text-sm text-gray-600">
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+                                <p className="font-bold text-gray-800">1. Đạo đức kinh doanh & Trung thực</p>
+                                <p>Người dùng cam kết cung cấp thông tin sản phẩm chính xác, không gian lận trong đấu giá và chịu trách nhiệm về nguồn gốc hàng hóa.</p>
+                            </div>
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+                                <p className="font-bold text-gray-800">2. Bảo mật & P2P Networking</p>
+                                <p>Cam kết bảo mật thông tin khách hàng. Không sử dụng mạng lưới P2P của AmazeBid để truyền bá nội dung độc hại hoặc tấn công hệ thống.</p>
+                            </div>
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+                                <p className="font-bold text-gray-800">3. Sử dụng AI có trách nhiệm</p>
+                                <p>Sử dụng trợ lý AI (Gemini) một cách văn minh. Tuyệt đối không tạo nội dung lừa đảo hoặc vi phạm thuần phong mỹ tục.</p>
+                            </div>
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+                                <p className="font-bold text-gray-800">4. Giao dịch qua Escrow</p>
+                                <p>Đồng ý sử dụng hệ thống ví ký quỹ (Escrow) để đảm bảo quyền lợi cho cả người mua và người bán. Tiền chỉ được giải ngân khi đơn hàng hoàn tất.</p>
+                            </div>
+                        </div>
+
+                        {/* Confirmation Interaction */}
+                        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col items-center">
+                            {!user.isTermsConfirmed ? (
+                                <div className="w-full text-center space-y-6">
+                                    {/* AmazeBid Service Link */}
+                                    <div className="max-w-md mx-auto p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 border-dashed">
+                                        <p className="text-xs text-indigo-600 font-bold uppercase tracking-wider mb-2">Tài liệu bắt buộc</p>
+                                        <a 
+                                          href="#" 
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            setIsServiceTermsModalOpen(true);
+                                          }}
+                                          className="flex items-center justify-center gap-3 p-3 bg-white rounded-xl border border-indigo-200 hover:border-indigo-600 hover:shadow-md transition-all group"
+                                        >
+                                          <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                                            <Chrome size={20} />
+                                          </div>
+                                          <div className="text-left">
+                                            <p className="text-sm font-black text-gray-900 group-hover:text-indigo-600">Xem AmazeBid Service</p>
+                                            <p className="text-[10px] text-gray-500">Quy định chi tiết về nền tảng dịch vụ</p>
+                                          </div>
+                                          {hasReadServiceTerms && <Check size={20} className="text-green-500 ml-auto animate-in zoom-in" />}
+                                        </a>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="flex items-center justify-center gap-3 cursor-pointer group">
+                                            <div className="p-2 border-2 border-indigo-600 rounded-lg group-hover:bg-indigo-50 transition-colors">
+                                                <input type="checkbox" className="w-5 h-5 accent-indigo-600 cursor-pointer" id="confirm-terms-check" />
+                                            </div>
+                                            <span className="text-gray-700 font-medium">Tôi đã đọc, hiểu rõ quyền hạn và hoàn toàn đồng ý với các cam kết trên.</span>
+                                        </label>
+
+                                        {!hasReadServiceTerms && (
+                                          <p className="text-xs text-amber-600 font-bold flex items-center justify-center gap-1">
+                                            <AlertTriangle size={14} /> Vui lòng click xem AmazeBid Service trước khi xác nhận
+                                          </p>
+                                        )}
+
+                                        <button 
+                                            onClick={() => {
+                                                if (!hasReadServiceTerms) {
+                                                    alert('Vui lòng click xem "AmazeBid Service" trước.');
+                                                    return;
+                                                }
+                                                const checkbox = document.getElementById('confirm-terms-check') as HTMLInputElement;
+                                                if (checkbox && checkbox.checked) {
+                                                    updateProfile({ isTermsConfirmed: true });
+                                                    alert('Cảm ơn bạn đã xác nhận cam kết hoạt động tại AmazeBid!');
+                                                } else {
+                                                    alert('Vui lòng chọn ô xác nhận trước khi đồng ý.');
+                                                }
+                                            }}
+                                            disabled={!hasReadServiceTerms}
+                                            className={`px-12 py-4 rounded-2xl font-black text-lg shadow-xl transition-all flex items-center gap-3 mx-auto ${
+                                              hasReadServiceTerms 
+                                              ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100' 
+                                              : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                                            }`}
+                                        >
+                                            <Check size={24} /> XÁC NHẬN & ĐỒNG Ý
+                                        </button>
+                                        <p className="text-xs text-gray-400">Việc xác nhận là điều kiện bắt buộc để thực hiện các giao dịch và hoạt động chính thức trên hệ thống.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-4 bg-green-50 rounded-2xl border border-green-100 px-8">
+                                    <div className="w-16 h-16 bg-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                                        <Check size={32} />
+                                    </div>
+                                    <h4 className="text-xl font-bold text-green-800">Xác Nhận Thành Công</h4>
+                                    <p className="text-green-600 text-sm">Bạn đã cam kết và có đầy đủ quyền hạn thực hiện mọi giao dịch trên AmazeBid.</p>
+                                    <p className="text-[10px] text-green-400 mt-2">Ngày xác nhận: {new Date().toLocaleDateString()}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* FAQ Mini */}
+                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-4">
+                        <Info className="text-amber-600 shrink-0 mt-1" size={20} />
+                        <div className="text-sm text-amber-900">
+                            <p className="font-bold mb-1">Mẹo nhỏ cho người mới:</p>
+                            <p className="opacity-80 leading-relaxed">
+                                Nếu bạn là nhân viên, hãy sử dụng tính năng "Content Studio" để rèn luyện kỹ năng marketing cá nhân. 
+                                Những nội dung này sẽ giúp bạn xây dựng uy tín (Reputation) để sau này tự mở cửa hàng riêng hiệu quả hơn.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Technical Setup Guide Section (Admin Only) */}
+                    {user.role === 'ADMIN' && (
+                      <div className="mt-8 pt-8 border-t border-gray-100">
+                          <div className="flex items-center gap-3 mb-6">
+                              <div className="p-2 bg-indigo-600 text-white rounded-lg">
+                                  <Monitor size={20} />
+                              </div>
+                              <h3 className="font-bold text-xl text-gray-900">Hướng dẫn Thiết lập Kết nối Mạng xã hội</h3>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                      <div className="w-6 h-6 bg-[#febd69] rounded-full flex items-center justify-center text-[10px] text-white">1</div>
+                                      Firebase Console
+                                  </h4>
+                                  <ul className="space-y-3 text-sm text-gray-600">
+                                      <li className="flex gap-2">
+                                          <div className="text-[#febd69] font-bold">•</div>
+                                          <span>Truy cập vào <a href="https://console.firebase.google.com/project/gen-lang-client-0231589160/authentication/providers" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-bold">Firebase Console (Auth)</a> để kích hoạt Sign-in providers.</span>
+                                      </li>
+                                      <li className="flex gap-2">
+                                          <div className="text-[#febd69] font-bold">•</div>
+                                          <span>Nhấn vào <b>Add new provider</b> và kích hoạt các dịch vụ:</span>
+                                      </li>
+                                      <li className="ml-4 flex flex-col gap-2">
+                                          <div className="flex items-center gap-2 text-xs bg-white p-2 rounded-lg border border-gray-100 italic">
+                                            <span>* Bạn CẦN kích hoạt Google/Facebook ở link trên thì nút "Kết nối" mới hoạt động.</span>
+                                          </div>
+                                      </li>
+                                  </ul>
+                              </div>
+
+                              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                      <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-[10px] text-white">2</div>
+                                      Quản lý Cơ sở dữ liệu
+                                  </h4>
+                                  <div className="space-y-4">
+                                      <div className="p-4 bg-white rounded-xl border border-gray-100">
+                                          <p className="text-xs font-bold text-blue-600 mb-1">Firestore Database:</p>
+                                          <p className="text-[11px] text-gray-500 leading-relaxed mb-2">
+                                              Dữ liệu của bạn được lưu trữ tại:
+                                          </p>
+                                          <a href="https://console.firebase.google.com/project/gen-lang-client-0231589160/firestore/databases/ai-studio-31607805-d477-4530-afbd-703aa296f8c4/data" target="_blank" rel="noopener noreferrer" className="text-[10px] bg-gray-100 p-1 px-2 rounded block truncate text-blue-700 hover:bg-blue-50">
+                                              Mở Firestore Console
+                                          </a>
+                                      </div>
+                                      <div className="p-4 bg-white rounded-xl border border-gray-100">
+                                          <p className="text-xs font-bold text-indigo-600 mb-1">Cơ chế Liên kết (Auth Linking):</p>
+                                          <p className="text-[11px] text-gray-500 leading-relaxed">
+                                              Hàm <code>linkSocialAccount</code> đã được triển khai thật trong <code>AuthProvider.tsx</code>. Nó sử dụng <code>linkWithPopup</code> để hợp nhất tài khoản mạng xã hội vào tài khoản AmazeBid hiện tại của bạn.
+                                          </p>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                    )}
+                </div>
+            )}
+
             {/* TAB: AI_BILLING */}
             {activeTab === 'AI_BILLING' && (
                 <div className="space-y-6 animate-in slide-in-from-right-4">
@@ -1066,70 +1358,119 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                 </div>
             )}
 
-            {/* TAB: SOCIAL (UNCHANGED LOGIC) */}
             {activeTab === 'SOCIAL' && (
                 <div className="space-y-8 animate-in slide-in-from-right-4">
                     <div>
                         <h2 className="text-2xl font-bold mb-4 pr-12">Liên kết Mạng xã hội</h2>
-                        <p className="text-sm text-gray-500 mb-4">Kết nối tài khoản để đăng nhập nhanh hơn và chia sẻ sản phẩm dễ dàng.</p>
+                        <p className="text-sm text-gray-500 mb-4 font-medium">Kết nối tài khoản để đăng nhập nhanh hơn và chia sẻ sản phẩm dễ dàng.</p>
                         
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {[
-                                { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600' },
-                                { id: 'google', name: 'Google', icon: Chrome, color: 'text-red-500' },
-                                { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-600' }
+                                { 
+                                  id: 'facebook', 
+                                  name: 'Facebook', 
+                                  icon: () => (
+                                    <div className="w-6 h-6 bg-[#1877F2] rounded-full flex items-center justify-center text-white">
+                                      <Facebook size={16} fill="currentColor" />
+                                    </div>
+                                  ), 
+                                  color: 'text-[#1877F2]' 
+                                },
+                                { 
+                                  id: 'google', 
+                                  name: 'Google', 
+                                  icon: () => (
+                                    <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+                                      <svg viewBox="0 0 24 24" className="w-4 h-4">
+                                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                        <path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" fill="#FBBC05"/>
+                                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                                      </svg>
+                                    </div>
+                                  ), 
+                                  color: 'text-gray-900' 
+                                },
+                                { 
+                                  id: 'instagram', 
+                                  name: 'Instagram', 
+                                  icon: () => (
+                                    <div className="w-6 h-6 bg-gradient-to-tr from-[#FFB344] via-[#FF0050] to-[#8D00C1] rounded-lg flex items-center justify-center text-white shadow-sm">
+                                      <Instagram size={14} />
+                                    </div>
+                                  ), 
+                                  color: 'text-[#E1306C]' 
+                                }
                             ].map(platform => {
                                 const account = (user.socialAccounts || []).find(a => a.provider === platform.id);
                                 const isConnected = account?.connected;
+                                const Icon = platform.icon;
 
                                 return (
-                                    <div key={platform.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-full bg-gray-100 ${platform.color}`}>
-                                                <platform.icon size={20} />
+                                    <div key={platform.id} className="flex items-center justify-between p-5 border border-gray-100 rounded-2xl bg-white hover:border-[#ebf4ff] hover:shadow-sm transition-all group">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-12 h-12 flex items-center justify-center rounded-2xl bg-gray-50 border border-gray-100 group-hover:scale-110 transition-transform`}>
+                                                <Icon />
                                             </div>
                                             <div>
-                                                <p className="font-bold text-gray-900">{platform.name}</p>
-                                                <p className="text-xs text-gray-500">
-                                                    {isConnected ? (account?.username || 'Đã kết nối') : 'Chưa kết nối'}
+                                                <p className="font-extrabold text-gray-900">{platform.name}</p>
+                                                <p className="text-xs text-gray-400 font-medium">
+                                                    {isConnected ? (account?.username || 'Đã liên kết') : 'Chưa kết nối'}
                                                 </p>
                                             </div>
                                         </div>
                                         <button 
                                             onClick={() => toggleSocialConnection(platform.id)}
-                                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                                            disabled={socialLoading[platform.id]}
+                                            className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
                                                 isConnected 
                                                 ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-                                                : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                                            }`}
+                                                : 'bg-[#ebf4ff] text-[#0066ff] hover:bg-[#d9e9ff] shadow-sm shadow-blue-100'
+                                            } disabled:opacity-50`}
                                         >
+                                            {socialLoading[platform.id] && <Loader2 size={14} className="animate-spin" />}
                                             {isConnected ? 'Hủy liên kết' : 'Kết nối ngay'}
                                         </button>
                                     </div>
                                 );
                             })}
                         </div>
+
+                        {user.role === 'ADMIN' && (
+                           <div className="mt-6 flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                               <Info size={16} className="text-blue-600" />
+                               <p className="text-xs text-blue-700">
+                                   Gặp sự cố khi kết nối? 
+                                   <button onClick={() => setActiveTab('GUIDE')} className="ml-1 font-bold underline hover:text-blue-900 transition-colors">
+                                       Xem hướng dẫn thiết lập Firebase tại đây.
+                                   </button>
+                               </p>
+                           </div>
+                        )}
                     </div>
 
-                    <div className="border-t border-gray-200 pt-6">
-                        <div className="flex items-center justify-between mb-4">
+                    <div className="border-t border-gray-100 pt-8 mt-4">
+                        <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold">Giới thiệu bạn bè</h2>
-                            <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                            <div className="flex items-center gap-2 px-4 py-1.5 bg-green-50 text-green-600 rounded-full text-xs font-black border border-green-100">
                                 <Users size={14} /> {user.friendCount || 0} Bạn bè
                             </div>
                         </div>
                         
-                        <div className="bg-gradient-to-r from-orange-50 to-white p-6 rounded-2xl border border-orange-100 mb-6">
-                            <h3 className="font-bold text-gray-900 mb-2">Mã giới thiệu của bạn</h3>
-                            <p className="text-sm text-gray-500 mb-4">Chia sẻ mã này để nhận điểm thưởng khi bạn bè đăng ký!</p>
+                        <div className="bg-gradient-to-br from-orange-50/50 via-white to-white p-8 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <Users size={120} />
+                            </div>
+                            <h3 className="font-extrabold text-gray-900 mb-2 relative z-10">Mã giới thiệu của bạn</h3>
+                            <p className="text-xs text-gray-400 mb-6 font-medium relative z-10">Chia sẻ mã này để nhận điểm thưởng khi bạn bè đăng ký!</p>
                             
-                            <div className="flex gap-2">
-                                <div className="flex-1 bg-white border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center p-3 font-mono font-bold text-lg tracking-widest text-[#131921]">
+                            <div className="flex flex-col sm:flex-row gap-3 relative z-10">
+                                <div className="flex-1 bg-white border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center p-4 font-mono font-black text-xl tracking-[0.2em] text-[#131921] shadow-inner h-14">
                                     {user.referralCode || '----'}
                                 </div>
                                 <button 
                                     onClick={handleCopyCode}
-                                    className="bg-[#131921] text-white px-6 rounded-xl font-bold hover:bg-black transition-all flex items-center gap-2 min-w-[120px] justify-center"
+                                    className="bg-[#131921] h-14 text-white px-8 rounded-2xl font-black hover:bg-black transition-all flex items-center gap-3 min-w-[150px] justify-center shadow-xl shadow-gray-200"
                                 >
                                     {copied ? <Check size={18} className="text-green-400"/> : <Copy size={18} />}
                                     {copied ? 'Đã chép' : 'Sao chép'}
@@ -1137,17 +1478,22 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                             </div>
                         </div>
 
-                        <div>
-                            <h3 className="font-bold text-sm text-gray-700 mb-2">Nhập mã giới thiệu từ bạn bè</h3>
-                            <div className="flex gap-2">
+                        <div className="mt-8">
+                            <h3 className="font-bold text-xs text-gray-400 uppercase tracking-widest mb-3 px-1">Nhập mã giới thiệu từ bạn bè</h3>
+                            <div className="flex gap-3">
                                 <input 
                                     value={friendCodeInput}
                                     onChange={(e) => setFriendCodeInput(e.target.value.toUpperCase())}
-                                    placeholder="Nhập mã (VD: AMAZE-X-999)"
-                                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm uppercase focus:border-[#febd69] outline-none"
+                                    placeholder="Nhập mã (VD: AMZ-ABCD-123)"
+                                    className="flex-1 border border-gray-200 rounded-2xl px-6 py-4 text-sm font-bold uppercase focus:border-indigo-600 bg-gray-50/50 outline-none transition-all shadow-inner"
                                 />
-                                <button className="bg-gray-200 text-gray-700 font-bold px-4 rounded-lg text-sm hover:bg-gray-300 flex items-center gap-1">
-                                    <Link size={14} /> Liên kết
+                                <button 
+                                    onClick={handleLinkFriendCode}
+                                    disabled={isLinkingFriend || !friendCodeInput}
+                                    className="bg-white border-2 border-gray-100 text-gray-900 font-bold px-8 rounded-2xl text-sm hover:border-indigo-600 hover:text-indigo-600 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+                                >
+                                    {isLinkingFriend ? <Loader2 size={16} className="animate-spin" /> : <Link size={16} />}
+                                    Liên kết
                                 </button>
                             </div>
                         </div>

@@ -69,6 +69,41 @@ const BidModal: React.FC<BidModalProps> = ({ product, onClose, onSubmitBid }) =>
     }
   };
 
+  if (user && !user.isTermsConfirmed) {
+    return (
+      <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+        <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-8 animate-in zoom-in-95">
+          <div className="text-center space-y-6">
+            <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto">
+               <AlertCircle size={40} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 mb-2">Chưa Xác Nhận Điều Khoản</h2>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Để tham gia đấu giá trên AmazeBid, bạn cần đọc và xác nhận các <strong>Điều khoản & Cam kết</strong> trong trang thông tin cá nhân.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  onClose();
+                  window.dispatchEvent(new CustomEvent('open-profile-guide'));
+                }}
+                className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg transition-all"
+              >
+                Đến Trang Xác Nhận
+              </button>
+              <button onClick={onClose} className="w-full text-gray-400 text-sm font-bold hover:text-gray-600 transition-colors">
+                Hủy bỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />

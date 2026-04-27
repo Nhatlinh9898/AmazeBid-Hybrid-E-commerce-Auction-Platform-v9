@@ -188,12 +188,17 @@ router.get('/auth/me', (req, res) => {
   }
 
   const users = db.get('users');
-  let user = users.find(u => u.id === decoded.id || u.email === decoded.email);
+  const adminEmail = SecurityService.getAdminEmail().toLowerCase();
+  const tokenEmail = (decoded.email || '').toLowerCase();
 
-  // Handle virtual admin user
-  if (!user && decoded.id === 'admin_root') {
-    const adminEmail = SecurityService.getAdminEmail();
-    if (decoded.email === adminEmail) {
+  let user = users.find(u => 
+    u.id === decoded.id || 
+    (u.email && u.email.toLowerCase() === tokenEmail)
+  );
+
+  // Handle virtual admin user persistence
+  if (decoded.id === 'admin_root' || tokenEmail === adminEmail) {
+    if (!user) {
       user = {
         id: 'admin_root',
         fullName: 'System Administrator',
@@ -202,8 +207,16 @@ router.get('/auth/me', (req, res) => {
         role: 'ADMIN',
         joinDate: new Date().toISOString(),
         balance: 1000000,
-        tokenVersion: decoded.tokenVersion || 0
+        tokenVersion: 0,
+        wallet: {
+          balance: 1000000,
+          pendingBalance: 0,
+          kycStatus: 'verified',
+          transactions: [],
+          escrowItems: []
+        }
       } as any;
+      db.update('users', (prev) => [...prev, user!]);
     }
   }
 
@@ -241,16 +254,26 @@ router.post('/auth/login', async (req, res) => {
   
   if (isAdmin) {
     // Nếu là Admin, ưu tiên gán quyền Admin cao nhất
-    user = {
-      id: 'admin_root',
-      fullName: 'System Administrator',
-      email: adminEmail,
-      avatar: 'https://cdn-icons-png.flaticon.com/512/4712/4712035.png',
-      role: 'ADMIN',
-      joinDate: new Date().toISOString(),
-      balance: 1000000,
-      tokenVersion: user?.tokenVersion || 0
-    };
+    user = users.find(u => u.email === adminEmail);
+    if (!user) {
+      user = {
+        id: 'admin_root',
+        fullName: 'System Administrator',
+        email: adminEmail,
+        avatar: 'https://cdn-icons-png.flaticon.com/512/4712/4712035.png',
+        role: 'ADMIN',
+        joinDate: new Date().toISOString(),
+        balance: 1000000,
+        tokenVersion: 0
+      } as any;
+      await db.update('users', (prev) => [...prev, user!]);
+    } else {
+      // Ensure role is ADMIN
+      if (user.role !== 'ADMIN') {
+        user.role = 'ADMIN';
+        await db.update('users', (prev) => prev.map(u => u.id === user!.id ? { ...u, role: 'ADMIN' } : u));
+      }
+    }
   } else if (user) {
     // Nếu là người dùng thường, kiểm tra mật khẩu nếu có
     if (user.password) {
@@ -565,6 +588,74 @@ router.post('/auth/emergency-reset', async (req, res) => {
 
 router.post('/auth/logout', (req, res) => {
   sendSuccess(res, null, 'auth_logout');
+});
+
+router.put('/auth/profile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return sendError(res, 'Không có token xác thực', 'update_profile');
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = SecurityService.verifyToken(token);
+    if (!decoded) return sendError(res, 'Token không hợp lệ', 'update_profile');
+
+    const data = req.body;
+    let updatedUser: any = null;
+    const adminEmail = SecurityService.getAdminEmail().toLowerCase();
+    const tokenEmail = (decoded.email || '').toLowerCase();
+
+    await db.update('users', (users) => {
+      // Check if user exists first
+      const userIndex = users.findIndex(u => 
+        u.id === decoded.id || 
+        (u.email && u.email.toLowerCase() === tokenEmail) ||
+        (decoded.id === 'admin_root' && u.email && u.email.toLowerCase() === adminEmail)
+      );
+      
+      if (userIndex === -1 && (decoded.id === 'admin_root' || tokenEmail === adminEmail)) {
+          // If admin but not in DB, create it during update
+          const newAdmin = {
+            id: 'admin_root',
+            fullName: 'System Administrator',
+            email: adminEmail,
+            avatar: 'https://cdn-icons-png.flaticon.com/512/4712/4712035.png',
+            role: 'ADMIN',
+            joinDate: new Date().toISOString(),
+            balance: 1000000,
+            tokenVersion: 0,
+            ...data,
+            wallet: {
+              balance: 1000000,
+              pendingBalance: 0,
+              kycStatus: 'verified',
+              transactions: [],
+              escrowItems: []
+            }
+          };
+          updatedUser = newAdmin;
+          return [...users, newAdmin];
+      }
+
+      if (userIndex !== -1) {
+        const newUsers = [...users];
+        newUsers[userIndex] = { ...newUsers[userIndex], ...data };
+        updatedUser = newUsers[userIndex];
+        return newUsers;
+      }
+
+      return users;
+    });
+
+    if (!updatedUser) throw new Error('Không tìm thấy người dùng');
+
+    const userWithoutPassword = { ...updatedUser };
+    delete userWithoutPassword.password;
+    sendSuccess(res, { user: userWithoutPassword }, 'update_profile');
+  } catch (error: any) {
+    sendError(res, error.message, 'update_profile');
+  }
 });
 
 // ==========================================

@@ -11,6 +11,8 @@ import BarcodeScanner from './BarcodeScanner';
 import CameraCapture from './CameraCapture';
 import { Scan, HandCoins, Heart, Award } from 'lucide-react';
 
+import { useAuth } from '../context/useAuth';
+
 interface SellModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,6 +20,7 @@ interface SellModalProps {
 }
 
 const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onAddProduct }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'PHYSICAL' | 'AFFILIATE'>('PHYSICAL');
   const [step, setStep] = useState(1);
   const [suggestions, setSuggestions] = useState<typeof PRODUCT_TEMPLATES>([]);
@@ -564,7 +567,51 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onAddProduct }) 
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !user) return null;
+
+  if (!user.isTermsConfirmed) {
+    return (
+      <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+        <div className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-8 animate-in zoom-in-95">
+          <div className="text-center space-y-6">
+            <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+               <ShieldAlert size={40} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 mb-2">Yêu Cầu Xác Nhận</h2>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Bạn cần đọc và xác nhận các <strong>Điều khoản & Cam kết hoạt động</strong> trước khi có thể thực hiện giao dịch hoặc đăng bán trên AmazeBid.
+              </p>
+            </div>
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-left">
+              <p className="text-xs text-amber-800 font-medium mb-2 flex items-center gap-2">
+                <Info size={14} /> Tại sao tôi cần làm điều này?
+              </p>
+              <p className="text-[10px] text-amber-700 leading-relaxed">
+                Để đảm bảo môi trường kinh doanh minh bạch và an toàn. Đặc biệt đối với các nhân viên chi nhánh, việc xác nhận giúp phân định rõ quyền lợi cá nhân và trách nhiệm tại nơi làm việc.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  onClose();
+                  // In a real app we might redirect or open profile modal
+                  window.dispatchEvent(new CustomEvent('open-profile-guide'));
+                }}
+                className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+              >
+                Đến Trang Xác Nhận Ngay
+              </button>
+              <button onClick={onClose} className="w-full text-gray-400 text-sm font-bold hover:text-gray-600 transition-colors">
+                Để sau
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">

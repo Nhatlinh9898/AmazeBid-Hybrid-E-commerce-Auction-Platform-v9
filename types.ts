@@ -139,6 +139,7 @@ export interface User {
   // AI Subscription & Usage
   aiSubscription?: AISubscription;
   aiUsage?: AIUsageStats;
+  isTermsConfirmed?: boolean;
 }
 
 export enum AISubscriptionTier {

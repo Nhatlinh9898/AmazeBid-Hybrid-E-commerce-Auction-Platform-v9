@@ -184,6 +184,16 @@ const InnerApp: React.FC = () => {
     
     initApp();
 
+    const handleOpenProfileGuide = () => {
+      setIsProfileOpen(true);
+      // We need to trigger the tab change inside UserProfile.
+      // Since it's a child, we might need a prop or just let it happen in UserProfile's internal useEffect if we pass a hint.
+      // However, a simple way is set a small timeout and switch if UserProfile is already open, 
+      // but if not, we can pass a "initialTab" prop or just use localStorage.
+      localStorage.setItem('user-profile-tab-hint', 'GUIDE');
+    };
+    window.addEventListener('open-profile-guide', handleOpenProfileGuide);
+
     // Socket Listeners
     socket.on('bid:updated', ({ productId, product }: { productId: string, product: Product }) => {
       setProducts(prev => prev.map(p => p.id === productId ? product : p));

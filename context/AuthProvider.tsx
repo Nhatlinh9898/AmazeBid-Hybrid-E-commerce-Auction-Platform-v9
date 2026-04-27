@@ -1,8 +1,8 @@
 
 import React, { ReactNode } from 'react';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, linkWithPopup } from 'firebase/auth';
 import { auth, googleProvider, facebookProvider, githubProvider } from '../firebase';
-import { User } from '../types';
+import { User, SocialAccount } from '../types';
 import { api } from '../services/api';
 import { AuthContext } from './AuthContext';
 
@@ -148,6 +148,71 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const linkSocialAccount = async (provider: 'google' | 'facebook' | 'github' | 'instagram'): Promise<boolean> => {
+    try {
+      if (!auth) {
+        alert('Firebase is not configured.');
+        return false;
+      }
+
+      // Instagram is not natively supported by Firebase Link, simulate for now
+      if (provider === 'instagram') {
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
+        if (user) {
+          const currentSocial = user.socialAccounts || [];
+          const updated: SocialAccount[] = [
+            ...currentSocial.filter(s => s.provider !== 'instagram'),
+            { provider: 'instagram', connected: true, username: `${user.fullName.replace(/\s/g, '').toLowerCase()}_ig` }
+          ];
+          updateProfile({ socialAccounts: updated });
+          return true;
+        }
+        return false;
+      }
+
+      let authProvider;
+      switch (provider) {
+        case 'google': authProvider = googleProvider; break;
+        case 'facebook': authProvider = facebookProvider; break;
+        case 'github': authProvider = githubProvider; break;
+        default: authProvider = googleProvider;
+      }
+
+      let linkedUser;
+      if (auth.currentUser) {
+        const result = await linkWithPopup(auth.currentUser, authProvider);
+        linkedUser = result.user;
+      } else {
+        // Fallback for hybrid auth: if not in Firebase yet, sign in to link
+        const result = await signInWithPopup(auth, authProvider);
+        linkedUser = result.user;
+      }
+      
+      // Update local state and backend
+      if (user) {
+        const currentSocial = user.socialAccounts || [];
+        const updated: SocialAccount[] = [
+          ...currentSocial.filter(s => s.provider !== provider),
+          { provider: provider as any, connected: true, username: linkedUser.displayName || linkedUser.email || 'linked_account' }
+        ];
+        
+        await api.auth.updateProfile({ socialAccounts: updated });
+        updateProfile({ socialAccounts: updated });
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error('Link Social Account error:', error);
+      if (error.code === 'auth/credential-already-in-use') {
+        alert('Tài khoản mạng xã hội này đã được liên kết với một người dùng khác.');
+      } else {
+        alert('Có lỗi xảy ra khi liên kết tài khoản: ' + error.message);
+      }
+      return false;
+    }
+  };
+
   const register = async (name: string, email: string, pass: string): Promise<boolean> => {
     try {
       const data = await api.auth.register(name, email, pass);
@@ -186,16 +251,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const updateProfile = (updatedData: Partial<User>) => {
+  const updateProfile = async (updatedData: Partial<User>) => {
     if (user) {
-        const newUser = { ...user, ...updatedData };
-        setUser(newUser);
-        // In a real app, you'd call api.auth.updateProfile(updatedData)
+        try {
+          const data = await api.auth.updateProfile(updatedData);
+          if (data.user) {
+            setUser(assignRole(data.user));
+          } else {
+            setUser({ ...user, ...updatedData });
+          }
+        } catch (error) {
+          console.error('Update profile error:', error);
+          setUser({ ...user, ...updatedData });
+        }
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, verify2FA, setup2FA, confirm2FA, toggle2FA, register, loginWithPhone, loginWithSocial, logout, updateProfile, resetToken }}>
+    <AuthContext.Provider value={{ user, login, verify2FA, setup2FA, confirm2FA, toggle2FA, register, loginWithPhone, loginWithSocial, linkSocialAccount, logout, updateProfile, resetToken }}>
       {children}
     </AuthContext.Provider>
   );
