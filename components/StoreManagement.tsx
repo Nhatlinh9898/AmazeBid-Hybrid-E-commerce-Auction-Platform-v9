@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Plus, Trash2, Edit2, Save, ShoppingBag, Store as LucideStore, Loader2, Image as ImageIcon, Check, AlertCircle, Calculator, ChevronRight, Scale, Globe, Scan, ShoppingCart, CreditCard, User } from 'lucide-react';
-import { PhysicalStore, StoreMenuItem, RawMaterial, ProductRecipe, ProductIngredient, ItemType, OrderStatus } from '../types';
+import { PhysicalStore, StoreMenuItem, RawMaterial, ProductRecipe, ProductIngredient, ItemType, OrderStatus, OrganizationType } from '../types';
 import { storeService } from '../services/StoreService';
 import { supplyChainService } from '../src/services/SupplyChainService';
 import { api } from '../services/api';
@@ -15,12 +15,17 @@ interface StoreManagementProps {
   onRefreshProducts?: () => void;
 }
 
-export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isStaffMode = false, onRefreshProducts }) => {
+export const StoreManagement: React.FC<StoreManagementProps> = ({ 
+  ownerId, 
+  isStaffMode = false, 
+  onRefreshProducts
+}) => {
   const [stores, setStores] = React.useState<PhysicalStore[]>([]);
   const [selectedStore, setSelectedStore] = React.useState<PhysicalStore | null>(null);
   const [staffInfo, setStaffInfo] = React.useState<any>(null);
   const [isEditingMenu, setIsEditingMenu] = React.useState(false);
   const [isEditingStore, setIsEditingStore] = React.useState(false);
+  const [isAddingNewStore, setIsAddingNewStore] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<StoreMenuItem | null>(null);
   const [isAddingItem, setIsAddingItem] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -32,6 +37,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
   const [posStep, setPosStep] = React.useState<'CART' | 'PAYMENT' | 'RECEIPT'>('CART');
   const [paymentMethod, setPaymentMethod] = React.useState<'CASH' | 'CARD' | 'TRANSFER'>('CASH');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Form state for new/edit item
   const [itemForm, setItemForm] = React.useState<{
@@ -74,14 +80,16 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
     description: '',
     address: '',
     openingHours: '',
-    category: '' as any
+    category: '' as any,
+    type: OrganizationType.COMPANY,
+    parentId: ''
   });
 
   React.useEffect(() => {
     const unsubscribeStore = storeService.subscribe((allStores) => {
       const accessibleStoresList = isStaffMode 
         ? allStores.filter(s => workforceService.getStoresByStaff(ownerId).includes(s.id))
-        : allStores.filter(s => s.ownerId === ownerId);
+        : allStores.filter(s => s.ownerId === ownerId || s.parentId === ownerId);
       
       setStores(accessibleStoresList);
       if (accessibleStoresList.length > 0 && !selectedStore) {
@@ -98,7 +106,7 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
       unsubscribeStore();
       unsubscribeSupply();
     };
-  }, [ownerId, isStaffMode]);
+  }, [ownerId, isStaffMode, selectedStore]);
 
   // Track staff info when store changes
   React.useEffect(() => {
@@ -202,6 +210,39 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
     setIsEditingStore(false);
   };
 
+  const handleCreateStore = () => {
+    if (!storeForm.name || !storeForm.address) {
+      alert('Vui lòng điền tên và địa chỉ cửa hàng.');
+      return;
+    }
+
+    const newStore: PhysicalStore = {
+      id: `store-${Math.random().toString(36).substring(2, 9)}`,
+      ownerId,
+      parentId: storeForm.parentId || undefined,
+      type: storeForm.type,
+      name: storeForm.name,
+      address: storeForm.address,
+      description: storeForm.description,
+      openingHours: storeForm.openingHours,
+      phone: '',
+      rating: 5,
+      category: storeForm.category || 'General',
+      images: [`https://picsum.photos/seed/${Date.now()}/800/600`],
+      latitude: 10.762622,
+      longitude: 106.660172,
+      reviewCount: 0,
+      staffIds: [],
+      createdAt: new Date().toISOString(),
+      menu: []
+    };
+
+    storeService.addStore(newStore);
+    setIsAddingNewStore(false);
+    setSelectedStore(newStore);
+    if (onRefreshProducts) onRefreshProducts();
+  };
+
   const startEditStore = () => {
     if (!selectedStore) return;
     setStoreForm({
@@ -209,7 +250,9 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
       description: selectedStore.description,
       address: selectedStore.address,
       openingHours: selectedStore.openingHours,
-      category: selectedStore.category
+      category: selectedStore.category,
+      type: selectedStore.type || OrganizationType.COMPANY,
+      parentId: selectedStore.parentId || ''
     });
     setIsEditingStore(true);
     setIsEditingMenu(false);
@@ -409,7 +452,10 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
         paymentMethod: paymentMethod,
         status: OrderStatus.COMPLETED,
         userId: `POS_GUEST_${Math.random().toString(36).slice(2, 5).toUpperCase()}`,
-        isPOS: true // Custom flag for identification
+        isPOS: true, // Custom flag for identification
+        sellerId: selectedStore.ownerId,
+        storeId: selectedStore.id,
+        staffId: ownerId // Track which staff made the sale
       });
 
       // Optional: Refresh local store data if needed
@@ -426,6 +472,22 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
     setShowPOS(false);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh dưới 2MB.');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setItemForm(prev => ({ ...prev, image: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -434,33 +496,187 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
     );
   }
 
-  if (stores.length === 0) {
+  if (stores.length === 0 && !isAddingNewStore) {
     return (
       <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
         <LucideStore className="w-16 h-16 text-gray-200 mx-auto mb-4" />
         <h3 className="text-xl font-black text-gray-900 mb-2">Bạn chưa có cửa hàng nào</h3>
         <p className="text-gray-500 mb-6">Hãy đăng ký cửa hàng vật lý để bắt đầu kinh doanh và quản lý thực đơn.</p>
+        {!isStaffMode && (
+          <button 
+            onClick={() => {
+              setStoreForm({
+                name: '',
+                description: '',
+                address: '',
+                openingHours: '',
+                category: '' as any
+              });
+              setIsAddingNewStore(true);
+            }}
+            className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 mx-auto"
+          >
+            <Plus size={20} /> Thiết lập cửa hàng mới
+          </button>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-      {/* Store Selector */}
-      <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-        {stores.map(store => (
-          <button
-            key={store.id}
-            onClick={() => setSelectedStore(store)}
-            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
-              selectedStore?.id === store.id 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' 
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {store.name}
-          </button>
-        ))}
+      {/* New Store Form Overlay when 0 stores */}
+      {isAddingNewStore && stores.length === 0 && (
+        <div className="bg-white rounded-2xl p-8 border border-blue-100 shadow-xl max-w-2xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+              <LucideStore className="text-blue-600" /> Đăng ký Cửa hàng Mới
+            </h3>
+            <button onClick={() => setIsAddingNewStore(false)} className="text-gray-400 hover:text-gray-600"><X /></button>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Tên cửa hàng</label>
+              <input 
+                type="text" 
+                placeholder="Ví dụ: Amaze Boutique, Cửa hàng Tiện lợi..."
+                className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                value={storeForm.name}
+                onChange={e => setStoreForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Địa chỉ</label>
+              <input 
+                type="text" 
+                placeholder="Số nhà, tên đường, quận/huyện, thành phố..."
+                className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                value={storeForm.address}
+                onChange={e => setStoreForm(prev => ({ ...prev, address: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Mô tả ngắn</label>
+              <textarea 
+                placeholder="Giới thiệu nhanh về cửa hàng của bạn..."
+                className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none"
+                value={storeForm.description}
+                onChange={e => setStoreForm(prev => ({ ...prev, description: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Cấp độ tổ chức</label>
+                <select 
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                  value={storeForm.type}
+                  onChange={e => setStoreForm(prev => ({ ...prev, type: e.target.value as OrganizationType }))}
+                >
+                  <option value={OrganizationType.CORPORATION}>Tập đoàn / Tổng công ty</option>
+                  <option value={OrganizationType.COMPANY}>Công ty / Chi nhánh chính</option>
+                  <option value={OrganizationType.DEPARTMENT}>Phòng ban / Cửa hàng con</option>
+                </select>
+              </div>
+              {storeForm.type !== OrganizationType.CORPORATION && (
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Tổ chức cha</label>
+                  <select 
+                    className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                    value={storeForm.parentId}
+                    onChange={e => setStoreForm(prev => ({ ...prev, parentId: e.target.value }))}
+                  >
+                    <option value="">Không có (Cấp cao nhất)</option>
+                    {stores.filter(s => s.type === OrganizationType.CORPORATION || s.type === OrganizationType.COMPANY).map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Giờ mở cửa</label>
+                <input 
+                  type="text" 
+                  placeholder="Ví dụ: 08:00 - 22:00"
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                  value={storeForm.openingHours}
+                  onChange={e => setStoreForm(prev => ({ ...prev, openingHours: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Lĩnh vực</label>
+                <select 
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                  value={storeForm.category}
+                  onChange={e => setStoreForm(prev => ({ ...prev, category: e.target.value as any }))}
+                >
+                  <option value="">Chọn lĩnh vực</option>
+                  <option value="Food & Drink">Ẩm thực & Đồ uống</option>
+                  <option value="Fashion">Thời trang</option>
+                  <option value="Retail">Bán lẻ & Tiêu dùng</option>
+                  <option value="Beauty">Làm đẹp & Spa</option>
+                  <option value="Electronics">Điện tử & Công nghệ</option>
+                  <option value="Furniture">Nội thất & Đời sống</option>
+                  <option value="Health">Y tế & Nhà thuốc</option>
+                  <option value="Education">Giáo dục & Đào tạo</option>
+                  <option value="Automotive">Ô tô & Xe máy</option>
+                  <option value="Grocery">Tạp hóa & Siêu thị</option>
+                  <option value="Stationery">Văn phòng phẩm</option>
+                  <option value="Sports">Thể thao & Dã ngoại</option>
+                  <option value="Services">Dịch vụ & Tiện ích</option>
+                  <option value="Other">Khác</option>
+                </select>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleCreateStore}
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-2 mt-4"
+            >
+              <Check /> XÁC NHẬN KHỞI TẠO
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Store Selector or Staff Header */}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+          {stores.map(store => (
+            <button
+              key={store.id}
+              onClick={() => setSelectedStore(store)}
+              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
+                selectedStore?.id === store.id 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' 
+                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'
+              }`}
+            >
+              <LucideStore size={14} />
+              {store.name}
+              {isStaffMode && workforceService.getStaffInfo(ownerId, store.id) && (
+                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">
+                  {workforceService.getStaffInfo(ownerId, store.id)?.role}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {isStaffMode && selectedStore && staffInfo && (
+          <div className="bg-blue-50 border border-blue-100 px-4 py-2 rounded-xl flex items-center gap-3">
+            <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+              <User size={18} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Đang truy cập với vai trò</p>
+              <p className="text-sm font-bold text-blue-700">{staffInfo.role} @ {selectedStore.name}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedStore && (
@@ -583,14 +799,34 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
                       onChange={e => setStoreForm(prev => ({ ...prev, address: e.target.value }))}
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Giờ mở cửa</label>
-                    <input 
-                      type="text" 
-                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                      value={storeForm.openingHours}
-                      onChange={e => setStoreForm(prev => ({ ...prev, openingHours: e.target.value }))}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cấp độ</label>
+                      <select 
+                        className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        value={storeForm.type}
+                        onChange={e => setStoreForm(prev => ({ ...prev, type: e.target.value as OrganizationType }))}
+                      >
+                        <option value={OrganizationType.CORPORATION}>Tập đoàn</option>
+                        <option value={OrganizationType.COMPANY}>Công ty</option>
+                        <option value={OrganizationType.DEPARTMENT}>Phòng ban/CH</option>
+                      </select>
+                    </div>
+                    {storeForm.type !== OrganizationType.CORPORATION && (
+                      <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Trực thuộc</label>
+                        <select 
+                          className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                          value={storeForm.parentId}
+                          onChange={e => setStoreForm(prev => ({ ...prev, parentId: e.target.value }))}
+                        >
+                          <option value="">Cấp cao nhất</option>
+                          {stores.filter(s => s.id !== selectedStore?.id && (s.type === OrganizationType.CORPORATION || s.type === OrganizationType.COMPANY)).map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Mô tả</label>
@@ -600,6 +836,30 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
                       value={storeForm.description}
                       onChange={e => setStoreForm(prev => ({ ...prev, description: e.target.value }))}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Lĩnh vực</label>
+                    <select 
+                      className="w-full px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      value={storeForm.category}
+                      onChange={e => setStoreForm(prev => ({ ...prev, category: e.target.value as any }))}
+                    >
+                      <option value="">Chọn lĩnh vực</option>
+                      <option value="Food & Drink">Ẩm thực & Đồ uống</option>
+                      <option value="Fashion">Thời trang</option>
+                      <option value="Retail">Bán lẻ & Tiêu dùng</option>
+                      <option value="Beauty">Làm đẹp & Spa</option>
+                      <option value="Electronics">Điện tử & Công nghệ</option>
+                      <option value="Furniture">Nội thất & Đời sống</option>
+                      <option value="Health">Y tế & Nhà thuốc</option>
+                      <option value="Education">Giáo dục & Đào tạo</option>
+                      <option value="Automotive">Ô tô & Xe máy</option>
+                      <option value="Grocery">Tạp hóa & Siêu thị</option>
+                      <option value="Stationery">Văn phòng phẩm</option>
+                      <option value="Sports">Thể thao & Dã ngoại</option>
+                      <option value="Services">Dịch vụ & Tiện ích</option>
+                      <option value="Other">Khác</option>
+                    </select>
                   </div>
 
                   <button 
@@ -701,20 +961,74 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({ ownerId, isSta
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ảnh (URL)</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        className="flex-1 px-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                        value={itemForm.image}
-                        onChange={e => setItemForm(prev => ({ ...prev, image: e.target.value }))}
-                      />
-                      <button 
-                        onClick={() => setItemForm(prev => ({ ...prev, image: `https://picsum.photos/seed/${Date.now()}/400/300` }))}
-                        className="p-2 bg-gray-100 rounded-xl hover:bg-gray-200"
-                      >
-                        <ImageIcon size={18}/>
-                      </button>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ảnh món ăn</label>
+                    <div className="space-y-3">
+                      {/* Preview Area */}
+                      <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-gray-50 border-2 border-dashed border-gray-200 group">
+                        {itemForm.image ? (
+                          <>
+                            <img src={itemForm.image} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <button 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="p-2 bg-white rounded-full text-blue-600 hover:scale-110 transition-transform"
+                                title="Thay đổi ảnh"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button 
+                                onClick={() => setItemForm(prev => ({ ...prev, image: '' }))}
+                                className="p-2 bg-white rounded-full text-red-600 hover:scale-110 transition-transform"
+                                title="Xóa ảnh"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50/30 transition-all"
+                          >
+                            <ImageIcon size={32} className="mb-2" />
+                            <span className="text-[10px] font-black uppercase">Click để chọn ảnh hoặc dán URL</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <div className="flex-1 relative">
+                          <input 
+                            type="text" 
+                            className="w-full pl-9 pr-4 py-2 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Dán link ảnh tại đây (URL)..."
+                            value={itemForm.image}
+                            onChange={e => setItemForm(prev => ({ ...prev, image: e.target.value }))}
+                          />
+                          <ImageIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        </div>
+                        <input 
+                          type="file" 
+                          ref={fileInputRef} 
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={handleFileChange}
+                        />
+                        <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
+                          title="Tải ảnh lên từ máy tính"
+                        >
+                          <Plus size={18}/>
+                        </button>
+                        <button 
+                          onClick={() => setItemForm(prev => ({ ...prev, image: `https://picsum.photos/seed/${Date.now()}/400/300` }))}
+                          className="p-2 bg-gray-100 rounded-xl hover:bg-gray-200 text-gray-600"
+                          title="Ảnh ngẫu nhiên"
+                        >
+                          <Scan size={18}/>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

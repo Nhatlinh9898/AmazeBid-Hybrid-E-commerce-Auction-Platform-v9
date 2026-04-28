@@ -9,11 +9,13 @@ import ProductManagement from './ProductManagement';
 import SellerOrderManagement from './SellerOrderManagement';
 import InventoryDashboard from '../src/components/InventoryDashboard';
 import PackagingSuggestionComponent from '../src/components/PackagingSuggestion';
-import { Product, OrderStatus, ItemType, PhysicalStore, Order } from '../types';
+import { Product, OrderStatus, ItemType, PhysicalStore, Order, StaffPermission } from '../types';
+import WorkLoginDialog from './WorkLoginDialog';
 import { supplyChainService } from '../src/services/SupplyChainService';
 import { equityService } from '../src/services/EquityService';
 import { localAnalyzeProfit } from '../src/services/inventoryService';
 import { useAuth } from '../context/useAuth';
+import { useWorkSession } from '../context/WorkSessionContext';
 import { storeService } from '../services/StoreService';
 import { configService } from '../services/ConfigService';
 import { api } from '../services/api';
@@ -33,7 +35,26 @@ type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'aler
 
 const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId, onRefreshProducts }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = React.useState<TabType>('overview');
+  const [staffCount, setStaffCount] = React.useState(0);
+  
+  React.useEffect(() => {
+    return workforceService.subscribe(() => {
+      if (user) {
+        const count = workforceService.getStoresByStaff(user.id).length + 
+                     workforceService.getStoresByStaff(user.email).length;
+        setStaffCount(count);
+      }
+    });
+  }, [user]);
+
+  const isStaffOrAdmin = React.useMemo(() => {
+    if (!user) return false;
+    if (user.role === 'ADMIN') return true;
+    // Always consider them potentially staff if logged in
+    return true; 
+  }, [user]);
+
+  const [activeTab, setActiveTab] = React.useState<TabType>(staffCount > 0 || user?.role === 'ADMIN' ? 'workplace' : 'overview');
   const [globalConfig, setGlobalConfig] = React.useState<GlobalConfig>(() => configService.getConfig());
   const [selectedProductForCombo, setSelectedProductForCombo] = React.useState<Product | null>(null);
   const [selectedProductForProfit, setSelectedProductForProfit] = React.useState<Product | null>(null);
@@ -52,9 +73,18 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = React.useState(() => new Date().toISOString().split('T')[0]);
-  const [selectedStoreId, setSelectedStoreId] = React.useState<string>('all');
+  const { session, exitWorkMode } = useWorkSession();
+  const [selectedDashboardStoreId, setSelectedDashboardStoreId] = React.useState<string>(session.activeWorkplace?.id || 'all');
   const [stores, setStores] = React.useState<PhysicalStore[]>([]);
   const [realOrders, setRealOrders] = React.useState<Order[]>([]);
+
+  React.useEffect(() => {
+    if (session.isWorkMode && session.staffInfo) {
+      setSelectedDashboardStoreId(session.staffInfo.storeId);
+    } else if (isStaffOrAdmin && stores.length > 0 && selectedDashboardStoreId === 'all') {
+      setSelectedDashboardStoreId(stores[0].id);
+    }
+  }, [session.isWorkMode, session.staffInfo, isStaffOrAdmin, stores, selectedDashboardStoreId]);
 
   const fetchRealOrders = React.useCallback(async () => {
     try {
@@ -78,12 +108,22 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
 
   React.useEffect(() => {
     const unsubscribe = storeService.subscribe((allStores) => {
-        setStores(allStores.filter(s => s.ownerId === currentUserId));
+        if (isStaffOrAdmin && user) {
+          const assignedStoreIds = [
+            ...workforceService.getStoresByStaff(user.id),
+            ...workforceService.getStoresByStaff(user.email)
+          ];
+          if (user.role === 'ADMIN') {
+            setStores(allStores); // Admin sees all
+          } else {
+            setStores(allStores.filter(s => assignedStoreIds.includes(s.id)));
+          }
+        } else {
+          setStores(allStores.filter(s => s.ownerId === currentUserId));
+        }
     });
     return unsubscribe;
-  }, [currentUserId]);
-
-  const isStaff = React.useMemo(() => workforceService.getStoresByStaff(currentUserId).length > 0, [currentUserId]);
+  }, [currentUserId, isStaffOrAdmin, user]);
 
   const scrollTabs = (direction: 'left' | 'right') => {
     if (tabsRef.current) {
@@ -96,6 +136,8 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
   };
 
   // Logic tính toán thống kê
+  const [isWorkLoginDialogOpen, setIsWorkLoginDialogOpen] = React.useState(false);
+
   const stats = React.useMemo(() => {
     const oneDayFromNow = new Date(now + 24 * 60 * 60 * 1000);
     // 1. Lọc sản phẩm của người bán hiện tại và theo filter (cho Tax Report)
@@ -116,7 +158,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     const filteredRealOrders = realOrders.filter(o => {
         const orderDate = new Date(o.createdAt);
         const matchesDate = orderDate >= startObj && orderDate <= endObj;
-        const matchesStore = selectedStoreId === 'all' || o.storeId === selectedStoreId;
+        const matchesStore = selectedDashboardStoreId === 'all' || o.storeId === selectedDashboardStoreId;
         return matchesDate && matchesStore;
     });
 
@@ -299,6 +341,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
     return {
         myProducts,
         isIframe,
+        selectedStoreId: selectedDashboardStoreId,
         totalProducts: myProducts.length,
         activeCount: activeListings.length,
         pendingCount: pendingListings.length,
@@ -330,7 +373,15 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
         soldOrders: groupedOrders,
         totalLaborCost
     };
-  }, [products, realOrders, currentUserId, now, startDate, endDate, globalConfig, user, selectedStoreId]);
+  }, [products, realOrders, currentUserId, now, startDate, endDate, globalConfig, user, selectedDashboardStoreId]);
+
+  const activeWorkplaceId = session.isWorkMode && session.staffInfo ? session.staffInfo.storeId : selectedDashboardStoreId;
+  const currentPermissions = (session.isWorkMode && session.staffInfo) ? session.staffInfo.permissions : Object.values(StaffPermission);
+
+  const hasPermission = (permission: StaffPermission) => {
+    if (!session.isWorkMode) return true; // Show all if personal mode
+    return currentPermissions.includes(permission);
+  };
 
   if (!isOpen) return null;
 
@@ -346,8 +397,36 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                 <BarChart3 size={24} />
             </div>
             <div>
-                <h2 className="text-xl font-bold">Kênh Người Bán & Thống Kê</h2>
-                <p className="text-xs text-gray-400">Quản lý hiệu suất, mạng lưới và thuế</p>
+                <h2 className="text-xl font-bold">
+                  {session.isWorkMode ? `Bàn làm việc: ${session.staffInfo?.position}` : 'Kênh Người Bán & Thống Kê'}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-gray-400">
+                    {session.isWorkMode ? `Đang làm việc tại ${stores.find(s => s.id === activeWorkplaceId)?.name}` : 'Quản lý hiệu suất, mạng lưới và thuế'}
+                  </p>
+                  {isStaffOrAdmin && (
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setIsWorkLoginDialogOpen(true)}
+                        className="text-[11px] font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-blue-900/50 hover:scale-105 active:scale-95"
+                        title="Bạn muốn đăng nhập vào đâu?"
+                      >
+                        <Briefcase size={12} /> Đổi chế độ
+                      </button>
+                      {session.isWorkMode && (
+                        <button 
+                          onClick={() => {
+                            exitWorkMode();
+                            setActiveTab('overview');
+                          }}
+                          className="text-[11px] font-black bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-red-900/50 hover:scale-105 active:scale-95"
+                        >
+                          <X size={12} /> Thoát việc
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
             </div>
           </div>
           <button onClick={onClose} className="hover:bg-gray-700 p-2 rounded-full transition-colors"><X size={24}/></button>
@@ -367,13 +446,23 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                 ref={tabsRef}
                 className="flex-1 flex gap-6 px-4 overflow-x-auto no-scrollbar scroll-smooth"
             >
-                <button 
-                    onClick={() => setActiveTab('overview')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'overview' ? 'border-[#febd69] text-[#131921]' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <BarChart3 size={16} /> Tổng quan
-                </button>
-                {isStaff && (
+                {hasPermission(StaffPermission.VIEW_REPORTS) && (
+                  <button 
+                      onClick={() => setActiveTab('overview')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'overview' ? 'border-[#febd69] text-[#131921]' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <BarChart3 size={16} /> Tổng quan
+                  </button>
+                )}
+                {(hasPermission(StaffPermission.MANAGE_STAFF) || !session.isWorkMode) && (
+                  <button 
+                      onClick={() => setActiveTab('store')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'store' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <LucideStore size={16} /> Quản lý Cửa hàng
+                  </button>
+                )}
+                {isStaffOrAdmin && (
                   <button 
                     onClick={() => setActiveTab('workplace')}
                     className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'workplace' ? 'border-indigo-600 text-indigo-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
@@ -381,78 +470,78 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                     <Briefcase size={16} /> Nơi làm việc (Nhân viên)
                   </button>
                 )}
-                <button 
-                    onClick={() => setActiveTab('orders')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'orders' ? 'border-amber-600 text-amber-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <ShoppingCart size={16} /> Quản lý đơn hàng
-                </button>
-                <button 
-                    onClick={() => setActiveTab('analytics')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'analytics' ? 'border-orange-500 text-orange-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <TrendingUp size={16} /> Phân tích chuyên sâu
-                </button>
-                <button 
-                    onClick={() => setActiveTab('network')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'network' ? 'border-purple-500 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <Network size={16} /> Mạng lưới Affiliate
-                </button>
-                <button 
-                    onClick={() => setActiveTab('tax')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'tax' ? 'border-blue-500 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <Calculator size={16} /> Báo cáo Thuế
-                </button>
-                <button 
-                    onClick={() => setActiveTab('products')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'products' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <Package size={16} /> Sản phẩm & Lợi nhuận
-                </button>
-                <button 
-                    onClick={() => setActiveTab('alerts')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'alerts' ? 'border-red-500 text-red-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <AlertTriangle size={16} /> Cảnh báo kho
-                </button>
-                <button 
-                    onClick={() => setActiveTab('supply-chain')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'supply-chain' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <Truck size={16} /> Quản lý Vật tư & NCC
-                </button>
-                <button 
-                    onClick={() => setActiveTab('labor')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'labor' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <Briefcase size={16} /> Nhân sự & Chi phí
-                </button>
-                <button 
-                    onClick={() => setActiveTab('equity')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'equity' ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <PieChart size={16} /> Cổ phần & Lợi nhuận
-                </button>
-                <button 
-                    onClick={() => setActiveTab('inventory')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'inventory' ? 'border-indigo-500 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <Package size={16} /> Dự báo & Kho
-                </button>
-                <button 
-                    onClick={() => setActiveTab('product-mgmt')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'product-mgmt' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <Package size={16} /> Quản lý sản phẩm
-                </button>
-                <button 
-                    onClick={() => setActiveTab('store')}
-                    className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'store' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                    <LucideStore size={16} /> Quản lý Cửa hàng
-                </button>
+                {hasPermission(StaffPermission.CREATE_ORDER) && (
+                  <button 
+                      onClick={() => setActiveTab('orders')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'orders' ? 'border-amber-600 text-amber-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <ShoppingCart size={16} /> Quản lý đơn hàng
+                  </button>
+                )}
+                {hasPermission(StaffPermission.VIEW_REPORTS) && (
+                  <button 
+                      onClick={() => setActiveTab('analytics')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'analytics' ? 'border-orange-500 text-orange-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <TrendingUp size={16} /> Phân tích chuyên sâu
+                  </button>
+                )}
+                {!session.isWorkMode && (
+                  <button 
+                      onClick={() => setActiveTab('network')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'network' ? 'border-purple-500 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <Network size={16} /> Mạng lưới Affiliate
+                  </button>
+                )}
+                {hasPermission(StaffPermission.MANAGE_FINANCE) && (
+                  <button 
+                      onClick={() => setActiveTab('tax')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'tax' ? 'border-blue-500 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <Calculator size={16} /> Báo cáo Thuế
+                  </button>
+                )}
+                {hasPermission(StaffPermission.MANAGE_PRODUCTS) && (
+                  <button 
+                      onClick={() => setActiveTab('product-mgmt')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'product-mgmt' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <Package size={16} /> Quản lý sản phẩm
+                  </button>
+                )}
+                {hasPermission(StaffPermission.MANAGE_INVENTORY) && (
+                  <button 
+                      onClick={() => setActiveTab('inventory')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'inventory' ? 'border-indigo-500 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <Package size={16} /> Dự báo & Kho
+                  </button>
+                )}
+                {hasPermission(StaffPermission.MANAGE_INVENTORY) && (
+                  <button 
+                      onClick={() => setActiveTab('supply-chain')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'supply-chain' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <Truck size={16} /> Quản lý Vật tư & NCC
+                  </button>
+                )}
+                {hasPermission(StaffPermission.MANAGE_STAFF) && (
+                  <button 
+                      onClick={() => setActiveTab('labor')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'labor' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <Briefcase size={16} /> Nhân sự & Chi phí
+                  </button>
+                )}
+                {(hasPermission(StaffPermission.MANAGE_FINANCE) || user?.role === 'ADMIN') && !session.isWorkMode && (
+                  <button 
+                      onClick={() => setActiveTab('equity')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'equity' ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <PieChart size={16} /> Cổ phần & Lợi nhuận
+                  </button>
+                )}
             </div>
 
             <button 
@@ -466,10 +555,74 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
 
         {/* Main Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+            {isStaffOrAdmin && (
+              <div className="mb-6 animate-in slide-in-from-top-2">
+                <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-5">
+                    <div className="h-16 w-16 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center text-white shadow-inner">
+                      <Briefcase size={32} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="text-xs font-black uppercase tracking-widest opacity-70">Bàn làm việc nhân viên</h4>
+                        <span className="bg-green-500/20 text-green-300 text-[10px] font-black px-2 py-0.5 rounded-full border border-green-500/30">ONLINE</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          {workforceService.getOrganizationPath(currentUserId, selectedDashboardStoreId || '').map((part, idx) => (
+                            <React.Fragment key={idx}>
+                              <span className="text-[10px] font-bold bg-white/10 px-2 py-0.5 rounded border border-white/5 whitespace-nowrap">
+                                {part}
+                              </span>
+                              {idx < workforceService.getOrganizationPath(currentUserId, selectedDashboardStoreId || '').length - 1 && (
+                                <ChevronRight size={10} className="opacity-40" />
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                        <span className="text-2xl font-black leading-tight mb-1">
+                          {stores.find(s => s.id === selectedDashboardStoreId)?.name || 'Đang xác định chi nhánh...'}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-blue-200">
+                            {workforceService.getJobTitle(currentUserId, selectedDashboardStoreId || '')}
+                          </span>
+                          <span className="h-4 w-[1px] bg-white/20"></span>
+                          <span className="text-xs font-medium opacity-60">
+                            ID: {workforceService.getStaffInfo(currentUserId, selectedDashboardStoreId || '')?.id || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-4 items-center bg-black/20 p-4 rounded-xl backdrop-blur-sm border border-white/10 w-full md:w-auto">
+                    <div className="flex-1 md:flex-none min-w-[200px]">
+                      <p className="text-[10px] font-black uppercase opacity-60 mb-2">Chuyển nơi làm việc</p>
+                      <select 
+                        value={selectedDashboardStoreId}
+                        onChange={(e) => setSelectedDashboardStoreId(e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-white/30 transition-all appearance-none cursor-pointer"
+                      >
+                        {stores.map(s => (
+                          <option key={s.id} value={s.id} className="text-gray-900">{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'orders' && <SellerOrderManagement products={products} currentUserId={currentUserId} globalConfig={globalConfig} />}
             {activeTab === 'inventory' && <InventoryDashboard products={products} onRefreshProducts={onRefreshProducts} />}
             {activeTab === 'product-mgmt' && <ProductManagement onUpdate={onRefreshProducts} />}
-            {activeTab === 'store' && <StoreManagement ownerId={currentUserId} onRefreshProducts={onRefreshProducts} />}
+            {activeTab === 'store' && (
+              <StoreManagement 
+                ownerId={currentUserId} 
+                onRefreshProducts={onRefreshProducts} 
+              />
+            )}
             {activeTab === 'supply-chain' && <SupplyChainManagement ownerId={currentUserId} onTabChange={setActiveTab} />}
             {activeTab === 'labor' && <LaborManagement ownerId={currentUserId} onTabChange={setActiveTab} />}
             {activeTab === 'equity' && (
@@ -489,6 +642,17 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
 
             {activeTab === 'overview' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    {/* Store Title for Staff */}
+                    {isStaffOrAdmin && (
+                        <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <LucideStore className="text-blue-600" size={20} />
+                                <h3 className="font-black text-gray-900 uppercase tracking-tighter">Báo cáo hiệu suất: {stores.find(s => s.id === selectedDashboardStoreId)?.name}</h3>
+                            </div>
+                            <span className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-1 rounded-md uppercase">Dữ liệu thời gian thực</span>
+                        </div>
+                    )}
+
                     {/* 1. Overview Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         {/* Total Income */}
@@ -855,8 +1019,8 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                     <LucideStore size={12}/> Cửa hàng
                                 </label>
                                 <select 
-                                    value={selectedStoreId}
-                                    onChange={(e) => setSelectedStoreId(e.target.value)}
+                                    value={selectedDashboardStoreId}
+                                    onChange={(e) => setSelectedDashboardStoreId(e.target.value)}
                                     className="w-full px-4 py-2 bg-gray-50 rounded-lg text-sm font-bold border-gray-200"
                                 >
                                     <option value="all">Tất cả cửa hàng</option>
@@ -1016,9 +1180,9 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                                 <div className="text-right">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cửa hàng/Mã người bán</p>
                                     <p className="font-bold text-gray-900">
-                                        {selectedStoreId === 'all' 
+                                        {selectedDashboardStoreId === 'all' 
                                             ? (stores.length > 0 ? stores.map(s => s.name).join(', ') : 'Cửa hàng trực tuyến') 
-                                            : (stores.find(s => s.id === selectedStoreId)?.name || 'N/A')}
+                                            : (stores.find(s => s.id === selectedDashboardStoreId)?.name || 'N/A')}
                                     </p>
                                     <p className="text-xs text-gray-500">ID: {currentUserId}</p>
                                 </div>
@@ -1482,6 +1646,16 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
           <p>Báo cáo này được tạo tự động bởi hệ thống AmazeBid. Dữ liệu được cập nhật theo thời gian thực.</p>
           <p>© 2026 AmazeBid Platform - Hybrid E-commerce & Auction</p>
         </div>
+
+        {isWorkLoginDialogOpen && user && (
+          <WorkLoginDialog 
+            isOpen={isWorkLoginDialogOpen}
+            onClose={() => setIsWorkLoginDialogOpen(false)}
+            userId={user.id}
+            userName={user.fullName}
+            userAvatar={user.avatar}
+          />
+        )}
       </div>
     </div>
   );

@@ -494,29 +494,37 @@ export enum StaffPermission {
 
 export interface StoreStaff {
   id: string;
-  userId: string; // Tên đăng nhập
-  password?: string; // Mật khẩu đăng nhập (ẩn khi hiển thị danh sách)
+  userId: string;
+  password?: string;
   name: string;
   email: string;
   role: StaffRole;
-  storeId: string; // ID của chi nhánh/cửa hàng
+  position?: string; // e.g. "Senior Barista", "Lead Sales"
+  departmentId?: string; // Specific department within the store/company
+  storeId: string;
+  corporationId?: string; // Top-level corp ID
   permissions: StaffPermission[];
   status: 'ACTIVE' | 'INACTIVE';
   joinDate: string;
 }
 
+export enum OrganizationType {
+  CORPORATION = 'CORPORATION',
+  COMPANY = 'COMPANY',
+  DEPARTMENT = 'DEPARTMENT'
+}
+
 export interface PhysicalStore {
   id: string;
   ownerId: string;
-  parentStoreId?: string; // Nếu là chi nhánh, trỏ về id của chuỗi chính
-  isBranch: boolean;
-  branchName?: string;
+  parentId?: string; // Point to Corporation or Company
+  type: OrganizationType;
   name: string;
   description: string;
   address: string;
   latitude: number;
   longitude: number;
-  category: 'FOOD' | 'FASHION' | 'DRINK' | 'ELECTRONICS' | 'BEAUTY' | 'BOOKS' | 'SERVICES' | 'OTHER';
+  category: string;
   images: string[];
   openingHours: string;
   rating: number;
@@ -524,7 +532,9 @@ export interface PhysicalStore {
   menu: StoreMenuItem[];
   qrCode?: string;
   createdAt: string;
-  staffIds: string[]; // Danh sách ID nhân viên thuộc chi nhánh này
+  staffIds: string[];
+  // Hierarchical metadata
+  organizationPath?: string; // e.g. "CorpX/CompX1/Deptx1"
 }
 
 export interface ContentPost {

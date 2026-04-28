@@ -13,7 +13,7 @@ interface LaborManagementProps {
   onTabChange?: (tab: any) => void;
 }
 
-export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId }) => {
+export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTabChange }) => {
   const [stores, setStores] = React.useState<PhysicalStore[]>([]);
   const [selectedStoreId, setSelectedStoreId] = React.useState<string | null>(null);
   const [staff, setStaff] = React.useState<StoreStaff[]>([]);
@@ -151,8 +151,11 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId }) => 
                 <p className="text-sm text-gray-400 italic">Bạn chưa khởi tạo cửa hàng/chi nhánh nào.</p>
                 <button 
                   onClick={() => {
-                    // Logic để chuyển sang tab chuyển đổi/tạo cửa hàng
-                    alert('Vui lòng vào tab "Cửa hàng" để tạo cơ sở kinh doanh đầu tiên trước khi thiết lập nhân sự.');
+                    if (onTabChange) {
+                      onTabChange('store');
+                    } else {
+                      alert('Vui lòng vào tab "Cửa hàng" để tạo cơ sở kinh doanh đầu tiên trước khi thiết lập nhân sự.');
+                    }
                   }}
                   className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-all flex items-center gap-1"
                 >

@@ -91,7 +91,7 @@ router.put('/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
-    await db.update('products', (prev) => prev.map(p => p.id === id ? { ...p, ...data } : p));
+    await db.update('products', (prev) => (prev || []).map(p => p.id === id ? { ...p, ...data } : p));
     const product = db.get('products').find(p => p.id === id);
     sendSuccess(res, { product }, 'update_product');
   } catch (error: any) {
@@ -144,7 +144,7 @@ router.post('/bids', async (req, res) => {
       ]
     };
 
-    await db.update('products', (prev) => prev.map(p => p.id === productId ? updatedProduct : p));
+    await db.update('products', (prev) => (prev || []).map(p => p.id === productId ? updatedProduct : p));
 
     sendSuccess(res, { product: updatedProduct }, 'place_bid');
   } catch (error: any) {
@@ -174,7 +174,7 @@ router.get('/streams', async (req, res) => {
 // 4. AUTH API
 // ==========================================
 
-router.get('/auth/me', (req, res) => {
+router.get('/auth/me', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return sendError(res, 'Không có token xác thực', 'auth_me');
@@ -187,17 +187,17 @@ router.get('/auth/me', (req, res) => {
     return sendError(res, 'Token không hợp lệ hoặc đã hết hạn', 'auth_me');
   }
 
-  const users = db.get('users');
-  const adminEmail = SecurityService.getAdminEmail().toLowerCase();
-  const tokenEmail = (decoded.email || '').toLowerCase();
+  const users = db.get('users') || [];
+  const adminEmail = SecurityService.getAdminEmail().toLowerCase().trim();
+  const tokenEmail = (decoded.email || '').toLowerCase().trim();
 
   let user = users.find(u => 
     u.id === decoded.id || 
-    (u.email && u.email.toLowerCase() === tokenEmail)
+    (u.email && u.email.toLowerCase().trim() === tokenEmail)
   );
 
   // Handle virtual admin user persistence
-  if (decoded.id === 'admin_root' || tokenEmail === adminEmail) {
+  if (decoded.id === 'admin_root' || (tokenEmail && tokenEmail === adminEmail)) {
     if (!user) {
       user = {
         id: 'admin_root',
@@ -216,7 +216,7 @@ router.get('/auth/me', (req, res) => {
           escrowItems: []
         }
       } as any;
-      db.update('users', (prev) => [...prev, user!]);
+      await db.update('users', (prev) => [...(prev || []), user!]);
     }
   }
 
@@ -271,7 +271,7 @@ router.post('/auth/login', async (req, res) => {
       // Ensure role is ADMIN
       if (user.role !== 'ADMIN') {
         user.role = 'ADMIN';
-        await db.update('users', (prev) => prev.map(u => u.id === user!.id ? { ...u, role: 'ADMIN' } : u));
+        await db.update('users', (prev) => (prev || []).map(u => u.id === user!.id ? { ...u, role: 'ADMIN' } : u));
       }
     }
   } else if (user) {
@@ -355,7 +355,7 @@ router.post('/auth/firebase', async (req, res) => {
       user.fullName = name || user.fullName;
       if (!(user as any).firebaseUid) (user as any).firebaseUid = uid;
       
-      await db.update('users', (prev) => prev.map(u => u.id === user!.id ? user! : u));
+      await db.update('users', (prev) => (prev || []).map(u => u.id === user!.id ? user! : u));
       SecurityService.logEvent(db, user.id, 'LOGIN_SOCIAL', { email, provider: 'firebase' }, getClientIp(req));
     }
 
@@ -458,7 +458,7 @@ router.post('/auth/2fa/verify', async (req, res) => {
   });
 
   if (verified) {
-    await db.update('users', (users) => users.map(u => {
+    await db.update('users', (users = []) => (users || []).map(u => {
       if (u.id === decoded.id) {
         return { ...u, twoFactorEnabled: true, twoFactorSecret: secret };
       }
@@ -481,7 +481,7 @@ router.post('/auth/2fa/toggle', async (req, res) => {
   const decoded = SecurityService.verifyToken(token);
   if (!decoded) return sendError(res, 'Token không hợp lệ', '2fa_toggle');
 
-  await db.update('users', (users) => users.map(u => {
+  await db.update('users', (users = []) => (users || []).map(u => {
     if (u.id === decoded.id) {
       return { ...u, twoFactorEnabled: enabled };
     }
@@ -1118,7 +1118,12 @@ router.post('/admin/withdraw', async (req, res) => {
 
 router.post('/orders/complete', async (req, res) => {
   try {
-    const { items, totalAmount, shippingInfo, isPOS, sellerId, storeId, userId } = req.body;
+    const { items = [], totalAmount = 0, shippingInfo = {}, isPOS, sellerId, storeId, userId } = req.body;
+    
+    if (!Array.isArray(items)) {
+      throw new Error('Items list must be an array');
+    }
+
     const order = {
       id: `ord_${Date.now()}`,
       userId: userId || 'anonymous',
@@ -1133,14 +1138,14 @@ router.post('/orders/complete', async (req, res) => {
       createdAt: new Date().toISOString()
     };
     
-    await db.update('orders', (prev) => [order, ...prev]);
+    await db.update('orders', (prev = []) => [order, ...(prev || [])]);
     
     // Update product status/stock
     const productIds = items.map((i: any) => i.id);
-    const products = db.get('products');
-    const users = db.get('users');
+    const products = db.get('products') || [];
+    const users = db.get('users') || [];
 
-    await db.update('products', (prev) => prev.map(p => {
+    await db.update('products', (prev = []) => (prev || []).map(p => {
       if (productIds.includes(p.id)) {
         const item = items.find((i: any) => i.id === p.id);
         // Decrease stock if it's a menu item or has stock tracked
@@ -1155,11 +1160,11 @@ router.post('/orders/complete', async (req, res) => {
 
     // If it's a store menu item, update the store stock as well
     if (storeId) {
-      await db.update('stores', (stores) => stores.map((s: any) => {
+      await db.update('stores', (stores = []) => (stores || []).map((s: any) => {
         if (s.id === storeId) {
           return {
             ...s,
-            menu: s.menu.map((m: any) => {
+            menu: (s.menu || []).map((m: any) => {
               const orderedItem = items.find((i: any) => i.id === m.id);
               if (orderedItem && m.stock !== undefined) {
                 const newStock = Math.max(0, m.stock - (orderedItem.quantity || 1));
@@ -1332,7 +1337,7 @@ router.put('/orders/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    await db.update('orders', (prev) => prev.map(o => 
+    await db.update('orders', (prev = []) => (prev || []).map(o => 
       o.id === id ? { ...o, status } : o
     ));
     const order = db.get('orders').find(o => o.id === id);
@@ -1369,8 +1374,8 @@ router.post('/posts', async (req, res) => {
 router.post('/posts/:id/like', async (req, res) => {
   try {
     const { id } = req.params;
-    await db.update('feedPosts', (prev) => prev.map(p => 
-      p.id === id ? { ...p, likes: p.likes + 1 } : p
+    await db.update('feedPosts', (prev = []) => (prev || []).map(p => 
+      p.id === id ? { ...p, likes: (p.likes || 0) + 1 } : p
     ));
     sendSuccess(res, null, 'like_post');
   } catch (error: any) {
@@ -1412,7 +1417,7 @@ router.put('/products/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status, shippingInfo } = req.body;
-    await db.update('products', (prev) => prev.map(p => 
+    await db.update('products', (prev = []) => (prev || []).map(p => 
       p.id === id ? { ...p, status, shippingInfo: shippingInfo || p.shippingInfo } : p
     ));
     sendSuccess(res, { id, status }, 'update_product_status');

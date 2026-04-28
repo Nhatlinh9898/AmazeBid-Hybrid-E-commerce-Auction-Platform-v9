@@ -33,6 +33,7 @@ interface Schema {
     vnpayHashSecret?: string;
     deployStatus?: 'IDEAL' | 'DEPLOYING' | 'ACTIVE';
   };
+  stores: any[];
 }
 
 class Database {
@@ -98,6 +99,11 @@ class Database {
         // Migration: Ensure blocked_ips exists
         if (!data.blocked_ips) {
           data.blocked_ips = [];
+        }
+
+        // Migration: Ensure stores exists
+        if (!data.stores) {
+          data.stores = [];
         }
 
         // Migration: Ensure globalConfig exists
@@ -172,6 +178,7 @@ class Database {
       orders: [],
       security_logs: [],
       blocked_ips: [],
+      stores: [],
       globalConfig: {
         platformFeeRate: 0.05,
         defaultVatRate: 0.08,

@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Search, ShoppingCart, User as UserIcon, MapPin, Gavel, LayoutGrid, PlusCircle, Package, Video, Sparkles, Zap, BarChart3, Shield, Bot, Camera, Users, Wand2, Mic, Mail, Store as LucideStore, PlusSquare, Utensils } from 'lucide-react';
+import { Search, ShoppingCart, User as UserIcon, MapPin, Gavel, LayoutGrid, PlusCircle, Package, Video, Sparkles, Zap, BarChart3, Shield, Bot, Camera, Users, Wand2, Mic, Mail, Store as LucideStore, PlusSquare, Utensils, Briefcase, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
+import { useWorkSession } from '../context/WorkSessionContext';
 import { emailService } from '../services/EmailService';
 
 interface NavbarProps {
@@ -39,6 +40,7 @@ const Navbar: React.FC<NavbarProps> = ({
   onGoHome, onOpenKOLStudio, onOpenEmailInbox, onOpenStoreDiscovery, onOpenStoreRegistration, onOpenWallet
 }) => {
   const { user } = useAuth();
+  const { session, exitWorkMode } = useWorkSession();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = React.useState(false);
   const [unreadEmails, setUnreadEmails] = React.useState(0);
@@ -114,6 +116,32 @@ const Navbar: React.FC<NavbarProps> = ({
             <Gavel className="text-[#febd69]" /> Amaze<span className="text-[#febd69]">Bid</span>
           </span>
         </div>
+
+        {/* Work Mode Indicator */}
+        {session.isWorkMode && (
+          <div className="flex items-center gap-2 px-4 py-1 bg-blue-600 rounded-full border border-blue-400/50 shadow-lg animate-in slide-in-from-left-4">
+              <Briefcase size={16} className="text-white" />
+              <div className="flex flex-col">
+                  <div className="flex items-center gap-1">
+                      {session.organizationPath.map((part, idx) => (
+                          <React.Fragment key={idx}>
+                              <span className="text-[9px] font-black uppercase tracking-tighter opacity-70 whitespace-nowrap">{part}</span>
+                              {idx < session.organizationPath.length - 1 && <ChevronRight size={10} className="opacity-40" />}
+                          </React.Fragment>
+                      ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <span className="text-xs font-black leading-none">{session.staffInfo?.position || session.staffInfo?.role}</span>
+                      <button 
+                        onClick={exitWorkMode}
+                        className="text-[9px] font-black bg-white/20 hover:bg-white/40 px-1.5 py-0.5 rounded uppercase transition-colors"
+                      >
+                          Thoát việc
+                      </button>
+                  </div>
+              </div>
+          </div>
+        )}
 
         {/* Deliver to */}
         <div className="hidden md:flex items-center gap-1 p-2 cursor-pointer border border-transparent hover:border-white rounded">

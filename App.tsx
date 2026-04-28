@@ -80,12 +80,41 @@ const categoryMap: Record<string, string> = {
 
 import UserWalletModal from './components/UserWalletModal';
 
+import { useWorkSession } from './context/WorkSessionContext';
+import WorkLoginDialog from './components/WorkLoginDialog';
+import { workforceService } from './services/WorkforceService';
+
 const InnerApp: React.FC = () => {
   const { user } = useAuth();
+  const { session } = useWorkSession();
   const [products, setProducts] = React.useState<Product[]>([]);
   const [streams, setStreams] = React.useState<LiveStream[]>([]);
   const [contentPosts, setContentPosts] = React.useState<ContentPost[]>([]); 
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isWorkLoginDialogOpen, setIsWorkLoginDialogOpen] = React.useState(false);
+
+  // Check for professional roles on login
+  React.useEffect(() => {
+     if (user) {
+        // Find if this user has any staff assigned
+        const staffRoles = [
+          ...workforceService.getStoresByStaff(user.id),
+          ...workforceService.getStoresByStaff(user.email)
+        ];
+        
+        const hasWorkRoles = staffRoles.length > 0;
+        
+        // Show dialog if they have roles, haven't seen welcome this session, and are not currently in work mode
+        const seenWelcome = sessionStorage.getItem(`welcome_work_shown_${user.id}`);
+        
+        if (hasWorkRoles && !seenWelcome && !session.isWorkMode) {
+           setIsWorkLoginDialogOpen(true);
+           // We'll mark it as shown so it doesn't annoy every reload, 
+           // but it should definitely show once after login.
+           sessionStorage.setItem(`welcome_work_shown_${user.id}`, 'true');
+        }
+     }
+  }, [user, session.isWorkMode]);
 
   // Fetch initial data from backend
   React.useEffect(() => {
@@ -115,21 +144,23 @@ const InnerApp: React.FC = () => {
           const mapStoreProducts = (stores: PhysicalStore[]) => {
             const allStoreProducts: Product[] = [];
             stores.forEach(store => {
-              store.menu.forEach(item => {
-                allStoreProducts.push({
-                  id: item.id,
-                  title: item.name,
-                  description: item.description,
-                  price: item.price,
-                  image: item.image,
-                  category: storeCategoryToMainCategory[store.category] || store.category,
-                  type: ItemType.FIXED_PRICE,
-                  rating: store.rating,
-                  reviewCount: store.reviewCount,
-                  status: item.isAvailable ? OrderStatus.AVAILABLE : OrderStatus.CANCELLED,
-                  sellerId: store.id,
+              if (store && Array.isArray(store.menu)) {
+                store.menu.forEach(item => {
+                  allStoreProducts.push({
+                    id: item.id,
+                    title: item.name,
+                    description: item.description,
+                    price: item.price,
+                    image: item.image,
+                    category: storeCategoryToMainCategory[store.category] || store.category,
+                    type: ItemType.FIXED_PRICE,
+                    rating: store.rating,
+                    reviewCount: store.reviewCount,
+                    status: item.isAvailable ? OrderStatus.AVAILABLE : OrderStatus.CANCELLED,
+                    sellerId: store.id,
+                  });
                 });
-              });
+              }
             });
             return allStoreProducts;
           };
@@ -1040,11 +1071,21 @@ const InnerApp: React.FC = () => {
           storeId={selectedStoreId}
           onClose={() => setIsDigitalMenuOpen(false)}
           onAddToCart={(item) => {
-            // Handle add to cart from menu
-            // This would need to be integrated with the cart state
-            // For now, let's just show a notification
-            setNotification(`Đã thêm ${item.name} vào giỏ hàng`);
-            setTimeout(() => setNotification(null), 3000);
+            const store = storeService.getStoreById(selectedStoreId);
+            const product: Product = {
+              id: item.id,
+              title: item.name,
+              description: item.description,
+              price: item.price,
+              image: item.image,
+              category: item.category || store?.category || 'General',
+              type: ItemType.FIXED_PRICE,
+              rating: store?.rating || 5,
+              reviewCount: store?.reviewCount || 0,
+              status: item.isAvailable ? OrderStatus.AVAILABLE : OrderStatus.OUT_OF_STOCK,
+              sellerId: selectedStoreId,
+            };
+            handleAddToCart(product);
           }}
         />
       )}
@@ -1368,6 +1409,16 @@ const InnerApp: React.FC = () => {
         onClose={() => setIsGeminiOpen(false)}
       />
       {user?.role === 'ADMIN' && <AIWorkerManager isOpen={isAIWorkerOpen} />}
+      {isWorkLoginDialogOpen && user && (
+          <WorkLoginDialog 
+              isOpen={isWorkLoginDialogOpen}
+              onClose={() => setIsWorkLoginDialogOpen(false)}
+              userId={user.id}
+              userName={user.fullName}
+              userAvatar={user.avatar}
+          />
+      )}
+
       <ChatWidget 
         currentUserId={user?.id} 
         targetUser={chatTargetUser || undefined} 

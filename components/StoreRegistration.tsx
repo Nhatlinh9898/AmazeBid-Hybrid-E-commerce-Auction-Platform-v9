@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Store as LucideStore, MapPin, Clock, Plus, X, Utensils, Coffee, ShoppingBag, CheckCircle2, Sparkles, Loader2, Trash2, Laptop, BookOpen, Wrench, Camera } from 'lucide-react';
+import { Store as LucideStore, MapPin, Clock, Plus, X, Utensils, ShoppingBag, CheckCircle2, Sparkles, Loader2, Trash2, Laptop, BookOpen, Wrench, Camera } from 'lucide-react';
 import { storeService } from '../services/StoreService';
 import { useAuth } from '../context/useAuth';
 import { aiStoreService } from '../services/aiStoreService';
-import { StoreMenuItem } from '../types';
+import { StoreMenuItem, OrganizationType } from '../types';
 
 interface StoreRegistrationProps {
   onClose: () => void;
@@ -59,7 +59,7 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
     name: '',
     description: '',
     address: '',
-    category: 'FOOD' as 'FOOD' | 'DRINK' | 'FASHION' | 'ELECTRONICS' | 'BEAUTY' | 'BOOKS' | 'SERVICES' | 'OTHER',
+    category: 'Food & Drink' as string,
     openingHours: '08:00 - 22:00',
     images: [] as string[],
     menu: [] as StoreMenuItem[]
@@ -129,17 +129,24 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
     e.preventDefault();
     if (!user) return;
 
-    storeService.createStore({
-      ownerId: user.id,
+    storeService.addStore({
+      id: `store-${Math.random().toString(36).substring(2, 9)}`,
+      ownerId: user.id || user.email,
       name: formData.name,
       description: formData.description,
       address: formData.address,
       category: formData.category,
-      images: formData.images.length > 0 ? formData.images : ['https://picsum.photos/seed/store/800/600'],
+      images: formData.images.length > 0 ? formData.images : [`https://picsum.photos/seed/${encodeURIComponent(formData.name)}/800/600`],
       openingHours: formData.openingHours,
-      latitude: 21.0285, // Default Hanoi
-      longitude: 105.8542,
-      menu: formData.menu
+      latitude: 10.762622,
+      longitude: 106.660172,
+      phone: '',
+      rating: 5,
+      reviewCount: 0,
+      staffIds: [],
+      createdAt: new Date().toISOString(),
+      menu: formData.menu,
+      type: OrganizationType.COMPANY
     });
 
     setStep(4);
@@ -268,29 +275,35 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
 
                 <div>
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Loại hình kinh doanh</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto no-scrollbar pr-1 p-1">
                     {[
-                      { id: 'FOOD', label: 'Đồ ăn', icon: <Utensils className="w-4 h-4" /> },
-                      { id: 'DRINK', label: 'Đồ uống', icon: <Coffee className="w-4 h-4" /> },
-                      { id: 'FASHION', label: 'Thời trang', icon: <ShoppingBag className="w-4 h-4" /> },
-                      { id: 'ELECTRONICS', label: 'Điện tử', icon: <Laptop className="w-4 h-4" /> },
-                      { id: 'BEAUTY', label: 'Làm đẹp', icon: <Sparkles className="w-4 h-4" /> },
-                      { id: 'BOOKS', label: 'Sách', icon: <BookOpen className="w-4 h-4" /> },
-                      { id: 'SERVICES', label: 'Dịch vụ', icon: <Wrench className="w-4 h-4" /> },
-                      { id: 'OTHER', label: 'Khác', icon: <LucideStore className="w-4 h-4" /> }
+                      { id: 'Food & Drink', label: 'Ẩm thực', icon: <Utensils className="w-4 h-4" /> },
+                      { id: 'Fashion', label: 'Thời trang', icon: <ShoppingBag className="w-4 h-4" /> },
+                      { id: 'Retail', label: 'Bán lẻ', icon: <LucideStore className="w-4 h-4" /> },
+                      { id: 'Beauty', label: 'Làm đẹp', icon: <Sparkles className="w-4 h-4" /> },
+                      { id: 'Electronics', label: 'Điện tử', icon: <Laptop className="w-4 h-4" /> },
+                      { id: 'Furniture', label: 'Nội thất', icon: <LucideStore className="w-4 h-4" /> },
+                      { id: 'Health', label: 'Y tế', icon: <LucideStore className="w-4 h-4" /> },
+                      { id: 'Education', label: 'Giáo dục', icon: <BookOpen className="w-4 h-4" /> },
+                      { id: 'Automotive', label: 'Ô tô/Xe máy', icon: <Wrench className="w-4 h-4" /> },
+                      { id: 'Grocery', label: 'Tạp hóa', icon: <ShoppingBag className="w-4 h-4" /> },
+                      { id: 'Stationery', label: 'Văn phòng phẩm', icon: <BookOpen className="w-4 h-4" /> },
+                      { id: 'Sports', label: 'Thể thao', icon: <LucideStore className="w-4 h-4" /> },
+                      { id: 'Services', label: 'Dịch vụ', icon: <Wrench className="w-4 h-4" /> },
+                      { id: 'Other', label: 'Khác', icon: <LucideStore className="w-4 h-4" /> }
                     ].map(cat => (
                       <button
                         key={cat.id}
                         type="button"
                         onClick={() => setFormData(prev => ({ ...prev, category: cat.id as any }))}
-                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
+                        className={`p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
                           formData.category === cat.id 
                             ? 'border-blue-600 bg-blue-50 text-blue-600' 
-                            : 'border-gray-100 hover:border-blue-200 text-gray-400'
+                            : 'border-gray-50 bg-gray-50 hover:border-blue-200 text-gray-400'
                         }`}
                       >
                         {cat.icon}
-                        <span className="text-[10px] font-black uppercase">{cat.label}</span>
+                        <span className="text-[9px] font-black uppercase text-center leading-tight">{cat.label}</span>
                       </button>
                     ))}
                   </div>
