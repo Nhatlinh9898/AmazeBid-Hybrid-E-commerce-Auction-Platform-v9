@@ -4,6 +4,11 @@ import path from 'path';
 import { Server } from 'socket.io';
 import http from 'http';
 import cors from 'cors';
+import dotenv from 'dotenv';
+
+// Load environment variables early
+dotenv.config();
+
 import v3Router from './routes/v3';
 // import { p2p } from './services/p2pService';
 import { db } from './db';

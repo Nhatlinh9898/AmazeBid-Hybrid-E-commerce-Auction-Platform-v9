@@ -11,12 +11,14 @@ import { StaffPermission } from '../types';
 
 interface StoreManagementProps {
   ownerId: string;
+  ownerEmail?: string;
   isStaffMode?: boolean;
   onRefreshProducts?: () => void;
 }
 
 export const StoreManagement: React.FC<StoreManagementProps> = ({ 
   ownerId, 
+  ownerEmail,
   isStaffMode = false, 
   onRefreshProducts
 }) => {
@@ -88,7 +90,13 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
   React.useEffect(() => {
     const unsubscribeStore = storeService.subscribe((allStores) => {
       const accessibleStoresList = isStaffMode 
-        ? allStores.filter(s => workforceService.getStoresByStaff(ownerId).includes(s.id))
+        ? allStores.filter(s => {
+            const ids = [
+              ...workforceService.getStoresByStaff(ownerId),
+              ...(ownerEmail ? workforceService.getStoresByStaff(ownerEmail) : [])
+            ];
+            return ids.includes(s.id);
+          })
         : allStores.filter(s => s.ownerId === ownerId || s.parentId === ownerId);
       
       setStores(accessibleStoresList);
@@ -106,21 +114,25 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
       unsubscribeStore();
       unsubscribeSupply();
     };
-  }, [ownerId, isStaffMode, selectedStore]);
+  }, [ownerId, ownerEmail, isStaffMode, selectedStore]);
 
   // Track staff info when store changes
   React.useEffect(() => {
     if (isStaffMode && selectedStore) {
-      setStaffInfo(workforceService.getStaffInfo(ownerId, selectedStore.id));
+      setStaffInfo(
+        workforceService.getStaffInfo(ownerId, selectedStore.id) || 
+        (ownerEmail ? workforceService.getStaffInfo(ownerEmail, selectedStore.id) : null)
+      );
     } else {
       setStaffInfo(null);
     }
-  }, [selectedStore, isStaffMode, ownerId]);
+  }, [selectedStore, isStaffMode, ownerId, ownerEmail]);
 
   const hasPermission = (permission: StaffPermission): boolean => {
     if (!isStaffMode) return true; // Owner has all permissions
     if (!staffInfo) return false;
-    return workforceService.hasPermission(ownerId, staffInfo.storeId, permission);
+    const identifier = staffInfo.userId || staffInfo.email;
+    return workforceService.hasPermission(identifier, staffInfo.storeId, permission);
   };
 
   // Calculate total cost whenever recipe changes

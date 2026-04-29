@@ -8,21 +8,30 @@ interface WorkLoginDialogProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
+  userEmail?: string;
+  loginId?: string; // The custom userId field from the User object
   userName: string;
   userAvatar: string;
 }
 
-const WorkLoginDialog: React.FC<WorkLoginDialogProps> = ({ isOpen, onClose, userId, userName, userAvatar }) => {
+const WorkLoginDialog: React.FC<WorkLoginDialogProps> = ({ isOpen, onClose, userId, userEmail, loginId, userName, userAvatar }) => {
   const { enterWorkMode, exitWorkMode } = useWorkSession();
   const [workplaces, setWorkplaces] = React.useState<any[]>([]);
 
   React.useEffect(() => {
-    if (isOpen && userId) {
-      const storeIds = workforceService.getStoresByStaff(userId);
+    if (isOpen && (userId || userEmail || loginId)) {
+      const storeIds = Array.from(new Set([
+        ...workforceService.getStoresByStaff(userId),
+        ...(userEmail ? workforceService.getStoresByStaff(userEmail) : []),
+        ...(loginId ? workforceService.getStoresByStaff(loginId) : [])
+      ]));
+      
       const allStores = storeService.getStores();
       
       const mockWorkplaces = storeIds.map(id => {
-          const info = workforceService.getStaffInfo(userId, id);
+          const info = workforceService.getStaffInfo(userId, id) || 
+                       (userEmail ? workforceService.getStaffInfo(userEmail, id) : null) ||
+                       (loginId ? workforceService.getStaffInfo(loginId, id) : null);
           const store = allStores.find(s => s.id === id);
           return {
               id,
@@ -35,7 +44,7 @@ const WorkLoginDialog: React.FC<WorkLoginDialogProps> = ({ isOpen, onClose, user
       });
       setWorkplaces(mockWorkplaces);
     }
-  }, [isOpen, userId]);
+  }, [isOpen, userId, userEmail, loginId]);
 
   if (!isOpen) return null;
 

@@ -183,8 +183,9 @@ router.get('/auth/me', async (req, res) => {
   const token = authHeader.split(' ')[1];
   const decoded = SecurityService.verifyToken(token);
 
-  if (!decoded) {
-    return sendError(res, 'Token không hợp lệ hoặc đã hết hạn', 'auth_me');
+  if (!decoded || decoded.error) {
+    const errorMsg = decoded?.error === 'EXPIRED' ? 'Phiên đăng nhập đã hết hạn' : 'Token không hợp lệ hoặc đã hết hạn';
+    return sendError(res, errorMsg, 'auth_me');
   }
 
   const users = db.get('users') || [];

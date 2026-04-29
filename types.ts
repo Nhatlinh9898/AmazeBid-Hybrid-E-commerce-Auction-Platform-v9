@@ -106,6 +106,7 @@ export interface UserWallet {
 
 export interface User {
   id: string;
+  userId?: string; // Custom login identifier/Staff ID
   firebaseUid?: string;
   fullName: string;
   email: string;

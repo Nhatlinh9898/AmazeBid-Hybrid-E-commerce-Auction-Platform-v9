@@ -108,11 +108,11 @@ class WorkforceService {
   // Kiểm tra quyền truy cập (Security Point) - Đã nâng cấp để hỗ trợ phân quyền theo cấp bậc
   hasPermission(identifier: string, storeId: string, permission: StaffPermission): boolean {
     if (!identifier) return false;
-    const searchId = identifier.toLowerCase();
+    const searchId = (identifier || '').toLowerCase().trim();
     
     // Tìm nhân viên khớp với định danh (ID hoặc Email)
     const members = this.staff.filter(s => 
-      ((s.userId && s.userId.toLowerCase() === searchId) || (s.email && s.email.toLowerCase() === searchId)) && 
+      ((s.userId && s.userId.toLowerCase().trim() === searchId) || (s.email && s.email.toLowerCase().trim() === searchId)) && 
       s.status === 'ACTIVE'
     );
 
@@ -171,13 +171,13 @@ class WorkforceService {
   // Lấy danh sách ID các chi nhánh mà nhân viên đang làm việc - Hỗ trợ phân tầng
   getStoresByStaff(identifier: string): string[] {
     if (!identifier) return [];
-    const searchId = identifier.toLowerCase();
+    const searchId = (identifier || '').toLowerCase().trim();
     
     // Tìm tất cả các chi nhánh nhân viên được gán trực tiếp
     const directStoreIds = this.staff
       .filter(s => (
-        (s.userId && s.userId.toLowerCase() === searchId) || 
-        (s.email && s.email.toLowerCase() === searchId)
+        (s.userId && s.userId.toLowerCase().trim() === searchId) || 
+        (s.email && s.email.toLowerCase().trim() === searchId)
       ) && s.status === 'ACTIVE')
       .map(s => s.storeId);
 
@@ -205,10 +205,10 @@ class WorkforceService {
   // Lấy thông tin chi tiết vai trò của nhân viên tại một chi nhánh
   getStaffInfo(identifier: string, storeId: string): StoreStaff | null {
     if (!identifier) return null;
-    const searchId = identifier.toLowerCase();
+    const searchId = (identifier || '').toLowerCase().trim();
     return this.staff.find(s => (
-      (s.userId && s.userId.toLowerCase() === searchId) || 
-      (s.email && s.email.toLowerCase() === searchId)
+      (s.userId && s.userId.toLowerCase().trim() === searchId) || 
+      (s.email && s.email.toLowerCase().trim() === searchId)
     ) && s.storeId === storeId && s.status === 'ACTIVE') || null;
   }
 
@@ -243,9 +243,9 @@ class WorkforceService {
   // Xác thực đăng nhập nhân viên
   authenticate(identifier: string, storeId: string, password?: string): StoreStaff | null {
     if (!identifier) return null;
-    const searchId = identifier.toLowerCase();
+    const searchId = (identifier || '').toLowerCase().trim();
     const member = this.staff.find(s => 
-      ((s.userId && s.userId.toLowerCase() === searchId) || (s.email && s.email.toLowerCase() === searchId)) && 
+      ((s.userId && s.userId.toLowerCase().trim() === searchId) || (s.email && s.email.toLowerCase().trim() === searchId)) && 
       s.storeId === storeId && 
       s.status === 'ACTIVE' &&
       (!s.password || s.password === password)

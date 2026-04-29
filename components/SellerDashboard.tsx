@@ -81,7 +81,8 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
   React.useEffect(() => {
     if (session.isWorkMode && session.staffInfo) {
       setSelectedDashboardStoreId(session.staffInfo.storeId);
-    } else if (isStaffOrAdmin && stores.length > 0 && selectedDashboardStoreId === 'all') {
+    } else if (isStaffOrAdmin && stores.length > 0 && (selectedDashboardStoreId === 'all' || !selectedDashboardStoreId)) {
+      // Default to first store for staff/admin if not 'all' selected or 'all' is invalid
       setSelectedDashboardStoreId(stores[0].id);
     }
   }, [session.isWorkMode, session.staffInfo, isStaffOrAdmin, stores, selectedDashboardStoreId]);
@@ -402,7 +403,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                 </h2>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-gray-400">
-                    {session.isWorkMode ? `Đang làm việc tại ${stores.find(s => s.id === activeWorkplaceId)?.name}` : 'Quản lý hiệu suất, mạng lưới và thuế'}
+                    {session.isWorkMode ? `Đang làm việc tại ${stores.find(s => s.id === activeWorkplaceId)?.name || session.activeWorkplace?.name}` : 'Quản lý hiệu suất, mạng lưới và thuế'}
                   </p>
                   {isStaffOrAdmin && (
                     <div className="flex items-center gap-2">
@@ -421,7 +422,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                           }}
                           className="text-[11px] font-black bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-red-900/50 hover:scale-105 active:scale-95"
                         >
-                          <X size={12} /> Thoát việc
+                          <X size={12} /> Thoát khỏi Workspace
                         </button>
                       )}
                     </div>
@@ -620,6 +621,7 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
             {activeTab === 'store' && (
               <StoreManagement 
                 ownerId={currentUserId} 
+                ownerEmail={user?.email}
                 onRefreshProducts={onRefreshProducts} 
               />
             )}
@@ -637,7 +639,12 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
             
             {/* TAB: OVERVIEW */}
             {activeTab === 'workplace' && (
-              <StoreManagement ownerId={currentUserId} isStaffMode={true} onRefreshProducts={onRefreshProducts} />
+              <StoreManagement 
+                ownerId={currentUserId} 
+                ownerEmail={user?.email}
+                isStaffMode={true} 
+                onRefreshProducts={onRefreshProducts} 
+              />
             )}
 
             {activeTab === 'overview' && (
@@ -1652,6 +1659,8 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
             isOpen={isWorkLoginDialogOpen}
             onClose={() => setIsWorkLoginDialogOpen(false)}
             userId={user.id}
+            userEmail={user.email}
+            loginId={user.userId}
             userName={user.fullName}
             userAvatar={user.avatar}
           />
