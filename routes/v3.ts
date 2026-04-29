@@ -284,7 +284,7 @@ router.post('/auth/login', async (req, res) => {
       }
     }
   } else {
-    user = users[0]; // Fallback cho demo
+    return sendError(res, 'Tài khoản không tồn tại. Vui lòng kiểm tra lại ID hoặc Email.', 'auth_login');
   }
 
   // Tạo Token
@@ -1757,6 +1757,108 @@ router.post('/users/:id/wallet/withdraw', async (req, res) => {
     sendSuccess(res, { wallet: user.wallet, amount }, 'withdraw_user_wallet');
   } catch (error: any) {
     sendError(res, error.message, 'withdraw_user_wallet');
+  }
+});
+
+// ==========================================
+// 6. STAFF MANAGEMENT API
+// ==========================================
+
+router.get('/staff', async (req, res) => {
+  try {
+    const staff = db.get('staff') || [];
+    sendSuccess(res, { staff }, 'get_staff');
+  } catch (error: any) {
+    sendError(res, error.message, 'get_staff');
+  }
+});
+
+router.post('/staff', async (req, res) => {
+  try {
+    const staffData = req.body;
+    const staffId = `staff_${Date.now()}`;
+    const newStaff = {
+      ...staffData,
+      id: staffId,
+      joinDate: new Date().toISOString(),
+      status: 'ACTIVE'
+    };
+
+    await db.update('staff', (prev) => [...(prev || []), newStaff]);
+
+    // Sync with users collection for login capability
+    if (newStaff.userId) {
+      await db.update('users', (prev) => {
+        const existingUser = prev.find(u => u.email === newStaff.email || (u as any).userId === newStaff.userId);
+        if (existingUser) {
+           return prev.map(u => u.id === existingUser.id ? { 
+             ...u, 
+             fullName: newStaff.name, 
+             email: newStaff.email, 
+             userId: newStaff.userId,
+             password: newStaff.password ? bcrypt.hashSync(newStaff.password, 10) : u.password
+           } : u);
+        } else {
+           const newUser = {
+             id: `u_${Date.now()}`,
+             userId: newStaff.userId,
+             fullName: newStaff.name,
+             email: newStaff.email,
+             password: newStaff.password ? bcrypt.hashSync(newStaff.password, 10) : bcrypt.hashSync('123456', 10),
+             role: 'USER',
+             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newStaff.name)}&background=random`,
+             joinDate: new Date().toISOString(),
+             balance: 0,
+             tokenVersion: 0
+           };
+           return [...prev, newUser];
+        }
+      });
+    }
+
+    sendSuccess(res, { staff: newStaff }, 'create_staff');
+  } catch (error: any) {
+    sendError(res, error.message, 'create_staff');
+  }
+});
+
+router.put('/staff/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    await db.update('staff', (prev) => (prev || []).map(s => s.id === id ? { ...s, ...updates } : s));
+    const staffMember = db.get('staff').find(s => s.id === id);
+
+    // Sync with users if identifier changed or security info changed
+    if (staffMember && staffMember.userId) {
+       await db.update('users', (prev) => prev.map(u => {
+         if (u.email === staffMember.email || (u as any).userId === staffMember.userId) {
+            return {
+              ...u,
+              fullName: staffMember.name,
+              email: staffMember.email,
+              userId: staffMember.userId,
+              password: updates.password ? bcrypt.hashSync(updates.password, 10) : u.password
+            };
+         }
+         return u;
+       }));
+    }
+
+    sendSuccess(res, { staff: staffMember }, 'update_staff');
+  } catch (error: any) {
+    sendError(res, error.message, 'update_staff');
+  }
+});
+
+router.delete('/staff/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.update('staff', (prev) => prev.filter(s => s.id !== id));
+    sendSuccess(res, { id }, 'delete_staff');
+  } catch (error: any) {
+    sendError(res, error.message, 'delete_staff');
   }
 });
 

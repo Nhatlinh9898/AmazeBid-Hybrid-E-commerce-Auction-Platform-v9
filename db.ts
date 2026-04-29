@@ -18,6 +18,7 @@ interface Schema {
   orders: Order[];
   security_logs: any[];
   blocked_ips: string[];
+  staff: any[];
   globalConfig: {
     platformFeeRate: number;
     defaultVatRate: number;
@@ -106,6 +107,11 @@ class Database {
           data.stores = [];
         }
 
+        // Migration: Ensure staff exists
+        if (!data.staff) {
+          data.staff = [];
+        }
+
         // Migration: Ensure globalConfig exists
         if (!data.globalConfig) {
           data.globalConfig = {
@@ -179,6 +185,7 @@ class Database {
       security_logs: [],
       blocked_ips: [],
       stores: [],
+      staff: [],
       globalConfig: {
         platformFeeRate: 0.05,
         defaultVatRate: 0.08,

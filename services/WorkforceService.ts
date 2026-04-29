@@ -6,54 +6,22 @@ class WorkforceService {
   private listeners: ((staff: StoreStaff[]) => void)[] = [];
 
   constructor() {
-    this.loadFromStorage();
-    if (this.staff.length === 0) {
-      // Mock data for hierarchy
-      this.staff = [
-        {
-          id: 'staff_ceo',
-          userId: 'Nhatlinhckm2016@gmail.com',
-          name: 'Nguyễn Nhật Linh',
-          email: 'Nhatlinhckm2016@gmail.com',
-          role: StaffRole.SUPER_ADMIN,
-          position: 'Tổng Giám Đốc (CEO)',
-          corporationId: 'AmazeCorp Global',
-          storeId: 'HQ-001',
-          departmentId: 'Ban Điều Hành',
-          permissions: Object.values(StaffPermission),
-          status: 'ACTIVE',
-          joinDate: '2020-01-01'
-        },
-        {
-          id: 'staff_mgr_x1',
-          userId: 'Nhatlinhckm2016@gmail.com',
-          name: 'Nguyễn Nhật Linh (Work)',
-          email: 'Nhatlinhckm2016@gmail.com',
-          role: StaffRole.STORE_MANAGER,
-          position: 'Quản Lý Chi Nhánh X1',
-          corporationId: 'AmazeCorp Vietnam',
-          storeId: 'BRANCH-X1',
-          departmentId: 'Vận Hành',
-          permissions: this.getDefaultPermissions(StaffRole.STORE_MANAGER),
-          status: 'ACTIVE',
-          joinDate: '2021-06-15'
-        },
-        {
-          id: 'staff_a123',
-          userId: 'a123_123',
-          name: 'Manager A (Staff)',
-          email: 'staff_a@amazebid.com',
-          role: StaffRole.STORE_MANAGER,
-          position: 'Quản Lý Cửa Hàng A',
-          corporationId: 'HQ-001',
-          storeId: 'STORE-A',
-          departmentId: 'Vận Hành',
-          permissions: this.getDefaultPermissions(StaffRole.STORE_MANAGER),
-          status: 'ACTIVE',
-          joinDate: '2022-01-20'
-        }
-      ];
-      this.saveToStorage();
+    this.refresh();
+  }
+
+  async refresh() {
+    try {
+      const resp = await fetch('/api/staff');
+      const json = await resp.json();
+      if (json.status === 'success') {
+        this.staff = json.data.staff;
+        this.notify();
+      } else {
+        this.loadFromStorage();
+      }
+    } catch (error) {
+      console.warn('[WorkforceService] Failed to load staff from API, using localStorage:', error);
+      this.loadFromStorage();
     }
   }
 
@@ -87,21 +55,52 @@ class WorkforceService {
   }
 
   // Thêm nhân viên mới vào chi nhánh
-  addStaff(member: Omit<StoreStaff, 'id' | 'joinDate' | 'status'>) {
-    const newMember: StoreStaff = {
-      ...member,
-      id: `staff_${Math.random().toString(36).substr(2, 9)}`,
-      joinDate: new Date().toISOString(),
-      status: 'ACTIVE'
-    };
-    this.staff.push(newMember);
-    this.saveToStorage();
-    return newMember;
+  async addStaff(member: Omit<StoreStaff, 'id' | 'joinDate' | 'status'>) {
+    try {
+      const resp = await fetch('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(member)
+      });
+      const json = await resp.json();
+      if (json.status === 'success') {
+        const newMember = json.data.staff;
+        this.staff.push(newMember);
+        this.saveToStorage();
+        return newMember;
+      }
+      throw new Error(json.data?.message || 'Failed to add staff');
+    } catch {
+       // Fallback to local if API fails
+       const newMember: StoreStaff = {
+         ...member,
+         id: `staff_${Math.random().toString(36).substr(2, 9)}`,
+         joinDate: new Date().toISOString(),
+         status: 'ACTIVE'
+       };
+       this.staff.push(newMember);
+       this.saveToStorage();
+       return newMember;
+    }
   }
 
   // Cập nhật vai trò/quyền
-  updateStaff(id: string, updates: Partial<StoreStaff>) {
-    this.staff = this.staff.map(s => s.id === id ? { ...s, ...updates } : s);
+  async updateStaff(id: string, updates: Partial<StoreStaff>) {
+    try {
+      const resp = await fetch(`/api/staff/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      const json = await resp.json();
+      if (json.status === 'success') {
+        this.staff = this.staff.map(s => s.id === id ? { ...s, ...json.data.staff } : s);
+      } else {
+        this.staff = this.staff.map(s => s.id === id ? { ...s, ...updates } : s);
+      }
+    } catch {
+      this.staff = this.staff.map(s => s.id === id ? { ...s, ...updates } : s);
+    }
     this.saveToStorage();
   }
 

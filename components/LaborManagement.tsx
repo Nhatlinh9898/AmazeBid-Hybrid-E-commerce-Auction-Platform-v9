@@ -44,13 +44,14 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
     };
   }, [ownerId, selectedStoreId]);
 
-  const [staffForm, setStaffForm] = React.useState<Omit<StoreStaff, 'id' | 'joinDate' | 'status' | 'storeId'>>({
+  const [staffForm, setStaffForm] = React.useState<Omit<StoreStaff, 'id' | 'joinDate' | 'status'>>({
     userId: '',
     password: '',
     name: '',
     email: '',
     role: StaffRole.SALES_EXECUTIVE,
-    permissions: []
+    permissions: [],
+    storeId: ''
   });
 
   const handleRoleChange = (role: StaffRole) => {
@@ -70,10 +71,11 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
     }
   };
 
-  const handleSaveStaff = () => {
-    console.log('Attempting to save staff...', { selectedStoreId, staffForm, editingStaffId });
-    if (!selectedStoreId) {
-      alert('Vui lòng chọn hoặc tạo chi nhánh trước khi thêm nhân sự.');
+  const handleSaveStaff = async () => {
+    console.log('Attempting to save staff...', { staffForm, editingStaffId });
+    
+    if (!staffForm.storeId) {
+      alert('Vui lòng chọn chi nhánh làm việc.');
       return;
     }
 
@@ -84,11 +86,17 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
     
     try {
       if (editingStaffId) {
-        workforceService.updateStaff(editingStaffId, staffForm);
+        await workforceService.updateStaff(editingStaffId, staffForm);
       } else {
-        workforceService.addStaff({ ...staffForm, storeId: selectedStoreId });
+        await workforceService.addStaff(staffForm);
       }
       console.log('Staff saved successfully');
+      
+      // If we saved to a different store than currently selected, maybe switch view?
+      if (staffForm.storeId !== selectedStoreId) {
+        setSelectedStoreId(staffForm.storeId);
+      }
+      
       closeStaffModal();
     } catch (error) {
       console.error('Failed to save staff:', error);
@@ -96,17 +104,22 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
     }
   };
 
-  const closeStaffModal = () => {
-    setIsAddingStaff(false);
-    setEditingStaffId(null);
+  const openAddStaff = () => {
     setStaffForm({
       userId: '',
       password: '',
       name: '',
       email: '',
       role: StaffRole.SALES_EXECUTIVE,
-      permissions: workforceService.getDefaultPermissions(StaffRole.SALES_EXECUTIVE)
+      permissions: workforceService.getDefaultPermissions(StaffRole.SALES_EXECUTIVE),
+      storeId: selectedStoreId || (stores.length > 0 ? stores[0].id : '')
     });
+    setIsAddingStaff(true);
+  };
+
+  const closeStaffModal = () => {
+    setIsAddingStaff(false);
+    setEditingStaffId(null);
   };
 
   const startEditStaff = (member: StoreStaff) => {
@@ -117,12 +130,14 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
       name: member.name,
       email: member.email,
       role: member.role,
-      permissions: member.permissions
+      permissions: member.permissions,
+      storeId: member.storeId
     });
     setIsAddingStaff(true);
   };
 
   const selectedStore = stores.find(s => s.id === selectedStoreId);
+  const formSelectedStore = stores.find(s => s.id === staffForm.storeId);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
@@ -199,7 +214,7 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
         
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-2">
           <button 
-            onClick={() => setIsAddingStaff(true)}
+            onClick={openAddStaff}
             className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all text-sm"
           >
             <UserPlus size={16}/> Tuyển dụng & Phân vai
@@ -302,11 +317,37 @@ export const LaborManagement: React.FC<LaborManagementProps> = ({ ownerId, onTab
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-black">{editingStaffId ? 'Điều chỉnh nhân sự' : 'Tuyển dụng nhân sự mới'}</h3>
-                <p className="text-xs text-gray-500">Cửa hàng: {selectedStore?.name}</p>
+                <p className="text-xs text-gray-500">Chi nhánh trực thuộc: {formSelectedStore?.isBranch ? (formSelectedStore.branchName || formSelectedStore.name) : (formSelectedStore?.name || 'Chưa chọn')}</p>
               </div>
             </div>
 
             <div className="space-y-6">
+              {/* Store Selection Field */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-400 ml-1 uppercase flex items-center gap-1">
+                   <StoreIcon size={12}/> Nơi làm việc (Cửa hàng / Chi nhánh)
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <select 
+                    className="w-full p-3 bg-gray-50 rounded-xl outline-none font-bold text-sm text-gray-800 border border-gray-100"
+                    value={staffForm.storeId}
+                    onChange={e => setStaffForm({...staffForm, storeId: e.target.value})}
+                  >
+                    <option value="">-- Chọn nơi làm việc --</option>
+                    {stores.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.isBranch ? `Chi nhánh: ${s.branchName || s.name}` : `Cửa hàng: ${s.name}`}
+                      </option>
+                    ))}
+                  </select>
+                  {formSelectedStore && (
+                    <div className="p-3 bg-blue-50 rounded-xl text-[10px] text-blue-600 italic flex items-center gap-2">
+                       <Info size={14}/> Nhân viên sẽ bị giới hạn quyền truy cập chỉ trong phạm vi này.
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-400 ml-1 uppercase">Họ và tên</label>
