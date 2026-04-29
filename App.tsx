@@ -99,7 +99,8 @@ const InnerApp: React.FC = () => {
         // Find if this user has any staff assigned
         const staffRoles = [
           ...workforceService.getStoresByStaff(user.id),
-          ...workforceService.getStoresByStaff(user.email)
+          ...(user.email ? workforceService.getStoresByStaff(user.email) : []),
+          ...(user.userId ? workforceService.getStoresByStaff(user.userId) : [])
         ];
         
         const hasWorkRoles = staffRoles.length > 0;
@@ -109,8 +110,6 @@ const InnerApp: React.FC = () => {
         
         if (hasWorkRoles && !seenWelcome && !session.isWorkMode) {
            setIsWorkLoginDialogOpen(true);
-           // We'll mark it as shown so it doesn't annoy every reload, 
-           // but it should definitely show once after login.
            sessionStorage.setItem(`welcome_work_shown_${user.id}`, 'true');
         }
      }
@@ -758,6 +757,7 @@ const InnerApp: React.FC = () => {
             closeAllPages();
             setIsStoreRegistrationOpen(true);
         }}
+        onOpenWorkLogin={() => setIsWorkLoginDialogOpen(true)}
         onOpenWallet={() => {
             if (user) {
                 setIsWalletOpen(true);
@@ -1367,6 +1367,7 @@ const InnerApp: React.FC = () => {
         onClose={() => setIsProfileOpen(false)}
         myProducts={myProducts}
         myPosts={contentPosts}
+        onOpenWorkLogin={() => setIsWorkLoginDialogOpen(true)}
       />
 
       <CustomerServiceModal 
@@ -1414,6 +1415,8 @@ const InnerApp: React.FC = () => {
               isOpen={isWorkLoginDialogOpen}
               onClose={() => setIsWorkLoginDialogOpen(false)}
               userId={user.id}
+              userEmail={user.email}
+              loginId={(user as any).userId}
               userName={user.fullName}
               userAvatar={user.avatar}
           />

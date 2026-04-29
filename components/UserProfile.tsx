@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, CreditCard, ShieldCheck, MapPin, Eye, EyeOff, Edit2, Plus, LogOut, Lock, X, Share2, Copy, Check, Facebook, Instagram, Chrome, Users, Link, Save, Trash2, AlertTriangle, Phone, FileText, ShoppingBag, Gavel, Calendar, Video, Sparkles, Camera, RefreshCw, Zap, TrendingUp, Info, Clock, Landmark, Wallet, CreditCard as CreditCardIcon, Loader2, Monitor } from 'lucide-react';
+import { User, CreditCard, ShieldCheck, MapPin, Eye, EyeOff, Edit2, Plus, LogOut, Lock, X, Share2, Copy, Check, Facebook, Instagram, Chrome, Users, Link, Save, Trash2, AlertTriangle, Phone, FileText, ShoppingBag, Gavel, Calendar, Video, Sparkles, Camera, RefreshCw, Zap, TrendingUp, Info, Clock, Landmark, Wallet, CreditCard as CreditCardIcon, Loader2, Monitor, Briefcase } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
+import { useWorkSession } from '../context/WorkSessionContext';
+import { workforceService } from '../services/WorkforceService';
 import { PaymentMethod, Product, ContentPost, ItemType, AISubscriptionTier } from '../types';
 import KYCModal from './KYCModal';
 import UserWalletModal from './UserWalletModal';
@@ -13,10 +15,12 @@ interface UserProfileProps {
   onClose: () => void;
   myProducts?: Product[];
   myPosts?: ContentPost[];
+  onOpenWorkLogin?: () => void;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts = [], myPosts = [] }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts = [], myPosts = [], onOpenWorkLogin }) => {
   const { user, logout, updateProfile, resetToken, setup2FA, confirm2FA, toggle2FA, linkSocialAccount } = useAuth();
+  const { session } = useWorkSession();
   const [activeTab, setActiveTab] = useState<'INFO' | 'PAYMENT' | 'SECURITY' | 'SOCIAL' | 'POSTS' | 'LOYALTY' | 'AI_BILLING' | 'SYSTEM_REQ' | 'GUIDE'>('INFO');
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
@@ -406,6 +410,25 @@ const UserProfile: React.FC<UserProfileProps> = ({ isOpen, onClose, myProducts =
                 >
                     <FileText size={16} /> Hướng dẫn & Cam kết
                 </button>
+
+                {onOpenWorkLogin && !session.isWorkMode && user && workforceService.getStoresByStaff(user.id).length > 0 && (
+                    <div className="mt-4 p-4 bg-indigo-600 rounded-2xl text-white shadow-lg space-y-3">
+                        <div className="flex items-center gap-2">
+                            <Briefcase size={18} className="text-blue-200" />
+                            <span className="text-xs font-black uppercase tracking-wider">Workspace</span>
+                        </div>
+                        <p className="text-[10px] text-blue-100 font-medium leading-relaxed">Bạn có vai trò công việc đang chờ xử lý.</p>
+                        <button 
+                            onClick={() => {
+                                onClose();
+                                onOpenWorkLogin();
+                            }}
+                            className="w-full bg-white text-indigo-600 py-2 rounded-xl text-xs font-black hover:bg-blue-50 transition-colors shadow-md"
+                        >
+                            VÀO CA LÀM
+                        </button>
+                    </div>
+                )}
             </nav>
 
             <button 

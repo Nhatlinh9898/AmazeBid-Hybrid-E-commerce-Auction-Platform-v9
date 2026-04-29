@@ -32,12 +32,13 @@ interface NavbarProps {
   onOpenStoreDiscovery: () => void;
   onOpenStoreRegistration: () => void;
   onOpenWallet: () => void;
+  onOpenWorkLogin: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
   cartCount, searchTerm, onSearch, onImageSearch, isVisualSearching, openCart, openSellModal, openOrders, 
   onOpenLiveStudio, onViewLiveStreams, onOpenAuth, onOpenProfile, onOpenCustomerService, onOpenContentStudio, onOpenSuperDeals, onOpenSellerDashboard, onOpenAdminDashboard, onOpenAdminAITasks, onOpenAvatarStudio, onOpenCommunity,
-  onGoHome, onOpenKOLStudio, onOpenEmailInbox, onOpenStoreDiscovery, onOpenStoreRegistration, onOpenWallet
+  onGoHome, onOpenKOLStudio, onOpenEmailInbox, onOpenStoreDiscovery, onOpenStoreRegistration, onOpenWallet, onOpenWorkLogin
 }) => {
   const { user } = useAuth();
   const { session, exitWorkMode } = useWorkSession();
@@ -383,6 +384,17 @@ const Navbar: React.FC<NavbarProps> = ({
         >
             <PlusSquare size={14} /> Đăng ký cửa hàng
         </span>
+
+        {/* Work Mode for Staff */}
+        {user && !session.isWorkMode && (
+          <span 
+              onClick={onOpenWorkLogin}
+              className="hover:border-white border border-transparent p-1 rounded cursor-pointer font-bold text-blue-400 animate-pulse flex items-center gap-1"
+              title="Vào chế độ làm việc"
+          >
+              <Briefcase size={14} /> Vào CA làm
+          </span>
+        )}
 
         {/* Email Inbox - New */}
         <span 
