@@ -19,6 +19,9 @@ interface Schema {
   security_logs: any[];
   blocked_ips: string[];
   staff: any[];
+  corporations: any[];
+  departments: any[];
+  branches: any[];
   globalConfig: {
     platformFeeRate: number;
     defaultVatRate: number;
@@ -112,6 +115,11 @@ class Database {
           data.staff = [];
         }
 
+        // Migration: Ensure corporations, departments, branches exist
+        if (!data.corporations) data.corporations = [];
+        if (!data.departments) data.departments = [];
+        if (!data.branches) data.branches = [];
+
         // Migration: Ensure globalConfig exists
         if (!data.globalConfig) {
           data.globalConfig = {
@@ -186,6 +194,9 @@ class Database {
       blocked_ips: [],
       stores: [],
       staff: [],
+      corporations: [],
+      departments: [],
+      branches: [],
       globalConfig: {
         platformFeeRate: 0.05,
         defaultVatRate: 0.08,

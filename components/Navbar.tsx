@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, ShoppingCart, User as UserIcon, MapPin, Gavel, LayoutGrid, PlusCircle, Package, Video, Sparkles, Zap, BarChart3, Shield, Bot, Camera, Users, Wand2, Mic, Mail, Store as LucideStore, PlusSquare, Utensils, Briefcase, ChevronRight } from 'lucide-react';
+import { Search, ShoppingCart, User as UserIcon, MapPin, Gavel, LayoutGrid, PlusCircle, Package, Video, Sparkles, Zap, BarChart3, Shield, Bot, Camera, Users, Wand2, Mic, Mail, Store as LucideStore, PlusSquare, Utensils, Briefcase, ChevronRight, Building2 } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import { useWorkSession } from '../context/WorkSessionContext';
 import { emailService } from '../services/EmailService';
@@ -33,12 +33,13 @@ interface NavbarProps {
   onOpenStoreRegistration: () => void;
   onOpenWallet: () => void;
   onOpenWorkLogin: () => void;
+  onOpenHierarchy: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
   cartCount, searchTerm, onSearch, onImageSearch, isVisualSearching, openCart, openSellModal, openOrders, 
   onOpenLiveStudio, onViewLiveStreams, onOpenAuth, onOpenProfile, onOpenCustomerService, onOpenContentStudio, onOpenSuperDeals, onOpenSellerDashboard, onOpenAdminDashboard, onOpenAdminAITasks, onOpenAvatarStudio, onOpenCommunity,
-  onGoHome, onOpenKOLStudio, onOpenEmailInbox, onOpenStoreDiscovery, onOpenStoreRegistration, onOpenWallet, onOpenWorkLogin
+  onGoHome, onOpenKOLStudio, onOpenEmailInbox, onOpenStoreDiscovery, onOpenStoreRegistration, onOpenWallet, onOpenWorkLogin, onOpenHierarchy
 }) => {
   const { user } = useAuth();
   const { session, exitWorkMode } = useWorkSession();
@@ -116,6 +117,33 @@ const Navbar: React.FC<NavbarProps> = ({
           <span className="text-2xl font-bold italic flex items-center gap-1">
             <Gavel className="text-[#febd69]" /> Amaze<span className="text-[#febd69]">Bid</span>
           </span>
+        </div>
+
+        {/* Node Zones Selector */}
+        <div className="hidden lg:flex items-center border border-gray-700 bg-[#232f3e] rounded-xl px-2 h-9 overflow-hidden">
+           <button 
+             onClick={onGoHome}
+             className={`px-3 text-[10px] font-black uppercase transition-colors flex items-center gap-1 h-full ${!session.isWorkMode ? 'text-white border-b-2 border-white' : 'text-gray-400 hover:text-white'}`}
+             title="Khu vực khách hàng"
+           >
+             <Users size={12} /> User Zone
+           </button>
+           <div className="w-[1px] h-4 bg-gray-700" />
+           <button 
+             onClick={onOpenHierarchy}
+             className="px-3 text-[10px] font-black uppercase text-[#febd69] hover:text-white transition-colors flex items-center gap-1 h-full"
+             title="Khu vực quản trị doanh nghiệp"
+           >
+             <Building2 size={12} /> Business Zone
+           </button>
+           <div className="w-[1px] h-4 bg-gray-700" />
+           <button 
+             onClick={onOpenWorkLogin}
+             className={`px-3 text-[10px] font-black uppercase transition-colors flex items-center gap-1 h-full ${session.isWorkMode ? 'text-blue-400 border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'}`}
+             title="Khu vực nhân sự"
+           >
+             <Briefcase size={12} /> Workforce
+           </button>
         </div>
 
         {/* Work Mode Indicator */}

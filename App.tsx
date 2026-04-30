@@ -93,6 +93,8 @@ const InnerApp: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isWorkLoginDialogOpen, setIsWorkLoginDialogOpen] = React.useState(false);
 
+  const [isHierarchyOpen, setIsHierarchyOpen] = React.useState(false);
+
   // Check for professional roles on login
   React.useEffect(() => {
      if (user) {
@@ -283,6 +285,7 @@ const InnerApp: React.FC = () => {
     setIsAvatarStudioOpen(false);
     setIsContentStudioOpen(false);
     setIsKOLStudioOpen(false);
+    setIsHierarchyOpen(false);
     setActiveBusinessPage(null);
     setShowLiveList(false);
   };
@@ -749,6 +752,10 @@ const InnerApp: React.FC = () => {
             closeAllPages();
             setIsEmailInboxOpen(true);
         }}
+        onOpenHierarchy={() => {
+            closeAllPages();
+            setIsHierarchyOpen(true);
+        }}
         onOpenStoreDiscovery={() => {
             closeAllPages();
             setIsStoreDiscoveryOpen(true);
@@ -804,6 +811,10 @@ const InnerApp: React.FC = () => {
             onToggleFollow={handleToggleFollow}
             onAddToCart={handleAddToCart}
           />
+        </div>
+      ) : isHierarchyOpen ? (
+        <div className="flex-grow">
+          <BusinessHierarchy />
         </div>
       ) : (
       <main className="flex-grow max-w-[1500px] mx-auto px-4 pt-6 pb-0 w-full">

@@ -515,6 +515,48 @@ export enum OrganizationType {
   DEPARTMENT = 'DEPARTMENT'
 }
 
+export interface Corporation {
+  id: string;
+  ownerId: string;
+  name: string;
+  description?: string;
+  taxCode?: string;
+  address?: string;
+  logo?: string;
+  createdAt: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  settings?: {
+    maxBranches: number;
+    aiEnabled: boolean;
+  };
+}
+
+export interface Branch {
+  id: string;
+  corporationId: string;
+  managerId?: string; // Staff ID of the manager
+  name: string;
+  address: string;
+  phone: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt: string;
+}
+
+export enum UserZone {
+  USER = 'USER',           // Area 1: Standard Users
+  BUSINESS = 'BUSINESS',   // Area 2: Admins/Owners
+  WORKFORCE = 'WORKFORCE'  // Area 3: Staff/Employees
+}
+
+export interface Department {
+  id: string;
+  corporationId: string;
+  branchId?: string;
+  name: string;
+  managerId?: string;
+  description?: string;
+}
+
 export interface PhysicalStore {
   id: string;
   ownerId: string;

@@ -1921,4 +1921,75 @@ router.delete('/staff/:id', async (req, res) => {
   }
 });
 
+// ==========================================
+// 7. CORPORATION & HIERARCHY MANAGEMENT API
+// ==========================================
+
+router.get('/corporations', async (req, res) => {
+  try {
+    const ownerId = req.query.ownerId;
+    let corporations = db.get('corporations') || [];
+    if (ownerId) {
+      corporations = corporations.filter(c => c.ownerId === ownerId);
+    }
+    sendSuccess(res, { corporations }, 'get_corporations');
+  } catch (error: any) {
+    sendError(res, error.message, 'get_corporations');
+  }
+});
+
+router.post('/corporations', async (req, res) => {
+  try {
+    const corpData = req.body;
+    const corpId = `corp_${Date.now()}`;
+    const newCorp = {
+      ...corpData,
+      id: corpId,
+      createdAt: new Date().toISOString(),
+      status: 'ACTIVE',
+      settings: {
+        maxBranches: 10,
+        aiEnabled: true
+      }
+    };
+
+    await db.update('corporations', (prev) => [...(prev || []), newCorp]);
+    sendSuccess(res, { corporation: newCorp }, 'create_corporation');
+  } catch (error: any) {
+    sendError(res, error.message, 'create_corporation');
+  }
+});
+
+// Branches (Chi nhánh)
+router.get('/branches', async (req, res) => {
+  try {
+    const corpId = req.query.corpId;
+    let branches = db.get('branches') || [];
+    if (corpId) {
+      branches = branches.filter(b => b.corporationId === corpId);
+    }
+    sendSuccess(res, { branches }, 'get_branches');
+  } catch (error: any) {
+    sendError(res, error.message, 'get_branches');
+  }
+});
+
+router.post('/branches', async (req, res) => {
+  try {
+    const branchData = req.body;
+    const branchId = `branch_${Date.now()}`;
+    const newBranch = {
+      ...branchData,
+      id: branchId,
+      createdAt: new Date().toISOString(),
+      status: 'ACTIVE'
+    };
+
+    await db.update('branches', (prev) => [...(prev || []), newBranch]);
+    sendSuccess(res, { branch: newBranch }, 'create_branch');
+  } catch (error: any) {
+    sendError(res, error.message, 'create_branch');
+  }
+});
+
 export default router;
