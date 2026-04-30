@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, ShieldCheck, Search, ArrowDownLeft, ArrowUpRight, Scale, Clock } from 'lucide-react';
+import { Download, ShieldCheck, Search, ArrowDownLeft, ArrowUpRight, Scale, Clock, Info, Database, FileSignature, Cpu, Shield } from 'lucide-react';
 import { ledger } from '../services/TransactionLedger';
 import { TransactionRecord } from '../src/types';
 
@@ -7,6 +7,7 @@ const AuditLedgerView: React.FC = () => {
   const [transactions, setTransactions] = React.useState<TransactionRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [showExplanation, setShowExplanation] = React.useState(true);
 
   const loadData = async () => {
     setLoading(true);
@@ -50,6 +51,12 @@ const AuditLedgerView: React.FC = () => {
         </div>
         <div className="flex gap-3">
           <button 
+            onClick={() => setShowExplanation(!showExplanation)}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-black uppercase tracking-widest text-indigo-400 transition-all border border-slate-700"
+          >
+            <Info size={14} /> {showExplanation ? 'Ẩn Thuyết Minh' : 'Hiện Thuyết Minh'}
+          </button>
+          <button 
             onClick={generateDemoTx}
             className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-black uppercase tracking-widest text-amber-500 transition-all border border-slate-700 shadow-lg"
           >
@@ -66,6 +73,68 @@ const AuditLedgerView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {showExplanation && (
+        <div className="mb-10 bg-indigo-500/5 rounded-2xl border border-indigo-500/20 p-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
+            <Shield size={120} />
+          </div>
+          
+          <div className="relative z-10">
+            <p className="text-sm text-indigo-100 font-medium leading-relaxed mb-6">
+              Hệ thống lưu trữ giao dịch và hợp đồng tương lai (Futures) đã được thiết lập bảo mật hoàn tất. 
+              Cấu trúc được thiết kế để đảm bảo <span className="text-indigo-400 font-black">tính minh bạch, không thể tẩy xóa</span> và sẵn sàng 
+              cho việc thanh tra của cơ quan chức năng.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-indigo-400 mb-1">
+                  <Database size={16} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">TransactionLedger</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Sử dụng <span className="text-slate-200">SHA-256</span> tạo mã băm (hash) cho mỗi giao dịch qua mạng P2P 
+                  Shielded Ledger (GunDB), đảm bảo dữ liệu không bị xóa bỏ tập trung.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-indigo-400 mb-1">
+                  <FileSignature size={16} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Futures Mgmt</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Hỗ trợ quy trình tạo <span className="text-slate-200">FuturesContract</span> với ký quỹ (Escrow) tự động 
+                  được ghi lại trong nhật ký kiểm toán.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-indigo-400 mb-1">
+                  <Cpu size={16} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Audit Interface</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Dashboard chuyên biệt hỗ trợ truy xuất theo <span className="text-slate-200">ID, Hash hoặc UserID</span>. 
+                  Hiển thị mã băm điện tử chứng minh tính nguyên bản.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-indigo-400 mb-1">
+                  <ShieldCheck size={16} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Compliance</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Tính năng dành riêng cho <span className="text-slate-200">ADMIN</span>. Hỗ trợ xuất báo cáo 
+                  <span className="text-slate-200"> CSV</span> phục vụ yêu cầu từ cơ quan nhà nước.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="relative mb-6">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
