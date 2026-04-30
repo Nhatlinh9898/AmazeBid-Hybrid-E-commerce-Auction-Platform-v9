@@ -19,6 +19,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [formData, setFormData] = React.useState({ name: '', email: '', password: '', phone: '', otp: '', expiresIn: '24h' });
   
+  const [errorMsg, setErrorMsg] = React.useState('');
+  
   // OTP State
   const [otpSent, setOtpSent] = React.useState(false);
 
@@ -33,23 +35,31 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg('');
     setTwoFactorError('');
     
     try {
         if (view === 'LOGIN') {
             const result = await login(formData.email, formData.password, formData.expiresIn);
-            if (result?.twoFactorRequired) {
+            if (result.success) {
+                onClose();
+            } else if (result?.twoFactorRequired) {
                 setTwoFactorRequired(true);
                 setTwoFactorEmail(result.email || formData.email);
-                setIsLoading(false);
-                return;
+            } else {
+                setErrorMsg(result.message || 'Sai thông tin đăng nhập');
             }
         } else {
-            await register(formData.name, formData.email, formData.password);
+            const result = await register(formData.name, formData.email, formData.password);
+            if (result.success) {
+                onClose();
+            } else {
+                setErrorMsg(result.message || 'Lỗi đăng ký');
+            }
         }
-        onClose();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Auth error", error);
+        setErrorMsg(error.message || 'Có lỗi xảy ra');
     } finally {
         setIsLoading(false);
     }
@@ -235,6 +245,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                                 ))}
                             </div>
                         </div>
+                    )}
+
+                    {errorMsg && (
+                      <div className="p-3 bg-red-50 border border-red-100 rounded-xl animate-in shake">
+                        <p className="text-xs text-red-600 font-bold text-center">
+                          {errorMsg}
+                        </p>
+                      </div>
                     )}
 
                     <button 

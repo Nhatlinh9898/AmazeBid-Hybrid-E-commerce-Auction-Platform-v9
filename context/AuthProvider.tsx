@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkAuth();
   }, [assignRole]);
 
-  const login = async (email: string, pass: string, expiresIn: string = '24h'): Promise<{ success: boolean, twoFactorRequired?: boolean, email?: string }> => {
+  const login = async (email: string, pass: string, expiresIn: string = '24h'): Promise<{ success: boolean, twoFactorRequired?: boolean, email?: string, message?: string }> => {
     try {
       const data = await api.auth.login(email, pass, expiresIn);
       if (data.twoFactorRequired) {
@@ -55,10 +55,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(assignRole(data.user));
         return { success: true };
       }
-      return { success: false };
-    } catch {
-      console.error('Login error');
-      return { success: false };
+      return { success: false, message: 'Dữ liệu trả về không hợp lệ' };
+    } catch (error: any) {
+      const msg = error.message || 'Lỗi đăng nhập không xác định';
+      console.error('Login error:', msg);
+      return { success: false, message: msg };
     }
   };
 
@@ -213,18 +214,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (name: string, email: string, pass: string): Promise<boolean> => {
+  const register = async (name: string, email: string, pass: string): Promise<{ success: boolean, message?: string }> => {
     try {
       const data = await api.auth.register(name, email, pass);
       if (data.user && data.token) {
         localStorage.setItem('auth_token', data.token);
         setUser(assignRole(data.user));
-        return true;
+        return { success: true };
       }
-      return false;
-    } catch {
-      console.error('Register error');
-      return false;
+      return { success: false, message: 'Dữ liệu đăng ký không hợp lệ' };
+    } catch (error: any) {
+      const msg = error.message || 'Lỗi đăng ký không xác định';
+      console.error('Register error:', msg);
+      return { success: false, message: msg };
     }
   };
 
