@@ -6,8 +6,14 @@ export const aiStoreService = {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Generate a store profile based on this description: "${prompt}". 
-        Return a JSON object with: name, description, category (FOOD, DRINK, FASHION, or OTHER), openingHours.`,
+        contents: `Bạn là một chuyên gia tư vấn thương hiệu doanh nghiệp. Dựa trên mô tả sau: "${prompt}", hãy xây dựng một hồ sơ cửa hàng chuyên nghiệp và đẳng cấp.
+        Yêu cầu:
+        1. Tên (name): Phải sáng tạo và phù hợp.
+        2. Mô tả (description): Viết một đoạn văn giới thiệu thu hút, chuyên nghiệp, làm nổi bật giá trị cốt lõi và không gian trải nghiệm (khoảng 100-150 chữ).
+        3. Danh mục (category): Chọn một trong (FOOD, DRINK, FASHION, OTHER).
+        4. Giờ mở cửa (openingHours): Định dạng phù hợp.
+        
+        Trả về kết quả dưới dạng JSON object.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -77,10 +83,15 @@ export const aiStoreService = {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Generate a menu for a ${storeCategory} store named "${storeName}". 
-        Store description: "${description}". 
-        Return a list of 5-8 menu items. 
-        Each item should have: name, description, price (in VND, e.g., 50000), category.`,
+        contents: `Hãy đóng vai một chuyên gia tư vấn thực đơn. Dựa trên tên cửa hàng "${storeName}", lĩnh vực "${storeCategory}" và mô tả: "${description}", hãy thiết kế một thực đơn đặc sắc gồm 6-10 món/sản phẩm tiêu biểu.
+        
+        Yêu cầu cho mỗi món:
+        1. Tên món (name): Sáng tạo, độc đáo.
+        2. Mô tả (description): Ngắn gọn nhưng kích thích vị giác/nhu cầu mua sắm.
+        3. Giá (price): Phù hợp với thị trường (đơn vị VND).
+        4. Danh mục (category): Phân loại logic.
+        
+        Trả về kết quả dưới dạng mảng JSON các đối tượng. Tận dụng tối đa sự sáng tạo để thực đơn thực sự hấp dẫn.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -110,8 +121,16 @@ export const aiStoreService = {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Write a compelling and professional store description for a ${storeCategory} store named "${storeName}". 
-        The description should be in Vietnamese, engaging, and about 2-3 sentences long.`,
+        contents: `Bạn là một chuyên gia Content Marketing chuyên nghiệp. Hãy viết một bài giới thiệu về quán/cửa hàng "${storeName}" thuộc lĩnh vực "${storeCategory}".
+        
+        Nội dung cần đạt được:
+        1. Sự thu hút ngay từ câu đầu tiên.
+        2. Mô tả không gian, chất lượng và dịch vụ một cách tinh tế, đẳng cấp.
+        3. Sử dụng ngôn từ phong phú, biểu cảm (evocative), tránh các mẫu câu sáo rỗng.
+        4. Làm nổi bật sự tận tâm và trải nghiệm khách hàng vượt trội.
+        5. Độ dài khoảng 4-6 câu văn mạch lạc, cuốn hút.
+        
+        Hãy viết nội dung bằng tiếng Việt với phong cách hiện đại và sang trọng.`,
       });
       return response.text;
     } catch (error) {
