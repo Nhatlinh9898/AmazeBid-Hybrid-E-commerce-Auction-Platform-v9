@@ -656,26 +656,43 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
 
       {/* Store Selector or Staff Header */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {stores.map(store => (
-            <button
-              key={store.id}
-              onClick={() => setSelectedStore(store)}
-              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
-                selectedStore?.id === store.id 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' 
-                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'
-              }`}
-            >
-              <LucideStore size={14} />
-              {store.name}
-              {isStaffMode && workforceService.getStaffInfo(ownerId, store.id) && (
-                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">
-                  {workforceService.getStaffInfo(ownerId, store.id)?.role}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="flex flex-col gap-2 w-full">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Cơ cấu tổ chức & Chi nhánh quản lý</label>
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {stores.map(store => {
+              const isChild = !!store.parentId;
+              const parentStore = stores.find(s => s.id === store.parentId);
+              
+              return (
+                <button
+                  key={store.id}
+                  onClick={() => setSelectedStore(store)}
+                  className={`px-4 py-2 rounded-xl font-bold text-sm transition-all whitespace-nowrap flex flex-col items-start gap-1 ${
+                    selectedStore?.id === store.id 
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <LucideStore size={14} />
+                    {store.name}
+                  </div>
+                  {parentStore && (
+                    <span className={`text-[8px] font-medium px-1.5 py-0.5 rounded ${
+                      selectedStore?.id === store.id ? 'bg-white/20 text-blue-50' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      Thuộc: {parentStore.name}
+                    </span>
+                  )}
+                  {isStaffMode && workforceService.getStaffInfo(ownerId, store.id) && (
+                    <span className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded-full mt-1">
+                      {workforceService.getStaffInfo(ownerId, store.id)?.role}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {isStaffMode && selectedStore && staffInfo && (
