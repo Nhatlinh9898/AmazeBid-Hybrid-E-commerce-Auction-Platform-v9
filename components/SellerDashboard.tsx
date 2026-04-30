@@ -26,6 +26,7 @@ import { workforceService } from '../services/WorkforceService';
 import { motion } from 'motion/react';
 import SentinelDashboard from './SentinelDashboard';
 import AuditLedgerView from './AuditLedgerView';
+import ProductStructureAnalyzer from './ProductStructureAnalyzer';
 
 interface SellerDashboardProps {
   isOpen: boolean;
@@ -35,7 +36,7 @@ interface SellerDashboardProps {
   onRefreshProducts?: () => void;
 }
 
-type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity' | 'orders' | 'workplace' | 'security' | 'audit';
+type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity' | 'orders' | 'workplace' | 'security' | 'audit' | 'supply-chain-ai';
 
 const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId, onRefreshProducts }) => {
   const { user } = useAuth();
@@ -563,6 +564,14 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                       <FileText size={16} /> Audit & Ledger
                   </button>
                 )}
+                {hasPermission(StaffPermission.MANAGE_INVENTORY) && (
+                  <button 
+                      onClick={() => setActiveTab('supply-chain-ai')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'supply-chain-ai' ? 'border-indigo-500 text-indigo-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <Network size={16} /> Hệ sinh thái & P2P
+                  </button>
+                )}
             </div>
 
             <button 
@@ -585,6 +594,12 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
             {activeTab === 'audit' && (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
                 <AuditLedgerView />
+              </motion.div>
+            )}
+
+            {activeTab === 'supply-chain-ai' && (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                <ProductStructureAnalyzer />
               </motion.div>
             )}
 

@@ -224,3 +224,24 @@ ${orderContext}`;
     return "Xin lỗi, tôi đang gặp chút sự cố kỹ thuật. Bạn có thể thử lại sau giây lát được không?";
   }
 };
+
+export const geminiService = {
+  generateText: async (prompt: string, style: any = 'PROFESSIONAL') => {
+    try {
+      const result = await api.ai.generate({ prompt, style });
+      return result.content;
+    } catch {
+      return "Không thể tạo nội dung lúc này.";
+    }
+  },
+  generateSpeech,
+  getShoppingAdvice,
+  analyzeImageForSearch,
+  generateKeywordSuggestions,
+  generateProductTags,
+  generateSEOContent,
+  generateProductImage,
+  enhanceProductImage,
+  generateProductVideo,
+  customerServiceChat
+};

@@ -47,6 +47,48 @@ export interface FuturesContract {
   conditions: string[];
 }
 
+export interface SupplierOption {
+  id: string;
+  name: string;
+  location: string;
+  origin: string;
+  contactPerson: string;
+  contactEmail: string;
+  pricePerUnit: number;
+  shippingFee: number;
+  leadTimeDays: number;
+  rating: number;
+  reliabilityScore: number; // 0-100
+}
+
+export interface BOMItem {
+  id: string;
+  productId: string;
+  name: string;
+  specs: string;
+  quantity: number;
+  unit: string;
+  basePrice: number;
+  origin: string;
+  subComponents?: BOMItem[];
+  supplierOptions: SupplierOption[];
+  consumesProductIds?: string[]; // IDs of other products this one uses as material
+  isMaterialFor?: string[]; // IDs of products that use this as a component
+  marketForecast?: {
+    trend: 'up' | 'down' | 'stable';
+    predictedPriceNextMonth: number;
+    confidence: number;
+  };
+}
+
+export interface ProductAnalysis {
+  productId: string;
+  totalMaterialCost: number;
+  suggestedRetailPrice: number;
+  optimizationTips: string[];
+  lastUpdated: number;
+}
+
 export interface Job {
   id: string;
   data: AITaskInput;
