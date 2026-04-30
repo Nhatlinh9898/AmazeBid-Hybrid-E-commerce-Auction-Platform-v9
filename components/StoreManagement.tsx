@@ -660,7 +660,6 @@ export const StoreManagement: React.FC<StoreManagementProps> = ({
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Cơ cấu tổ chức & Chi nhánh quản lý</label>
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
             {stores.map(store => {
-              const isChild = !!store.parentId;
               const parentStore = stores.find(s => s.id === store.parentId);
               
               return (

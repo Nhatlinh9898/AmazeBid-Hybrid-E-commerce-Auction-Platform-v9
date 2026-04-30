@@ -1,5 +1,6 @@
 import Gun from 'gun';
 import 'gun/sea';
+import { sentinel } from './QuantumSentinel';
 
 /**
  * P2P SERVICE - LAYER 0 (DEEP IMPLEMENTATION)
@@ -42,7 +43,18 @@ class P2PService {
         file: 'p2p-data',
         radisk: true
       });
-      console.log('[P2P] GunDB Server instance created');
+
+      // FIREWALL INTERCEPTOR (Middleware)
+      this.gun.on('out', function(this: any, msg: any) {
+        // Kiểm tra xem tin nhắn có đến từ Node bị khóa không
+        if (msg.peer && sentinel.isBlacklisted(msg.peer.id)) {
+          console.warn(`[SENTINEL-P2P] Blocked message from blacklisted peer: ${msg.peer.id}`);
+          return;
+        }
+        this.to.next(msg);
+      });
+
+      console.log('[P2P] GunDB Server instance created with QuantumSentinel');
     } else {
       // Client-side Gun instance
       this.gun = Gun({
@@ -58,8 +70,20 @@ class P2PService {
   }
 
   /**
-   * Đăng ký/Đăng nhập vào mạng lưới P2P (Decentralized Identity)
+   * SELF-HEALING PUT (Bảo vệ dữ liệu)
    */
+  async securePut(path: string, data: any) {
+    this.initGun();
+    const nodeId = this.user?.is ? this.user.is.pub : 'anonymous-client';
+    
+    const isValid = await sentinel.validateMiddleware(nodeId, data);
+    if (!isValid) {
+      console.error(`[SENTINEL] Write rejected for path: ${path}`);
+      return;
+    }
+
+    this.gun.get(path).put(data);
+  }
   async authenticate(alias: string, pass: string) {
     this.initGun();
     return new Promise((resolve, reject) => {

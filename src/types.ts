@@ -13,6 +13,40 @@ export type AITaskInput = z.infer<typeof AITaskSchema>;
 
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'dlq';
 
+export type TransactionType = 'TRANSFER' | 'WITHDRAWAL' | 'PAYMENT' | 'ESCROW_DEPOSIT' | 'FUTURES_SETTLEMENT';
+export type TransactionStatus = 'PENDING' | 'CLEARED' | 'FLAGGED' | 'REVOKED' | 'LOCKED';
+
+export interface TransactionRecord {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  amount: number;
+  currency: string;
+  type: TransactionType;
+  status: TransactionStatus;
+  timestamp: number;
+  metadata: {
+    ipAddress?: string;
+    userAgent?: string;
+    referenceCode: string;
+    contractId?: string;
+    hash: string; // Cryptographic hash for integrity
+    signature?: string; // Digital signature
+  };
+}
+
+export interface FuturesContract {
+  id: string;
+  creatorId: string;
+  counterpartyId: string;
+  assetType: 'STOCKS' | 'COMMODITIES' | 'CREDIT';
+  strikePrice: number;
+  expiryDate: number;
+  quantity: number;
+  status: 'OPEN' | 'EXECUTED' | 'EXPIRED' | 'CANCELLED';
+  conditions: string[];
+}
+
 export interface Job {
   id: string;
   data: AITaskInput;

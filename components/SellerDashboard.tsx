@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart, ChevronLeft, ChevronRight, Calendar, Cpu } from 'lucide-react';
+import { X, TrendingUp, DollarSign, Package, BarChart3, PieChart as PieChartIcon, ArrowUpRight, Link2, ExternalLink, FileText, Network, Calculator, Download, Users, MousePointer2, ShoppingCart, Star, AlertTriangle, Check, Wand2, Store as LucideStore, Truck, Briefcase, PieChart, ChevronLeft, ChevronRight, Calendar, Cpu, Shield } from 'lucide-react';
 import { SmartComboGenerator } from './SmartComboGenerator';
 import { StoreManagement } from './StoreManagement';
 import { SupplyChainManagement } from './SupplyChainManagement';
@@ -23,6 +23,10 @@ import { GlobalConfig } from '../types';
 
 import { workforceService } from '../services/WorkforceService';
 
+import { motion } from 'motion/react';
+import SentinelDashboard from './SentinelDashboard';
+import AuditLedgerView from './AuditLedgerView';
+
 interface SellerDashboardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,7 +35,7 @@ interface SellerDashboardProps {
   onRefreshProducts?: () => void;
 }
 
-type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity' | 'orders' | 'workplace';
+type TabType = 'overview' | 'analytics' | 'network' | 'tax' | 'products' | 'alerts' | 'inventory' | 'store' | 'product-mgmt' | 'supply-chain' | 'labor' | 'equity' | 'orders' | 'workplace' | 'security' | 'audit';
 
 const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, products, currentUserId, onRefreshProducts }) => {
   const { user } = useAuth();
@@ -543,6 +547,22 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
                       <PieChart size={16} /> Cổ phần & Lợi nhuận
                   </button>
                 )}
+                {user?.role === 'ADMIN' && (
+                  <button 
+                      onClick={() => setActiveTab('security')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'security' ? 'border-emerald-500 text-emerald-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <Shield size={16} /> Quantum Shield
+                  </button>
+                )}
+                {user?.role === 'ADMIN' && (
+                  <button 
+                      onClick={() => setActiveTab('audit')}
+                      className={`py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'audit' ? 'border-amber-500 text-amber-700 font-black' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                  >
+                      <FileText size={16} /> Audit & Ledger
+                  </button>
+                )}
             </div>
 
             <button 
@@ -556,6 +576,18 @@ const SellerDashboard: React.FC<SellerDashboardProps> = ({ isOpen, onClose, prod
 
         {/* Main Scrollable Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+            {activeTab === 'security' && (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                <SentinelDashboard />
+              </motion.div>
+            )}
+
+            {activeTab === 'audit' && (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                <AuditLedgerView />
+              </motion.div>
+            )}
+
             {isStaffOrAdmin && (
               <div className="mb-6 animate-in slide-in-from-top-2">
                 <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
