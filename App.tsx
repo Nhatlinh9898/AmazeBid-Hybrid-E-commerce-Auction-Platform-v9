@@ -84,6 +84,8 @@ import { useWorkSession } from './context/WorkSessionContext';
 import WorkLoginDialog from './components/WorkLoginDialog';
 import { workforceService } from './services/WorkforceService';
 
+import BusinessHierarchy from './components/BusinessHierarchy';
+
 const InnerApp: React.FC = () => {
   const { user } = useAuth();
   const { session } = useWorkSession();

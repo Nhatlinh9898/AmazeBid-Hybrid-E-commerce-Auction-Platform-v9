@@ -144,30 +144,42 @@ const BusinessHierarchy: React.FC = () => {
                       className="space-y-3 overflow-hidden"
                     >
                       {/* Lớp 2: Branches (Store Managers) */}
-                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-4">Active Branches</h4>
+                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-4">Nút Chi Nhánh (Active Nodes)</h4>
                       {(branches[corp.id] || []).map(branch => (
-                        <div key={branch.id} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
+                        <div key={branch.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <MapPin size={14} className="text-indigo-400" />
                               <span className="text-sm font-bold text-gray-800">{branch.name}</span>
                             </div>
-                            <span className="text-[10px] px-2 py-0.5 bg-green-100 text-green-600 rounded-full font-black">SYNCED</span>
+                            <span className="text-[10px] px-2 py-0.5 bg-green-100 text-green-600 rounded-full font-black tracking-tighter">DATA SYNCED</span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-gray-500">
+                             <div className="flex items-center gap-1">
+                               <Plus size={10} className="text-indigo-300" /> DT: {branch.area || '--'} m2
+                             </div>
+                             <div className="flex items-center gap-1">
+                               <Plus size={10} className="text-indigo-300" /> P: {branch.parkingInfo || 'N/A'}
+                             </div>
                           </div>
                           
                           {/* Lớp 3: Workforce (Staff/Employees) */}
-                          <div className="flex -space-x-2 overflow-hidden">
-                            {(staffByBranch[branch.id] || []).map(s => (
-                              <div key={s.id} className="w-6 h-6 rounded-full border-2 border-white bg-indigo-100 flex items-center justify-center">
-                                <Users size={10} className="text-indigo-600" />
-                              </div>
-                            ))}
-                            <button 
-                              className="w-6 h-6 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all"
-                              title="Thêm nhân sư"
-                            >
-                              <Plus size={10} />
-                            </button>
+                          <div className="flex items-center justify-between border-t border-gray-100 pt-2">
+                            <div className="flex -space-x-2 overflow-hidden">
+                              {(staffByBranch[branch.id] || []).map(s => (
+                                <div key={s.id} className="w-6 h-6 rounded-full border-2 border-white bg-indigo-100 flex items-center justify-center" title={`${s.name} - ${s.position}`}>
+                                  <Users size={10} className="text-indigo-600" />
+                                </div>
+                              ))}
+                              <button 
+                                className="w-6 h-6 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all"
+                                title="Tuyển dụng nhân sự mới"
+                              >
+                                <Plus size={10} />
+                              </button>
+                            </div>
+                            <p className="text-[9px] text-indigo-400 font-extrabold uppercase">Tầng Thực Thi</p>
                           </div>
                         </div>
                       ))}

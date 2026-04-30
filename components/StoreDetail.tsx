@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Star, Clock, ChevronLeft, ShoppingBag, Plus, Minus, QrCode, CreditCard, CheckCircle2, Info, Loader2, X, Utensils, Printer } from 'lucide-react';
+import { MapPin, Star, Clock, ChevronLeft, ShoppingBag, Plus, Minus, QrCode, CreditCard, CheckCircle2, Info, Loader2, X, Utensils, Printer, Store as LucideStore, Sparkles } from 'lucide-react';
 import { PhysicalStore, StoreMenuItem } from '../types';
 import { storeService } from '../services/StoreService';
 
@@ -301,21 +301,126 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
 
             {activeTab === 'info' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Info className="w-5 h-5 text-blue-500" /> Giới thiệu
-                  </h2>
-                  <p className="text-gray-600 leading-relaxed">{store.description}</p>
+                {/* Introduction Section */}
+                <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
+                      <Info className="w-6 h-6 text-blue-600" /> Giới thiệu doanh nghiệp
+                    </h2>
+                    <p className="text-gray-600 leading-relaxed text-sm">{store.description}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-50">
+                    <div className="p-4 bg-blue-50 rounded-2xl">
+                      <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Diện tích</div>
+                      <div className="text-lg font-black text-blue-900">{store.area || '--'} m2</div>
+                    </div>
+                    <div className="p-4 bg-purple-50 rounded-2xl">
+                      <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Loại hình</div>
+                      <div className="text-lg font-black text-purple-900 truncate">{store.category}</div>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-2xl">
+                      <div className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Trạng thái</div>
+                      <div className="text-lg font-black text-green-900">HOẠT ĐỘNG</div>
+                    </div>
+                    <div className="p-4 bg-amber-50 rounded-2xl">
+                      <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-1">Đánh giá</div>
+                      <div className="text-lg font-black text-amber-900">{store.rating} / 5</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Structure Diagram Section */}
+                {store.structureDiagram && (
+                  <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+                    <h3 className="text-lg font-black text-indigo-900 mb-6 flex items-center gap-2 uppercase tracking-tight">
+                      <LucideStore className="w-5 h-5" /> Sơ đồ cấu trúc & Node điều hành
+                    </h3>
+                    <div className="aspect-video rounded-3xl overflow-hidden border-4 border-gray-50 shadow-inner group relative">
+                      <img 
+                        src={store.structureDiagram} 
+                        alt="Sơ đồ tổ chức" 
+                        className="w-full h-full object-contain bg-gray-50 p-4 transition-transform group-hover:scale-105" 
+                      />
+                      <div className="absolute inset-0 bg-indigo-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                         <span className="text-white font-black text-xs uppercase bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30">Xem sơ đồ lượng tử chi tiết</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Features & Amenities */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm h-full">
+                    <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
+                      <Utensils className="w-5 h-5 text-indigo-500" /> Dịch vụ & Tiện ích
+                    </h3>
+                    <ul className="space-y-4">
+                      {(store.services && store.services.length > 0 ? store.services : ['Thanh toán linh hoạt', 'Hỗ trợ khách hàng 24/7', 'Wifi tốc độ cao']).map((service, idx) => (
+                        <li key={idx} className="flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5" />
+                          <span className="text-sm text-gray-600 font-bold">{service}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    
+                    {store.parkingInfo && (
+                      <div className="mt-8 p-4 bg-gray-50 rounded-2xl border-l-4 border-indigo-500">
+                        <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">Bãi giữ xe</h4>
+                        <p className="text-xs text-gray-600 font-bold">{store.parkingInfo}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm h-full flex flex-col">
+                    <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
+                       <LucideStore className="w-5 h-5 text-amber-500" /> Đãi ngộ & Tuyển dụng
+                    </h3>
+                    <div className="flex-1 space-y-6">
+                      <div>
+                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Môi trường & Đãi ngộ</h4>
+                        <div className="flex flex-wrap gap-2">
+                           {(store.perks && store.perks.length > 0 ? store.perks : ['Thưởng doanh số', 'Đào tạo chuyên môn', 'Team building']).map((perk, idx) => (
+                             <span key={idx} className="px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black rounded-full border border-amber-100">
+                               {perk}
+                             </span>
+                           ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-6 border-t border-gray-50 pt-6">
+                        <h4 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-3 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Cơ hội nghề nghiệp
+                        </h4>
+                        <p className="text-xs text-gray-500 leading-relaxed italic">
+                          {store.recruitmentInfo || "Hệ thống đang mở rộng quy mô. Chúng tôi luôn tìm kiếm những cộng sự tài năng, ham học hỏi để cùng phát triển hệ sinh thái lượng tử AmazeBid."}
+                        </p>
+                        <button className="mt-4 w-full py-3 bg-indigo-950 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-black transition-all">
+                          Xem vị trí đang tuyển
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-gray-50 rounded-2xl p-6">
-                    <h4 className="font-bold text-gray-900 mb-2">Địa chỉ</h4>
-                    <p className="text-sm text-gray-600">{store.address}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-2xl p-6">
-                    <h4 className="font-bold text-gray-900 mb-2">Giờ mở cửa</h4>
-                    <p className="text-sm text-gray-600">{store.openingHours}</p>
+                {/* Contact Footer */}
+                <div className="bg-indigo-950 rounded-[40px] p-8 text-white">
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div>
+                      <h4 className="text-2xl font-black">{store.name}</h4>
+                      <p className="text-indigo-300 text-xs font-bold mt-1 opacity-70">{store.address}</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-indigo-400 uppercase">Liên hệ Hotline</p>
+                        <p className="text-lg font-black">{store.phone || '1900 xxxx'}</p>
+                      </div>
+                      <div className="w-[1px] h-10 bg-indigo-800 hidden md:block" />
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-indigo-400 uppercase">Giờ vận hành</p>
+                        <p className="text-lg font-black">{store.openingHours}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

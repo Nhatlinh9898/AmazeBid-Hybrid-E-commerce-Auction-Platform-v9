@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, ShoppingCart, User as UserIcon, MapPin, Gavel, LayoutGrid, PlusCircle, Package, Video, Sparkles, Zap, BarChart3, Shield, Bot, Camera, Users, Wand2, Mic, Mail, Store as LucideStore, PlusSquare, Utensils, Briefcase, ChevronRight, Building2 } from 'lucide-react';
+import { Search, ShoppingCart, User as UserIcon, MapPin, Gavel, LayoutGrid, PlusCircle, Package, Video, Sparkles, Zap, BarChart3, Shield, Bot, Camera, Users, Wand2, Mic, Mail, Store as LucideStore, PlusSquare, Utensils, Briefcase, ChevronRight, Building } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import { useWorkSession } from '../context/WorkSessionContext';
 import { emailService } from '../services/EmailService';
@@ -134,7 +134,7 @@ const Navbar: React.FC<NavbarProps> = ({
              className="px-3 text-[10px] font-black uppercase text-[#febd69] hover:text-white transition-colors flex items-center gap-1 h-full"
              title="Khu vực quản trị doanh nghiệp"
            >
-             <Building2 size={12} /> Business Zone
+             <Building size={12} /> Business Zone
            </button>
            <div className="w-[1px] h-4 bg-gray-700" />
            <button 

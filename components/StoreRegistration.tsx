@@ -62,7 +62,14 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
     category: 'Food & Drink' as string,
     openingHours: '08:00 - 22:00',
     images: [] as string[],
-    menu: [] as StoreMenuItem[]
+    menu: [] as StoreMenuItem[],
+    // Detailed profile fields
+    area: 0,
+    services: [] as string[],
+    perks: [] as string[],
+    recruitmentInfo: '',
+    parkingInfo: '',
+    structureDiagram: ''
   });
 
   const handleAiGenerateInfo = async () => {
@@ -146,10 +153,17 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
       staffIds: [],
       createdAt: new Date().toISOString(),
       menu: formData.menu,
-      type: OrganizationType.COMPANY
+      type: OrganizationType.COMPANY,
+      // Pass the new fields
+      area: formData.area,
+      services: formData.services,
+      perks: formData.perks,
+      recruitmentInfo: formData.recruitmentInfo,
+      parkingInfo: formData.parkingInfo,
+      structureDiagram: formData.structureDiagram
     });
 
-    setStep(4);
+    setStep(5);
     setTimeout(() => {
       onSuccess();
       onClose();
@@ -209,23 +223,23 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
         </div>
 
         <div className="flex-1 overflow-y-auto p-8">
-          {step < 4 && (
-            <div className="grid grid-cols-4 gap-4 mb-8">
-              {[1, 2, 3, 4].map(s => (
-                <div key={s} className="flex flex-col items-center gap-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black transition-all ${
-                    step >= s ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {s}
-                  </div>
-                  <span className={`text-[10px] font-black uppercase tracking-wider ${
-                    step >= s ? 'text-blue-600' : 'text-gray-400'
-                  }`}>
-                    {s === 1 ? 'Thông tin' : s === 2 ? 'Hình ảnh' : s === 3 ? 'Thực đơn' : 'Hoàn tất'}
-                  </span>
-                </div>
-              ))}
-            </div>
+          {step < 5 && (
+            <div className="grid grid-cols-5 gap-2 mb-8">
+  {[1, 2, 3, 4, 5].map(s => (
+    <div key={s} className="flex flex-col items-center gap-2">
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
+        step >= s ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-gray-100 text-gray-400'
+      }`}>
+        {s}
+      </div>
+      <span className={`text-[8px] font-black uppercase tracking-wider text-center ${
+        step >= s ? 'text-blue-600' : 'text-gray-400'
+      }`}>
+        {s === 1 ? 'Thông tin' : s === 2 ? 'Hình ảnh' : s === 3 ? 'Thực đơn' : s === 4 ? 'Chi tiết HQ' : 'Hoàn tất'}
+      </span>
+    </div>
+  ))}
+</div>
           )}
 
           {step === 1 && (
@@ -533,6 +547,96 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
                   Quay lại
                 </button>
                 <button 
+                  onClick={() => setStep(4)}
+                  className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all"
+                >
+                  Tiếp tục
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Hồ sơ chi tiết doanh nghiệp</label>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Diện tích (m2)</label>
+                    <input 
+                      type="number" 
+                      className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+                      placeholder="Ví dụ: 150"
+                      value={formData.area}
+                      onChange={e => setFormData(prev => ({ ...prev, area: parseInt(e.target.value) }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bãi giữ xe</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+                      placeholder="VD: Có bãi xe ô tô & xe máy"
+                      value={formData.parkingInfo}
+                      onChange={e => setFormData(prev => ({ ...prev, parkingInfo: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Thông tin tuyển dụng</label>
+                  <textarea 
+                    rows={2}
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm resize-none"
+                    placeholder="Các vị trí đang cần người..."
+                    value={formData.recruitmentInfo}
+                    onChange={e => setFormData(prev => ({ ...prev, recruitmentInfo: e.target.value }))}
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dịch vụ & Tiện ích (cách nhau bằng dấu phẩy)</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+                    placeholder="Wifi miễn phí, Điều hòa, Thanh toán thẻ..."
+                    value={formData.services.join(', ')}
+                    onChange={e => setFormData(prev => ({ ...prev, services: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))}
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Đãi ngộ nhân sự (cách nhau bằng dấu phẩy)</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+                    placeholder="Bao cơm trưa, Thưởng KPI, Chế độ bảo hiểm..."
+                    value={formData.perks.join(', ')}
+                    onChange={e => setFormData(prev => ({ ...prev, perks: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))}
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Sơ đồ tổ chức (URL ảnh)</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+                    placeholder="https://example.com/diagram.png"
+                    value={formData.structureDiagram}
+                    onChange={e => setFormData(prev => ({ ...prev, structureDiagram: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setStep(3)}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black hover:bg-gray-200 transition-all"
+                >
+                  Quay lại
+                </button>
+                <button 
                   onClick={handleSubmit}
                   className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all"
                 >
@@ -542,7 +646,7 @@ export const StoreRegistration: React.FC<StoreRegistrationProps> = ({ onClose, o
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className="py-12 text-center space-y-6">
               <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 className="w-12 h-12 text-green-600 animate-bounce" />

@@ -540,6 +540,13 @@ export interface Branch {
   phone: string;
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
+  // Detailed Profile Fields
+  area?: number;               // Diện tích (m2)
+  services?: string[];         // Dịch vụ
+  perks?: string[];            // Đãi ngộ cho nhân sự tại chi nhánh
+  recruitmentInfo?: string;    // Tuyển dụng
+  parkingInfo?: string;        // Bãi giữ xe
+  images?: string[];           // Ảnh chi nhánh
 }
 
 export enum UserZone {
@@ -578,6 +585,13 @@ export interface PhysicalStore {
   staffIds: string[];
   // Hierarchical metadata
   organizationPath?: string; // e.g. "CorpX/CompX1/Deptx1"
+  // Detailed Profile Fields
+  area?: number;
+  services?: string[];
+  perks?: string[];
+  recruitmentInfo?: string;
+  parkingInfo?: string;
+  structureDiagram?: string; // Image URL
 }
 
 export interface ContentPost {
