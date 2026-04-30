@@ -2,6 +2,7 @@ import React from 'react';
 import { MapPin, Star, Clock, ChevronLeft, ShoppingBag, Plus, Minus, QrCode, CreditCard, CheckCircle2, Info, Loader2, X, Utensils, Printer, Store as LucideStore, Sparkles } from 'lucide-react';
 import { PhysicalStore, StoreMenuItem } from '../types';
 import { storeService } from '../services/StoreService';
+import RecruitmentModal from './RecruitmentModal';
 
 interface StoreDetailProps {
   storeId: string;
@@ -13,6 +14,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
   const [loading, setLoading] = React.useState(true);
   const [cart, setCart] = React.useState<{item: StoreMenuItem, quantity: number}[]>([]);
   const [showPayment, setShowPayment] = React.useState(false);
+  const [showRecruitment, setShowRecruitment] = React.useState(false);
   const [paymentSuccess, setPaymentSuccess] = React.useState(false);
   const [lastOrder, setLastOrder] = React.useState<{items: {item: StoreMenuItem, quantity: number}[], total: number} | null>(null);
 
@@ -395,7 +397,10 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
                         <p className="text-xs text-gray-500 leading-relaxed italic">
                           {store.recruitmentInfo || "Hệ thống đang mở rộng quy mô. Chúng tôi luôn tìm kiếm những cộng sự tài năng, ham học hỏi để cùng phát triển hệ sinh thái lượng tử AmazeBid."}
                         </p>
-                        <button className="mt-4 w-full py-3 bg-indigo-950 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-black transition-all">
+                        <button 
+                          onClick={() => setShowRecruitment(true)}
+                          className="mt-4 w-full py-3 bg-indigo-950 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-black transition-all"
+                        >
                           Xem vị trí đang tuyển
                         </button>
                       </div>
@@ -558,6 +563,13 @@ const StoreDetail: React.FC<StoreDetailProps> = ({ storeId, onClose }) => {
           </div>
         </div>
       </div>
+
+      {showRecruitment && store && (
+        <RecruitmentModal 
+          store={store} 
+          onClose={() => setShowRecruitment(false)} 
+        />
+      )}
     </div>
   );
 };
